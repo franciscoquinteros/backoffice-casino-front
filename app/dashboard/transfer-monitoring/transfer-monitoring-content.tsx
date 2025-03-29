@@ -121,7 +121,7 @@ export function TransferMonitoringContent() {
       let responseBody;
       try {
         responseBody = await response.json();
-      } catch (e) {
+      } catch (_) {
         responseBody = await response.text();
       }
 
