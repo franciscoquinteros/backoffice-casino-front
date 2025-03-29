@@ -35,8 +35,6 @@ export function WebMonitoringContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Eliminamos processingId y handleButtonClick ya que ahora solo mostraremos transacciones aprobadas
-
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },
     { cell: { type: 'text', widthClass: 'w-24' } },
@@ -104,71 +102,7 @@ export function WebMonitoringContent() {
     return <Badge>{status}</Badge>;
   };
 
-  // Mantenemos handleAccept por si se necesita en el futuro o para otro componente
-  async function handleAccept(id: string | number): Promise<void> {
-    try {
-      const transaction = transactions.find(t => t.id === id);
-
-      if (!transaction) {
-        console.error('Transaction not found');
-        return;
-      }
-
-      // Determinar el tipo de transacción
-      const transactionType = transaction.type ||
-        (transaction.description?.toLowerCase().includes('deposit') ? 'deposit' : 'withdraw');
-
-      // Usar el proxy HTTPS en el backend de Railway en lugar de llamar directamente a la IP
-      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/proxy/${transactionType}`;
-
-      console.log('Llamando endpoint proxy para confirmar:', endpoint);
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: transaction.idCliente || '',
-          amount: transaction.amount,
-          transaction_id: transaction.id.toString()
-        }),
-      });
-
-      // Intentar obtener el cuerpo de la respuesta
-      let responseBody;
-      try {
-        responseBody = await response.json();
-      } catch {
-        responseBody = await response.text();
-      }
-
-      console.log('Respuesta del servidor proxy:', responseBody);
-
-      if (!response.ok) {
-        throw new Error(`Error al confirmar la transacción: ${response.status}`);
-      }
-
-      setTransactions(prevTransactions =>
-        prevTransactions.map(tx =>
-          tx.id === id ? { ...tx, status: 'Aceptado' } : tx
-        )
-      );
-
-      console.log('Transacción confirmada exitosamente');
-      showAlert('Transacción aceptada correctamente');
-
-    } catch (error) {
-      console.error('Error al confirmar la transacción:', error);
-      showAlert('Error al aceptar la transacción');
-
-      setTransactions(prevTransactions =>
-        prevTransactions.map(transaction =>
-          transaction.id === id ? { ...transaction, status: 'Pending' } : transaction
-        )
-      );
-    }
-  }
+  // Eliminamos la función handleAccept ya que no se utiliza
 
   const HeaderContent = (
     <h1 className="text-2xl font-bold mb-4">Monitoreo de Transferencias</h1>
