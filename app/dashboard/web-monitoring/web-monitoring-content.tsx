@@ -29,6 +29,8 @@ interface Transaction {
   date_created?: string;
   payment_method_id?: string;
   payer_email?: string;
+  wallet_address?: string;
+  cbu?: string;
   idCliente?: string | number;
 }
 
@@ -215,6 +217,10 @@ export function WebMonitoringContent() {
     </div>
   );
 
+  const approvedTransactions = transactions.filter(
+    transaction => transaction.status === 'approved' || transaction.status === 'Aceptado'
+  );
+
   const TableContent = transactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
@@ -233,61 +239,55 @@ export function WebMonitoringContent() {
             <TableHead>Estado</TableHead>
             <TableHead>Fecha de Creación</TableHead>
             <TableHead>Método de Pago</TableHead>
-            <TableHead>Email del Pagador</TableHead>
+            <TableHead>Email/Cuenta Destino</TableHead>
             <TableHead>Acción</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => (
-            <TableRow key={transaction.id} className="hover:bg-muted/50">
-              <TableCell className="font-medium">{transaction.id}</TableCell>
-              <TableCell>
-                {transaction.type === 'deposit' ? 'Depósito' :
-                  transaction.type === 'withdraw' ? 'Retiro' :
-                    transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
-              </TableCell>
-              <TableCell>{transaction.description}</TableCell>
-              <TableCell>
-                {(() => {
-                  try {
-                    const amountValue = transaction.amount;
-                    if (typeof amountValue === 'number') {
-                      return '$' + amountValue.toFixed(2);
-                    } else if (amountValue === null || amountValue === undefined) {
+          {transactions
+            .filter(transaction => transaction.status === 'approved' || transaction.status === 'Aceptado')
+            .map((transaction) => (
+              <TableRow key={transaction.id} className="hover:bg-muted/50">
+                <TableCell className="font-medium">{transaction.id}</TableCell>
+                <TableCell>
+                  {transaction.type === 'deposit' ? 'Depósito' :
+                    transaction.type === 'withdraw' ? 'Retiro' :
+                      transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
+                </TableCell>
+                <TableCell>{transaction.description}</TableCell>
+                <TableCell>
+                  {(() => {
+                    try {
+                      const amountValue = transaction.amount;
+                      if (typeof amountValue === 'number') {
+                        return '$' + amountValue.toFixed(2);
+                      } else if (amountValue === null || amountValue === undefined) {
+                        return '$0.00';
+                      } else {
+                        const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
+                        return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
+                      }
+                    } catch (error) {
+                      console.error('Error formateando amount:', error, transaction);
                       return '$0.00';
-                    } else {
-                      const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
-                      return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
                     }
-                  } catch (error) {
-                    console.error('Error formateando amount:', error, transaction);
-                    return '$0.00';
-                  }
-                })()}
-              </TableCell>
-              <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-              <TableCell>
-                {transaction.date_created
-                  ? new Date(transaction.date_created).toLocaleString()
-                  : 'No disponible'}
-              </TableCell>
-              <TableCell>{transaction.payment_method_id || 'No disponible'}</TableCell>
-              <TableCell>{transaction.payer_email || 'No disponible'}</TableCell>
-              <TableCell>
-                {transaction.status === 'Aceptado' || transaction.status === 'approved' ? (
+                  })()}
+                </TableCell>
+                <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                <TableCell>
+                  {transaction.date_created
+                    ? new Date(transaction.date_created).toLocaleString()
+                    : 'No disponible'}
+                </TableCell>
+                <TableCell>{transaction.payment_method_id || 'No disponible'}</TableCell>
+                <TableCell>
+                  {transaction.payer_email || transaction.wallet_address || transaction.cbu || 'No disponible'}
+                </TableCell>
+                <TableCell>
                   <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
-                ) : (
-                  <Button
-                    onClick={() => handleButtonClick(transaction.id)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1"
-                    disabled={transaction.status === 'Aceptado' || transaction.status === 'approved' || processingId === transaction.id}
-                  >
-                    {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
     </Card>
