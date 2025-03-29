@@ -83,12 +83,12 @@ export function TransferMonitoringContent() {
 
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'Pending') {
-      return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
     }
     if (status === 'Aceptado' || status === 'approved') {
-      return <Badge variant="outline" className="bg-green-100 text-green-800">Aceptado</Badge>;
+      return <Badge className="bg-green-100 text-green-800">Aceptado</Badge>;
     }
-    return <Badge variant="outline">{status}</Badge>;
+    return <Badge>{status}</Badge>;
   };
 
   async function handleAccept(id: string | number): Promise<void> {
@@ -193,8 +193,7 @@ export function TransferMonitoringContent() {
                 ) : (
                   <Button
                     onClick={() => handleButtonClick(transaction.id)}
-                    variant="default"
-                    size="sm"
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1" // Combina estilos en className
                     disabled={transaction.status === 'Aceptado' || processingId === transaction.id}
                   >
                     {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
