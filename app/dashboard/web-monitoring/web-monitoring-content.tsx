@@ -34,6 +34,7 @@ export function WebMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | number | null>(null);
 
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },
@@ -46,6 +47,12 @@ export function WebMonitoringContent() {
     { cell: { type: 'text', widthClass: 'w-40' } },
     { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },
   ];
+
+  const handleButtonClick = async (id: string | number): Promise<void> => {
+    setProcessingId(id);
+    await handleAccept(id);
+    setProcessingId(null);
+  }
 
   // Función simple para mostrar alertas en lugar de toast
   const showAlert = (message: string) => {
@@ -102,7 +109,70 @@ export function WebMonitoringContent() {
     return <Badge>{status}</Badge>;
   };
 
-  // Eliminamos la función handleAccept ya que no se utiliza
+  async function handleAccept(id: string | number): Promise<void> {
+    try {
+      const transaction = transactions.find(t => t.id === id);
+
+      if (!transaction) {
+        console.error('Transaction not found');
+        return;
+      }
+
+      // Determinar el tipo de transacción
+      const transactionType = transaction.type ||
+        (transaction.description?.toLowerCase().includes('deposit') ? 'deposit' : 'withdraw');
+
+      // Usar el proxy HTTPS en el backend de Railway en lugar de llamar directamente a la IP
+      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/proxy/${transactionType}`;
+
+      console.log('Llamando endpoint proxy para confirmar:', endpoint);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: transaction.idCliente || '',
+          amount: transaction.amount,
+          transaction_id: transaction.id.toString()
+        }),
+      });
+
+      // Intentar obtener el cuerpo de la respuesta
+      let responseBody;
+      try {
+        responseBody = await response.json();
+      } catch {
+        responseBody = await response.text();
+      }
+
+      console.log('Respuesta del servidor proxy:', responseBody);
+
+      if (!response.ok) {
+        throw new Error(`Error al confirmar la transacción: ${response.status}`);
+      }
+
+      setTransactions(prevTransactions =>
+        prevTransactions.map(tx =>
+          tx.id === id ? { ...tx, status: 'Aceptado' } : tx
+        )
+      );
+
+      console.log('Transacción confirmada exitosamente');
+      showAlert('Transacción aceptada correctamente');
+
+    } catch (error) {
+      console.error('Error al confirmar la transacción:', error);
+      showAlert('Error al aceptar la transacción');
+
+      setTransactions(prevTransactions =>
+        prevTransactions.map(transaction =>
+          transaction.id === id ? { ...transaction, status: 'Pending' } : transaction
+        )
+      );
+    }
+  }
 
   const HeaderContent = (
     <h1 className="text-2xl font-bold mb-4">Monitoreo de Transferencias</h1>
@@ -143,15 +213,11 @@ export function WebMonitoringContent() {
     </div>
   );
 
-  // Filtrar solo las transacciones aprobadas
-  const filteredTransactions = transactions.filter(
-    transaction => transaction.status === 'approved' || transaction.status === 'Aceptado'
-  );
-
-  const TableContent = filteredTransactions.length === 0 ? (
+  // Aquí mostramos todas las transacciones (sin filtrar)
+  const TableContent = transactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
-        {error ? `Error: ${error}` : "No hay transacciones aprobadas disponibles"}
+        {error ? `Error: ${error}` : "No hay transacciones disponibles"}
       </p>
     </Card>
   ) : (
@@ -167,11 +233,11 @@ export function WebMonitoringContent() {
             <TableHead>Fecha de Creación</TableHead>
             <TableHead>Método de Pago</TableHead>
             <TableHead>Email/Cuenta Destino</TableHead>
-            <TableHead>Estado</TableHead>
+            <TableHead>Acción</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredTransactions.map((transaction) => (
+          {transactions.map((transaction) => (
             <TableRow key={transaction.id} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>
@@ -209,7 +275,17 @@ export function WebMonitoringContent() {
                 {transaction.payer_email || transaction.wallet_address || transaction.cbu || 'No disponible'}
               </TableCell>
               <TableCell>
-                <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
+                {transaction.status === 'Aceptado' || transaction.status === 'approved' ? (
+                  <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
+                ) : (
+                  <Button
+                    onClick={() => handleButtonClick(transaction.id)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1"
+                    disabled={transaction.status === 'Aceptado' || transaction.status === 'approved' || processingId === transaction.id}
+                  >
+                    {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}

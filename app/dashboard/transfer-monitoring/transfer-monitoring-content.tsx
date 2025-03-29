@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,13 +33,6 @@ export function TransferMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | number | null>(null);
-
-  const handleButtonClick = async (id: string | number): Promise<void> => {
-    setProcessingId(id);
-    await handleAccept(id);
-    setProcessingId(null);
-  }
 
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[70px]', cell: { type: 'text', widthClass: 'w-12' } },    // ID
@@ -51,7 +43,7 @@ export function TransferMonitoringContent() {
     { cell: { type: 'text', widthClass: 'w-40' } },                       // Fecha de Creación
     { cell: { type: 'text', widthClass: 'w-32' } },                       // Método/Cuenta
     { cell: { type: 'text', widthClass: 'w-40' } },                       // Email/Cuenta Destino
-    { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },    // Acción
+    { cell: { type: 'badge', widthClass: 'w-24', align: 'center' } },     // Estado (antes Acción)
   ];
 
   useEffect(() => {
@@ -91,79 +83,23 @@ export function TransferMonitoringContent() {
     return <Badge>{status}</Badge>;
   };
 
-  async function handleAccept(id: string | number): Promise<void> {
-    try {
-      const transaction = transactions.find(t => t.id === id);
-
-      if (!transaction) {
-        console.error('Transaction not found');
-        return;
-      }
-
-      // Usar el proxy HTTPS en el backend de Railway en lugar de llamar directamente a la IP
-      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/proxy/${transaction.type}`;
-
-      console.log('Llamando endpoint proxy para confirmar:', endpoint);
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: transaction.idCliente,
-          amount: transaction.amount,
-          transaction_id: transaction.id.toString()
-        }),
-      });
-
-      // Intentar obtener el cuerpo de la respuesta
-      let responseBody;
-      try {
-        responseBody = await response.json();
-      } catch {
-        responseBody = await response.text();
-      }
-
-      console.log('Respuesta del servidor proxy:', responseBody);
-
-      if (!response.ok) {
-        throw new Error(`Error al confirmar la transacción: ${response.status}`);
-      }
-
-      // Actualiza el estado local para reflejar el cambio
-      setTransactions(prevTransactions =>
-        prevTransactions.map(tx =>
-          tx.id === id ? { ...tx, status: 'Aceptado' } : tx
-        )
-      );
-
-      console.log('Transacción confirmada exitosamente');
-
-    } catch (error) {
-      console.error('Error al confirmar la transacción:', error);
-
-      // Revertir el cambio optimista en caso de error
-      setTransactions(prevTransactions =>
-        prevTransactions.map(tx =>
-          tx.id === id ? { ...tx, status: 'Pending' } : tx
-        )
-      );
-    }
-  }
-
   const HeaderContent = (
-    <h1 className="text-2xl font-bold mb-4">Monitoreo de Transferencias</h1>
+    <h1 className="text-2xl font-bold mb-4">Historial de Transferencias Aprobadas</h1>
   );
 
   const HeaderSkeleton = (
     <Skeleton className="h-8 w-64 mb-4" />
   );
 
-  const TableContent = transactions.length === 0 ? (
+  // Filtrar solo las transacciones aprobadas
+  const approvedTransactions = transactions.filter(
+    transaction => transaction.status === 'approved' || transaction.status === 'Aceptado'
+  );
+
+  const TableContent = approvedTransactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
-        {error ? `Error: ${error}` : "No hay transacciones disponibles"}
+        {error ? `Error: ${error}` : "No hay transacciones aprobadas disponibles"}
       </p>
     </Card>
   ) : (
@@ -179,11 +115,11 @@ export function TransferMonitoringContent() {
             <TableHead>Fecha de Creación</TableHead>
             <TableHead>Método/Cuenta</TableHead>
             <TableHead>Email/Cuenta Destino</TableHead>
-            <TableHead>Acción</TableHead>
+            <TableHead>Estado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => (
+          {approvedTransactions.map((transaction) => (
             <TableRow key={transaction.id} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>{transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}</TableCell>
@@ -221,17 +157,7 @@ export function TransferMonitoringContent() {
                 {transaction.payer_email || transaction.wallet_address || 'No disponible'}
               </TableCell>
               <TableCell>
-                {transaction.status === 'Aceptado' ? (
-                  <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
-                ) : (
-                  <Button
-                    onClick={() => handleButtonClick(transaction.id)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1"
-                    disabled={transaction.status === 'Aceptado' || processingId === transaction.id}
-                  >
-                    {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
-                  </Button>
-                )}
+                <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
               </TableCell>
             </TableRow>
           ))}
