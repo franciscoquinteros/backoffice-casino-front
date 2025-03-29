@@ -32,12 +32,6 @@ interface Transaction {
   idCliente?: string | number;
 }
 
-// Eliminamos la interfaz que usaba el socket
-// interface TransactionUpdateData {
-//   transactions: Transaction[];
-//   newTransaction?: Transaction;
-// }
-
 export function WebMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,9 +89,6 @@ export function WebMonitoringContent() {
 
     fetchTransactions();
 
-    // Eliminamos la configuración del WebSocket
-    // Podríamos implementar un polling periódico como alternativa
-
     // Función para actualizar periódicamente (polling)
     const intervalId = setInterval(() => {
       console.log('Actualizando transacciones...');
@@ -129,14 +120,14 @@ export function WebMonitoringContent() {
         return;
       }
 
+      // Determinar el tipo de transacción
       const transactionType = transaction.type ||
         (transaction.description?.toLowerCase().includes('deposit') ? 'deposit' : 'withdraw');
 
-      const endpoint = transactionType === 'deposit'
-        ? 'http://18.216.231.42:8080/deposit'
-        : 'http://18.216.231.42:8080/withdraw';
+      // Usar el proxy HTTPS en el backend de Railway en lugar de llamar directamente a la IP
+      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/proxy/${transactionType}`;
 
-      console.log('Llamando endpoint para confirmar:', endpoint);
+      console.log('Llamando endpoint proxy para confirmar:', endpoint);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -149,6 +140,16 @@ export function WebMonitoringContent() {
           transaction_id: transaction.id.toString()
         }),
       });
+
+      // Intentar obtener el cuerpo de la respuesta
+      let responseBody;
+      try {
+        responseBody = await response.json();
+      } catch (e) {
+        responseBody = await response.text();
+      }
+
+      console.log('Respuesta del servidor proxy:', responseBody);
 
       if (!response.ok) {
         throw new Error(`Error al confirmar la transacción: ${response.status}`);

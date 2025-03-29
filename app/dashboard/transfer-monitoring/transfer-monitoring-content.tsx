@@ -100,12 +100,10 @@ export function TransferMonitoringContent() {
         return;
       }
 
-      // Usa los endpoints directos para confirmar depósitos o retiros
-      const endpoint = transaction.type === 'deposit'
-        ? 'http://18.216.231.42:8080/deposit'
-        : 'http://18.216.231.42:8080/withdraw';
+      // Usar el proxy HTTPS en el backend de Railway en lugar de llamar directamente a la IP
+      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/proxy/${transaction.type}`;
 
-      console.log('Llamando endpoint para confirmar:', endpoint);
+      console.log('Llamando endpoint proxy para confirmar:', endpoint);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -119,14 +117,24 @@ export function TransferMonitoringContent() {
         }),
       });
 
+      // Intentar obtener el cuerpo de la respuesta
+      let responseBody;
+      try {
+        responseBody = await response.json();
+      } catch (e) {
+        responseBody = await response.text();
+      }
+
+      console.log('Respuesta del servidor proxy:', responseBody);
+
       if (!response.ok) {
         throw new Error(`Error al confirmar la transacción: ${response.status}`);
       }
 
       // Actualiza el estado local para reflejar el cambio
       setTransactions(prevTransactions =>
-        prevTransactions.map(transaction =>
-          transaction.id === id ? { ...transaction, status: 'Aceptado' } : transaction
+        prevTransactions.map(tx =>
+          tx.id === id ? { ...tx, status: 'Aceptado' } : tx
         )
       );
 
@@ -134,6 +142,13 @@ export function TransferMonitoringContent() {
 
     } catch (error) {
       console.error('Error al confirmar la transacción:', error);
+
+      // Revertir el cambio optimista en caso de error
+      setTransactions(prevTransactions =>
+        prevTransactions.map(tx =>
+          tx.id === id ? { ...tx, status: 'Pending' } : tx
+        )
+      );
     }
   }
 
@@ -211,7 +226,7 @@ export function TransferMonitoringContent() {
                 ) : (
                   <Button
                     onClick={() => handleButtonClick(transaction.id)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1" // Combina estilos en className
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1"
                     disabled={transaction.status === 'Aceptado' || processingId === transaction.id}
                   >
                     {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
