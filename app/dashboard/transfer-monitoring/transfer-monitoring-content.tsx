@@ -102,8 +102,8 @@ export function TransferMonitoringContent() {
 
       // Usa los endpoints directos para confirmar depósitos o retiros
       const endpoint = transaction.type === 'deposit'
-        ? 'https://18.216.231.42:8080/deposit'
-        : 'https://18.216.231.42:8080/withdraw';
+        ? 'http://18.216.231.42:8080/deposit'
+        : 'http://18.216.231.42:8080/withdraw';
 
       console.log('Llamando endpoint para confirmar:', endpoint);
 

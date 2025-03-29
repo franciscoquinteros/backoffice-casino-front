@@ -133,8 +133,8 @@ export function WebMonitoringContent() {
         (transaction.description?.toLowerCase().includes('deposit') ? 'deposit' : 'withdraw');
 
       const endpoint = transactionType === 'deposit'
-        ? 'https://18.216.231.42:8080/deposit'
-        : 'https://18.216.231.42:8080/withdraw';
+        ? 'http://18.216.231.42:8080/deposit'
+        : 'http://18.216.231.42:8080/withdraw';
 
       console.log('Llamando endpoint para confirmar:', endpoint);
 
