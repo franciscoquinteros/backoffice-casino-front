@@ -170,9 +170,24 @@ export function TransferMonitoringContent() {
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>{transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}</TableCell>
               <TableCell>
-                ${typeof transaction.amount === 'number'
-                  ? transaction.amount.toFixed(2)
-                  : (parseFloat(transaction.amount) || 0).toFixed(2)}
+                {(() => {
+                  try {
+                    // Intentar manejar cualquier formato posible de amount
+                    const amountValue = transaction.amount;
+                    if (typeof amountValue === 'number') {
+                      return '$' + amountValue.toFixed(2);
+                    } else if (amountValue === null || amountValue === undefined) {
+                      return '$0.00';
+                    } else {
+                      // Intenta convertir a número, con fallback a 0 si no es posible
+                      const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
+                      return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
+                    }
+                  } catch (error) {
+                    console.error('Error formateando amount:', error, transaction);
+                    return '$0.00';
+                  }
+                })()}
               </TableCell>
               <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
