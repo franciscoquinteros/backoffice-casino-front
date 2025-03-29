@@ -27,7 +27,7 @@ interface Transaction {
   payer_email?: string;
   cbu?: string;
   wallet_address?: string;
-  idCliente?: string | number; 
+  idCliente?: string | number;
 }
 
 export function TransferMonitoringContent() {
@@ -169,7 +169,11 @@ export function TransferMonitoringContent() {
             <TableRow key={transaction.id} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>{transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}</TableCell>
-              <TableCell>${transaction.amount.toFixed(2)}</TableCell>
+              <TableCell>
+                ${typeof transaction.amount === 'number'
+                  ? transaction.amount.toFixed(2)
+                  : (parseFloat(transaction.amount) || 0).toFixed(2)}
+              </TableCell>
               <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
               <TableCell>
