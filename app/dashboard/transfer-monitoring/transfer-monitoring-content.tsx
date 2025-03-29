@@ -100,10 +100,12 @@ export function TransferMonitoringContent() {
         return;
       }
 
+      // Usa los endpoints directos para confirmar depósitos o retiros
       const endpoint = transaction.type === 'deposit'
-        ? 'http://18.216.231.42/deposit'
-        : 'http://18.216.231.42/withdraw';
+        ? 'https://18.216.231.42/deposit'
+        : 'https://18.216.231.42/withdraw';
 
+      console.log('Llamando endpoint para confirmar:', endpoint);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -121,6 +123,7 @@ export function TransferMonitoringContent() {
         throw new Error(`Error al confirmar la transacción: ${response.status}`);
       }
 
+      // Actualiza el estado local para reflejar el cambio
       setTransactions(prevTransactions =>
         prevTransactions.map(transaction =>
           transaction.id === id ? { ...transaction, status: 'Aceptado' } : transaction

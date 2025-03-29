@@ -12,47 +12,66 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import io from "socket.io-client";
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Eliminar las importaciones de sonner y socket.io-client
+// import { toast } from "sonner";
+// import io from "socket.io-client";
+
 interface Transaction {
   id: string | number;
+  type?: 'deposit' | 'withdraw';
   description: string;
   amount: number;
-  status?: string; // Puede ser 'approved', 'Pending', 'Aceptado', etc.
+  status?: string;
   date_created?: string;
   payment_method_id?: string;
   payer_email?: string;
+  idCliente?: string | number;
 }
 
-interface TransactionUpdateData {
-  transactions: Transaction[];
-  newTransaction?: Transaction;
-}
+// Eliminamos la interfaz que usaba el socket
+// interface TransactionUpdateData {
+//   transactions: Transaction[];
+//   newTransaction?: Transaction;
+// }
 
 export function WebMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Configuración de columnas para la tabla de monitoreo web (para los skeletons)
+  const [processingId, setProcessingId] = useState<string | number | null>(null);
+
   const tableColumns: ColumnConfig[] = [
-    { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },     // ID de Pago
-    { cell: { type: 'text', widthClass: 'w-full' } },                       // Descripción
-    { cell: { type: 'text', widthClass: 'w-24' } },                         // Monto
-    { cell: { type: 'badge', widthClass: 'w-24' } },                        // Estado
-    { cell: { type: 'text', widthClass: 'w-40' } },                         // Fecha de Creación
-    { cell: { type: 'text', widthClass: 'w-32' } },                         // Método de Pago
-    { cell: { type: 'text', widthClass: 'w-40' } },                         // Email del Pagador
-    { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },      // Acción
+    { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },
+    { cell: { type: 'text', widthClass: 'w-24' } },
+    { cell: { type: 'text', widthClass: 'w-full' } },
+    { cell: { type: 'text', widthClass: 'w-24' } },
+    { cell: { type: 'badge', widthClass: 'w-24' } },
+    { cell: { type: 'text', widthClass: 'w-40' } },
+    { cell: { type: 'text', widthClass: 'w-32' } },
+    { cell: { type: 'text', widthClass: 'w-40' } },
+    { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },
   ];
 
-  // Cargar transacciones iniciales y configurar WebSocket
+  const handleButtonClick = async (id: string | number): Promise<void> => {
+    setProcessingId(id);
+    await handleAccept(id);
+    setProcessingId(null);
+  }
+
+  // Función simple para mostrar alertas en lugar de toast
+  const showAlert = (message: string) => {
+    console.log(message);
+    // Opcional: si quieres mostrar un alert nativo
+    // alert(message);
+  };
+
   useEffect(() => {
-    // Función para cargar transacciones desde la API
+    setIsLoading(true);
+
     const fetchTransactions = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions`);
@@ -61,8 +80,7 @@ export function WebMonitoringContent() {
         }
         const data = await response.json();
         console.log('Datos recibidos del backend:', data);
-        
-        // Agregamos un pequeño retraso para mostrar el skeleton
+
         setTimeout(() => {
           setTransactions(data);
           setError(null);
@@ -75,132 +93,127 @@ export function WebMonitoringContent() {
       }
     };
 
-    // Cargar transacciones iniciales
     fetchTransactions();
 
-    // Configurar conexión WebSocket
-    const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000');
-    
-    socket.on('connect', () => {
-      console.log('Conectado al servidor WebSocket para actualizaciones de transacciones');
-    });
-    
-    socket.on('disconnect', () => {
-      console.log('Desconectado del servidor WebSocket');
-    });
-    
-    // Escuchar evento de actualización de transacciones
-    socket.on('transaction-updated', (data: TransactionUpdateData) => {
-      console.log('Actualización de transacciones recibida:', data);
-      
-      // Actualizar el estado con las nuevas transacciones
-      if (data.transactions) {
-        setTransactions(data.transactions);
-        
-        // Mostrar notificación si hay una nueva transacción
-        if (data.newTransaction) {
-          toast.success('Nueva transacción recibida', {
-            description: `ID: ${data.newTransaction.id} - $${data.newTransaction.amount}`
-          });
-        }
-      }
-    });
-    
-    // Limpiar al desmontar
+    // Eliminamos la configuración del WebSocket
+    // Podríamos implementar un polling periódico como alternativa
+
+    // Función para actualizar periódicamente (polling)
+    const intervalId = setInterval(() => {
+      console.log('Actualizando transacciones...');
+      fetchTransactions();
+    }, 30000); // Cada 30 segundos
+
+    // Limpiar intervalo al desmontar
     return () => {
-      console.log('Desconectando del servidor WebSocket...');
-      socket.disconnect();
+      clearInterval(intervalId);
     };
   }, []);
 
-  // Función para manejar la aceptación de una transacción
-  const handleAccept = async (id: string | number) => {
+  const getStatusBadge = (status?: string) => {
+    if (!status || status === 'Pending') {
+      return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
+    }
+    if (status === 'Aceptado' || status === 'approved') {
+      return <Badge className="bg-green-100 text-green-800">Aceptado</Badge>;
+    }
+    return <Badge>{status}</Badge>;
+  };
+
+  async function handleAccept(id: string | number): Promise<void> {
     try {
-      // Actualizar optimistamente el UI
+      const transaction = transactions.find(t => t.id === id);
+
+      if (!transaction) {
+        console.error('Transaction not found');
+        return;
+      }
+
+      const transactionType = transaction.type ||
+        (transaction.description?.toLowerCase().includes('deposit') ? 'deposit' : 'withdraw');
+
+      const endpoint = transactionType === 'deposit'
+        ? 'https://18.216.231.42/deposit'
+        : 'https://18.216.231.42/withdraw';
+
+      console.log('Llamando endpoint para confirmar:', endpoint);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: transaction.idCliente || '',
+          amount: transaction.amount,
+          transaction_id: transaction.id.toString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error al confirmar la transacción: ${response.status}`);
+      }
+
       setTransactions(prevTransactions =>
-        prevTransactions.map(transaction =>
-          transaction.id === id ? { ...transaction, status: 'Aceptado' } : transaction
+        prevTransactions.map(tx =>
+          tx.id === id ? { ...tx, status: 'Aceptado' } : tx
         )
       );
-      
-      // Enviar la actualización al servidor
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${id}/accept`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Error al aceptar la transacción');
-      }
-      
-      toast.success('Transacción aceptada correctamente');
-      
+
+      console.log('Transacción confirmada exitosamente');
+      showAlert('Transacción aceptada correctamente');
+
     } catch (error) {
-      console.error('Error al aceptar transacción:', error);
-      toast.error('Error al aceptar la transacción');
-      
-      // Revertir el cambio optimista en caso de error
+      console.error('Error al confirmar la transacción:', error);
+      showAlert('Error al aceptar la transacción');
+
       setTransactions(prevTransactions =>
         prevTransactions.map(transaction =>
           transaction.id === id ? { ...transaction, status: 'Pending' } : transaction
         )
       );
     }
-  };
+  }
 
-  const getStatusBadge = (status?: string) => {
-    if (!status || status === 'Pending') {
-      return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
-    }
-    if (status === 'Aceptado' || status === 'approved') {
-      return <Badge variant="outline" className="bg-green-100 text-green-800">Aceptado</Badge>;
-    }
-    return <Badge variant="outline">{status}</Badge>;
-  };
-  
-  // Componentes para alternar entre el skeleton y el contenido real
   const HeaderContent = (
     <h1 className="text-2xl font-bold mb-4">Monitoreo de Transferencias</h1>
   );
-  
+
   const HeaderSkeleton = (
     <Skeleton className="h-8 w-64 mb-4" />
   );
-  
+
   const ButtonContent = (
     <div className="flex justify-between items-center mb-4">
-      <Button 
-        onClick={() => 
+      <Button
+        onClick={() =>
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ipn/check-recent`)
             .then(res => res.json())
             .then(data => {
               if (data.status === 'success') {
-                toast.success(`Verificación completada: ${data.transactions?.length || 0} nuevas transacciones`);
+                showAlert(`Verificación completada: ${data.transactions?.length || 0} nuevas transacciones`);
               } else {
-                toast.error(data.message || 'Error al verificar transacciones');
+                showAlert(data.message || 'Error al verificar transacciones');
               }
             })
             .catch(err => {
               console.error('Error:', err);
-              toast.error('Error al verificar transacciones');
+              showAlert('Error al verificar transacciones');
             })
         }
-        variant="outline"
+        className="border border-gray-300 bg-white hover:bg-gray-100"
       >
         Verificar Nuevas Transacciones
       </Button>
     </div>
   );
-  
+
   const ButtonSkeleton = (
     <div className="flex justify-between items-center mb-4">
       <Skeleton className="h-10 w-56" />
     </div>
   );
-  
-  // Tabla con datos o mensaje de "no hay datos"
+
   const TableContent = transactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
@@ -213,6 +226,7 @@ export function WebMonitoringContent() {
         <TableHeader>
           <TableRow>
             <TableHead>ID de Pago</TableHead>
+            <TableHead>Tipo</TableHead>
             <TableHead>Descripción</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead>Estado</TableHead>
@@ -226,12 +240,34 @@ export function WebMonitoringContent() {
           {transactions.map((transaction) => (
             <TableRow key={transaction.id} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
+              <TableCell>
+                {transaction.type === 'deposit' ? 'Depósito' :
+                  transaction.type === 'withdraw' ? 'Retiro' :
+                    transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
+              </TableCell>
               <TableCell>{transaction.description}</TableCell>
-              <TableCell>${transaction.amount.toFixed(2)}</TableCell>
+              <TableCell>
+                {(() => {
+                  try {
+                    const amountValue = transaction.amount;
+                    if (typeof amountValue === 'number') {
+                      return '$' + amountValue.toFixed(2);
+                    } else if (amountValue === null || amountValue === undefined) {
+                      return '$0.00';
+                    } else {
+                      const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
+                      return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
+                    }
+                  } catch (error) {
+                    console.error('Error formateando amount:', error, transaction);
+                    return '$0.00';
+                  }
+                })()}
+              </TableCell>
               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
               <TableCell>
-                {transaction.date_created 
-                  ? new Date(transaction.date_created).toLocaleString() 
+                {transaction.date_created
+                  ? new Date(transaction.date_created).toLocaleString()
                   : 'No disponible'}
               </TableCell>
               <TableCell>{transaction.payment_method_id || 'No disponible'}</TableCell>
@@ -240,13 +276,12 @@ export function WebMonitoringContent() {
                 {transaction.status === 'Aceptado' || transaction.status === 'approved' ? (
                   <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
                 ) : (
-                  <Button 
-                    onClick={() => handleAccept(transaction.id)}
-                    variant="default"
-                    size="sm"
-                    disabled={transaction.status === 'Aceptado' || transaction.status === 'approved'}
+                  <Button
+                    onClick={() => handleButtonClick(transaction.id)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1"
+                    disabled={transaction.status === 'Aceptado' || transaction.status === 'approved' || processingId === transaction.id}
                   >
-                    Aceptar
+                    {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
                   </Button>
                 )}
               </TableCell>
@@ -259,24 +294,21 @@ export function WebMonitoringContent() {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Título con skeleton */}
-      <SkeletonLoader 
+      <SkeletonLoader
         skeleton={HeaderSkeleton}
         isLoading={isLoading}
       >
         {HeaderContent}
       </SkeletonLoader>
-      
-      {/* Botón con skeleton */}
-      <SkeletonLoader 
+
+      <SkeletonLoader
         skeleton={ButtonSkeleton}
         isLoading={isLoading}
       >
         {ButtonContent}
       </SkeletonLoader>
-      
-      {/* Tabla con skeleton */}
-      <SkeletonLoader 
+
+      <SkeletonLoader
         skeleton={
           <Card>
             <TableSkeleton columns={tableColumns} rowCount={8} />
@@ -288,4 +320,4 @@ export function WebMonitoringContent() {
       </SkeletonLoader>
     </div>
   );
-} 
+}
