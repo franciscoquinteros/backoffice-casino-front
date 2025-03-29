@@ -27,14 +27,21 @@ interface Transaction {
   payer_email?: string;
   cbu?: string;
   wallet_address?: string;
+  idCliente?: string | number; 
 }
 
 export function TransferMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Configuración de columnas para la tabla de monitoreo
+  const [processingId, setProcessingId] = useState<string | number | null>(null);
+
+  const handleButtonClick = async (id: string | number): Promise<void> => {
+    setProcessingId(id);
+    await handleAccept(id);
+    setProcessingId(null);
+  }
+
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[70px]', cell: { type: 'text', widthClass: 'w-12' } },    // ID
     { cell: { type: 'text', widthClass: 'w-24' } },                       // Tipo
@@ -47,10 +54,9 @@ export function TransferMonitoringContent() {
     { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },    // Acción
   ];
 
-  // Cargar datos con un delay simulado para mostrar el skeleton
   useEffect(() => {
     setIsLoading(true);
-    
+
     const fetchData = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions`);
@@ -59,8 +65,7 @@ export function TransferMonitoringContent() {
         }
         const data = await response.json();
         console.log('Datos recibidos del backend:', data);
-        
-        // Pequeño delay para mostrar el skeleton
+
         setTimeout(() => {
           setTransactions(data);
           setIsLoading(false);
@@ -72,7 +77,7 @@ export function TransferMonitoringContent() {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -85,25 +90,58 @@ export function TransferMonitoringContent() {
     }
     return <Badge variant="outline">{status}</Badge>;
   };
-  
-  function handleAccept(id: string | number) {
-    setTransactions(prevTransactions =>
-      prevTransactions.map(transaction =>
-        transaction.id === id ? { ...transaction, status: 'Aceptado' } : transaction
-      )
-    );
+
+  async function handleAccept(id: string | number): Promise<void> {
+    try {
+      const transaction = transactions.find(t => t.id === id);
+
+      if (!transaction) {
+        console.error('Transaction not found');
+        return;
+      }
+
+      const endpoint = transaction.type === 'deposit'
+        ? 'http://18.216.231.42/deposit'
+        : 'http://18.216.231.42/withdraw';
+
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: transaction.idCliente,
+          amount: transaction.amount,
+          transaction_id: transaction.id.toString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error al confirmar la transacción: ${response.status}`);
+      }
+
+      setTransactions(prevTransactions =>
+        prevTransactions.map(transaction =>
+          transaction.id === id ? { ...transaction, status: 'Aceptado' } : transaction
+        )
+      );
+
+      console.log('Transacción confirmada exitosamente');
+
+    } catch (error) {
+      console.error('Error al confirmar la transacción:', error);
+    }
   }
-  
-  // Título con skeleton
+
   const HeaderContent = (
     <h1 className="text-2xl font-bold mb-4">Monitoreo de Transferencias</h1>
   );
-  
+
   const HeaderSkeleton = (
     <Skeleton className="h-8 w-64 mb-4" />
   );
-  
-  // Tabla con datos o mensaje de "no hay datos"
+
   const TableContent = transactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
@@ -150,12 +188,12 @@ export function TransferMonitoringContent() {
                   <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
                 ) : (
                   <Button
-                    onClick={() => handleAccept(transaction.id)}
+                    onClick={() => handleButtonClick(transaction.id)}
                     variant="default"
                     size="sm"
-                    disabled={transaction.status === 'Aceptado'}
+                    disabled={transaction.status === 'Aceptado' || processingId === transaction.id}
                   >
-                    Pendiente
+                    {processingId === transaction.id ? 'Procesando...' : 'Pendiente'}
                   </Button>
                 )}
               </TableCell>
@@ -168,16 +206,14 @@ export function TransferMonitoringContent() {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Título con skeleton */}
-      <SkeletonLoader 
+      <SkeletonLoader
         skeleton={HeaderSkeleton}
         isLoading={isLoading}
       >
         {HeaderContent}
       </SkeletonLoader>
-      
-      {/* Tabla con skeleton */}
-      <SkeletonLoader 
+
+      <SkeletonLoader
         skeleton={
           <Card>
             <TableSkeleton columns={tableColumns} rowCount={8} />
@@ -189,4 +225,4 @@ export function TransferMonitoringContent() {
       </SkeletonLoader>
     </div>
   );
-} 
+}
