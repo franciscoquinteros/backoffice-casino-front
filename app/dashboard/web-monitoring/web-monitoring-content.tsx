@@ -16,10 +16,6 @@ import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Eliminar las importaciones de sonner y socket.io-client
-// import { toast } from "sonner";
-// import io from "socket.io-client";
-
 interface Transaction {
   id: string | number;
   type?: 'deposit' | 'withdraw';
@@ -38,7 +34,8 @@ export function WebMonitoringContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | number | null>(null);
+
+  // Eliminamos processingId y handleButtonClick ya que ahora solo mostraremos transacciones aprobadas
 
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },
@@ -51,12 +48,6 @@ export function WebMonitoringContent() {
     { cell: { type: 'text', widthClass: 'w-40' } },
     { cell: { type: 'action', widthClass: 'w-24', align: 'center' } },
   ];
-
-  const handleButtonClick = async (id: string | number): Promise<void> => {
-    setProcessingId(id);
-    await handleAccept(id);
-    setProcessingId(null);
-  }
 
   // Función simple para mostrar alertas en lugar de toast
   const showAlert = (message: string) => {
@@ -113,6 +104,7 @@ export function WebMonitoringContent() {
     return <Badge>{status}</Badge>;
   };
 
+  // Mantenemos handleAccept por si se necesita en el futuro o para otro componente
   async function handleAccept(id: string | number): Promise<void> {
     try {
       const transaction = transactions.find(t => t.id === id);
@@ -217,14 +209,15 @@ export function WebMonitoringContent() {
     </div>
   );
 
-  const approvedTransactions = transactions.filter(
+  // Filtrar solo las transacciones aprobadas
+  const filteredTransactions = transactions.filter(
     transaction => transaction.status === 'approved' || transaction.status === 'Aceptado'
   );
 
-  const TableContent = transactions.length === 0 ? (
+  const TableContent = filteredTransactions.length === 0 ? (
     <Card className="p-8 text-center">
       <p className="text-muted-foreground">
-        {error ? `Error: ${error}` : "No hay transacciones disponibles"}
+        {error ? `Error: ${error}` : "No hay transacciones aprobadas disponibles"}
       </p>
     </Card>
   ) : (
@@ -240,54 +233,52 @@ export function WebMonitoringContent() {
             <TableHead>Fecha de Creación</TableHead>
             <TableHead>Método de Pago</TableHead>
             <TableHead>Email/Cuenta Destino</TableHead>
-            <TableHead>Acción</TableHead>
+            <TableHead>Estado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions
-            .filter(transaction => transaction.status === 'approved' || transaction.status === 'Aceptado')
-            .map((transaction) => (
-              <TableRow key={transaction.id} className="hover:bg-muted/50">
-                <TableCell className="font-medium">{transaction.id}</TableCell>
-                <TableCell>
-                  {transaction.type === 'deposit' ? 'Depósito' :
-                    transaction.type === 'withdraw' ? 'Retiro' :
-                      transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
-                </TableCell>
-                <TableCell>{transaction.description}</TableCell>
-                <TableCell>
-                  {(() => {
-                    try {
-                      const amountValue = transaction.amount;
-                      if (typeof amountValue === 'number') {
-                        return '$' + amountValue.toFixed(2);
-                      } else if (amountValue === null || amountValue === undefined) {
-                        return '$0.00';
-                      } else {
-                        const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
-                        return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
-                      }
-                    } catch (error) {
-                      console.error('Error formateando amount:', error, transaction);
+          {filteredTransactions.map((transaction) => (
+            <TableRow key={transaction.id} className="hover:bg-muted/50">
+              <TableCell className="font-medium">{transaction.id}</TableCell>
+              <TableCell>
+                {transaction.type === 'deposit' ? 'Depósito' :
+                  transaction.type === 'withdraw' ? 'Retiro' :
+                    transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
+              </TableCell>
+              <TableCell>{transaction.description}</TableCell>
+              <TableCell>
+                {(() => {
+                  try {
+                    const amountValue = transaction.amount;
+                    if (typeof amountValue === 'number') {
+                      return '$' + amountValue.toFixed(2);
+                    } else if (amountValue === null || amountValue === undefined) {
                       return '$0.00';
+                    } else {
+                      const parsedAmount = parseFloat(String(amountValue).replace(/[^0-9.-]+/g, ''));
+                      return '$' + (isNaN(parsedAmount) ? 0 : parsedAmount).toFixed(2);
                     }
-                  })()}
-                </TableCell>
-                <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                <TableCell>
-                  {transaction.date_created
-                    ? new Date(transaction.date_created).toLocaleString()
-                    : 'No disponible'}
-                </TableCell>
-                <TableCell>{transaction.payment_method_id || 'No disponible'}</TableCell>
-                <TableCell>
-                  {transaction.payer_email || transaction.wallet_address || transaction.cbu || 'No disponible'}
-                </TableCell>
-                <TableCell>
-                  <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+                  } catch (error) {
+                    console.error('Error formateando amount:', error, transaction);
+                    return '$0.00';
+                  }
+                })()}
+              </TableCell>
+              <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+              <TableCell>
+                {transaction.date_created
+                  ? new Date(transaction.date_created).toLocaleString()
+                  : 'No disponible'}
+              </TableCell>
+              <TableCell>{transaction.payment_method_id || 'No disponible'}</TableCell>
+              <TableCell>
+                {transaction.payer_email || transaction.wallet_address || transaction.cbu || 'No disponible'}
+              </TableCell>
+              <TableCell>
+                <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </Card>
