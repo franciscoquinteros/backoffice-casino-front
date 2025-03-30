@@ -182,30 +182,7 @@ export function WebMonitoringContent() {
     <Skeleton className="h-8 w-64 mb-4" />
   );
 
-  const ButtonContent = (
-    <div className="flex justify-between items-center mb-4">
-      <Button
-        onClick={() =>
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ipn/check-recent`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.status === 'success') {
-                showAlert(`Verificación completada: ${data.transactions?.length || 0} nuevas transacciones`);
-              } else {
-                showAlert(data.message || 'Error al verificar transacciones');
-              }
-            })
-            .catch(err => {
-              console.error('Error:', err);
-              showAlert('Error al verificar transacciones');
-            })
-        }
-        className="border border-gray-300 bg-white hover:bg-gray-100"
-      >
-        Verificar Nuevas Transacciones
-      </Button>
-    </div>
-  );
+
 
   const ButtonSkeleton = (
     <div className="flex justify-between items-center mb-4">
@@ -301,13 +278,6 @@ export function WebMonitoringContent() {
         isLoading={isLoading}
       >
         {HeaderContent}
-      </SkeletonLoader>
-
-      <SkeletonLoader
-        skeleton={ButtonSkeleton}
-        isLoading={isLoading}
-      >
-        {ButtonContent}
       </SkeletonLoader>
 
       <SkeletonLoader
