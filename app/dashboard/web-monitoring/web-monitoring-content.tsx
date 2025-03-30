@@ -181,15 +181,6 @@ export function WebMonitoringContent() {
   const HeaderSkeleton = (
     <Skeleton className="h-8 w-64 mb-4" />
   );
-
-
-
-  const ButtonSkeleton = (
-    <div className="flex justify-between items-center mb-4">
-      <Skeleton className="h-10 w-56" />
-    </div>
-  );
-
   // Aquí mostramos todas las transacciones (sin filtrar)
   const TableContent = transactions.length === 0 ? (
     <Card className="p-8 text-center">
