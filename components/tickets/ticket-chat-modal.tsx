@@ -527,6 +527,7 @@ const MessageInput = ({
 };
 
 // Componente principal
+// Componente principal
 export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTicketUpdated }: TicketChatModalProps) {
   const { data: session } = useSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -670,30 +671,18 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] h-[80vh] flex flex-col focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 focus:ring-offset-0 focus-visible:border-none">
         <DialogHeader className="border-b pb-4 focus:outline-none focus-visible:outline-none">
-          <div className="flex justify-between items-center">
-            <div>
-              <DialogTitle className="text-lg font-semibold focus:outline-none focus-visible:outline-none">
-                Chat con {user?.name || 'Usuario'}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground focus:outline-none focus-visible:outline-none">
-                {user?.email || 'Sin email'} - Ticket #{ticketId}
-                {ticketInfo?.internal_assignee && (
-                  <span className="ml-2">
-                    (Asignado a: {ticketInfo.internal_assignee.name})
-                  </span>
-                )}
-              </DialogDescription>
-            </div>
-
-            {!isAssignedToCurrentUser && !isLoadingTicketInfo && (
-              <Button
-                onClick={handleAssignToMe}
-                disabled={isAssigning}
-                className="ml-auto"
-              >
-                {isAssigning ? 'Asignando...' : 'Asignarme este ticket'}
-              </Button>
-            )}
+          <div>
+            <DialogTitle className="text-lg font-semibold focus:outline-none focus-visible:outline-none">
+              Chat con {user?.name || 'Usuario'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground focus:outline-none focus-visible:outline-none">
+              {user?.email || 'Sin email'} - Ticket #{ticketId}
+              {ticketInfo?.internal_assignee && (
+                <span className="ml-2">
+                  (Asignado a: {ticketInfo.internal_assignee.name})
+                </span>
+              )}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
@@ -719,10 +708,14 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
             isSending={isSending}
           />
         ) : (
-          <div className="border-t pt-4 text-center p-3 bg-muted/30">
-            <p className="text-sm text-muted-foreground">
-              Debes asignarte este ticket para poder responder
-            </p>
+          <div className="border-t pt-4 p-3 bg-muted/30">
+            <Button
+              onClick={handleAssignToMe}
+              disabled={isAssigning}
+              className="w-full"
+            >
+              {isAssigning ? 'Asignando ticket...' : 'Asignarme este ticket para responder'}
+            </Button>
           </div>
         )}
       </DialogContent>
