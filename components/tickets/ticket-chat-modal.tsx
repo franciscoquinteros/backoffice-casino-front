@@ -146,7 +146,7 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
         setIsLoading(true);
       }
       setError(null);
-      
+
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}/comments`);
 
@@ -168,7 +168,7 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
 
       // Crear un mapa de IDs de servidor para búsqueda rápida
       const serverCommentIds = new Set(serverComments.map(c => c.id));
-      
+
       // Crear un mapa de textos de mensajes del servidor para búsqueda rápida
       const serverCommentTexts = new Map();
       serverComments.forEach(comment => {
@@ -185,14 +185,14 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
             if (serverCommentIds.has(comment.id)) {
               return false;
             }
-            
+
             // Verificar si ya existe en el servidor por contenido
             const serverMatch = serverCommentTexts.get(comment.plain_body.trim());
             if (serverMatch) {
               // Si encontramos una coincidencia por contenido, no mantener el mensaje local
               return false;
             }
-            
+
             // Mantener el mensaje local si no está en el servidor
             return true;
           }
@@ -202,7 +202,7 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
         // Combinar los comentarios del servidor con los mensajes temporales pendientes
         return [...serverComments, ...pendingLocalMessages];
       });
-      
+
     } catch (error) {
       console.error('Error fetching comments:', error);
       setError('Error al cargar los mensajes. Por favor, intenta de nuevo.');
@@ -212,18 +212,18 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
     }
   }, [ticketId, fetchTicketInfo]);
 
-  return { 
-    comments, 
-    setComments, 
-    isLoading, 
-    error, 
-    fetchComments 
+  return {
+    comments,
+    setComments,
+    isLoading,
+    error,
+    fetchComments
   };
 }
 
 function useMessageSending(
-  ticketId: number, 
-  agentId: string, 
+  ticketId: number,
+  agentId: string,
   setComments: React.Dispatch<React.SetStateAction<Comment[]>>,
   fetchComments: () => Promise<void>
 ) {
@@ -234,10 +234,10 @@ function useMessageSending(
 
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isSending) return;
-    
+
     // Generar un ID único para este mensaje
     const clientId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Crear el mensaje temporal
     const tempMessage: Comment = {
       id: Date.now(),
@@ -286,7 +286,7 @@ function useMessageSending(
       }
 
       const responseData = await response.json();
-      
+
       // Actualizar el mensaje temporal con la información del servidor
       if (responseData && responseData.id) {
         // Actualizar el mensaje temporal con los datos del servidor
@@ -304,10 +304,10 @@ function useMessageSending(
             return comment;
           });
         });
-        
+
         // Mostrar notificación de éxito
         toast.success('Mensaje enviado correctamente');
-        
+
         // No hacemos fetchComments inmediatamente para evitar que el mensaje desaparezca
         // Solo actualizamos después de un tiempo para sincronizar con el servidor
         setTimeout(() => {
@@ -330,14 +330,14 @@ function useMessageSending(
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
-    
+
     const messageText = newMessage.trim();
     // Limpiar el campo de entrada inmediatamente para mejor UX
     setNewMessage("");
-    
+
     // Eliminar el enfoque para quitar el reacuadro blanco
     blurActiveElement();
-    
+
     await sendMessage(messageText);
   };
 
@@ -366,31 +366,29 @@ const formatDate = (dateString: string) => {
 };
 
 // Componentes
-const MessageBubble = ({ 
-  comment, 
-  isFromClient, 
-  userName 
-}: { 
-  comment: Comment, 
-  isFromClient: boolean, 
-  userName: string 
+const MessageBubble = ({
+  comment,
+  isFromClient,
+  userName
+}: {
+  comment: Comment,
+  isFromClient: boolean,
+  userName: string
 }) => {
   const isTemporary = comment.isLocalMessage;
-  
+
   return (
     <div
       className={`flex ${isFromClient ? "justify-start" : "justify-end"} transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:border-none`}
     >
       <div
-        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-          isFromClient
+        className={`max-w-[80%] rounded-lg px-4 py-2 ${isFromClient
             ? "bg-muted"
             : "bg-primary text-primary-foreground ml-auto"
-        } ${
-          isTemporary 
-            ? "opacity-80 transition-all duration-300" 
+          } ${isTemporary
+            ? "opacity-80 transition-all duration-300"
             : "opacity-100 transition-all duration-300"
-        } focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:border-none`}
+          } focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:border-none`}
       >
         <div className="flex justify-between items-start mb-1 focus:outline-none focus-visible:outline-none">
           <span className="text-xs font-semibold focus:outline-none focus-visible:outline-none">
@@ -412,18 +410,18 @@ const MessageBubble = ({
   );
 };
 
-const MessageList = ({ 
-  comments, 
-  isLoading, 
-  error, 
-  isClientComment, 
-  userName, 
-  messagesEndRef 
-}: { 
-  comments: Comment[], 
-  isLoading: boolean, 
-  error: string | null, 
-  isClientComment: (comment: Comment) => boolean, 
+const MessageList = ({
+  comments,
+  isLoading,
+  error,
+  isClientComment,
+  userName,
+  messagesEndRef
+}: {
+  comments: Comment[],
+  isLoading: boolean,
+  error: string | null,
+  isClientComment: (comment: Comment) => boolean,
   userName: string,
   messagesEndRef: { current: HTMLDivElement | null }
 }) => {
@@ -434,7 +432,7 @@ const MessageList = ({
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="flex justify-center items-center h-full text-destructive focus:outline-none focus-visible:outline-none">
@@ -442,7 +440,7 @@ const MessageList = ({
       </div>
     );
   }
-  
+
   if (comments.length === 0) {
     return (
       <div className="flex justify-center items-center h-full focus:outline-none focus-visible:outline-none">
@@ -450,11 +448,11 @@ const MessageList = ({
       </div>
     );
   }
-  
+
   return (
     <>
       {comments.map((comment) => (
-        <MessageBubble 
+        <MessageBubble
           key={comment.clientId || comment.id}
           comment={comment}
           isFromClient={isClientComment(comment)}
@@ -466,18 +464,18 @@ const MessageList = ({
   );
 };
 
-const MessageInput = ({ 
-  newMessage, 
-  setNewMessage, 
-  handleSendMessage, 
-  isLoading, 
-  isSending 
-}: { 
-  newMessage: string, 
-  setNewMessage: (value: string) => void, 
-  handleSendMessage: () => void, 
-  isLoading: boolean, 
-  isSending: boolean 
+const MessageInput = ({
+  newMessage,
+  setNewMessage,
+  handleSendMessage,
+  isLoading,
+  isSending
+}: {
+  newMessage: string,
+  setNewMessage: (value: string) => void,
+  handleSendMessage: () => void,
+  isLoading: boolean,
+  isSending: boolean
 }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -486,7 +484,7 @@ const MessageInput = ({
       blurActiveElement();
     }
   };
-  
+
   return (
     <div className="border-t pt-4 focus:outline-none focus-visible:outline-none">
       <form
@@ -508,7 +506,7 @@ const MessageInput = ({
         />
         <Button
           type="submit"
-          size="icon"
+
           disabled={isLoading || isSending || !newMessage.trim()}
           className="focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none focus-visible:border-none"
           onClick={() => {
@@ -524,9 +522,9 @@ const MessageInput = ({
 
 // Componente principal
 export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: TicketChatModalProps) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Hooks personalizados
   const { ticketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
   const { comments, setComments, isLoading: isLoadingComments, error: commentsError, fetchComments } = useComments(ticketId, fetchTicketInfo);
@@ -536,11 +534,11 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
   useEffect(() => {
     let isActive = true;
     let pollingInterval: NodeJS.Timeout | null = null;
-    
+
     const initPolling = async () => {
       if (isOpen && ticketId && isActive) {
         await fetchComments();
-        
+
         if (isActive) {
           pollingInterval = setInterval(async () => {
             if (isActive && !isSending) {
@@ -550,9 +548,9 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
         }
       }
     };
-    
+
     initPolling();
-    
+
     return () => {
       isActive = false;
       if (pollingInterval) {
@@ -618,12 +616,13 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground focus:outline-none focus-visible:outline-none">
             {user?.email || 'Sin email'} - Ticket #{ticketId}
+            {session?.user && <span className="ml-2">(Respondiendo como: {session.user.name})</span>}
           </DialogDescription>
         </DialogHeader>
 
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:border-none">
-          <MessageList 
+          <MessageList
             comments={comments}
             isLoading={isLoadingComments}
             error={commentsError || sendError}
@@ -634,7 +633,7 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
         </div>
 
         {/* Message Input */}
-        <MessageInput 
+        <MessageInput
           newMessage={newMessage}
           setNewMessage={setNewMessage}
           handleSendMessage={handleSendMessage}
