@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import {
   Dialog,
   DialogContent,
@@ -226,6 +227,7 @@ function useMessageSending(
   setComments: React.Dispatch<React.SetStateAction<Comment[]>>,
   fetchComments: () => Promise<void>
 ) {
+  const { data: session } = useSession();
   const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +264,8 @@ function useMessageSending(
       setError(null);
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
+      const currentUserId = session?.user?.id;
+
       // Enviar a la API
       const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}/comments`, {
         method: 'POST',
@@ -271,6 +275,7 @@ function useMessageSending(
         body: JSON.stringify({
           comment: messageText,
           authorId: agentId,
+          currentUserId: currentUserId || 'unknown'
         }),
       });
 
@@ -519,6 +524,7 @@ const MessageInput = ({
 
 // Componente principal
 export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: TicketChatModalProps) {
+  const { data: session, status } = useSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Hooks personalizados
