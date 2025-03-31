@@ -79,6 +79,11 @@ interface TicketInfo {
     email: string;
   };
   group_id?: number;
+  internal_assignee?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface TicketChatModalProps {
@@ -524,11 +529,56 @@ const MessageInput = ({
 export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: TicketChatModalProps) {
   const { data: session } = useSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isAssignedToCurrentUser, setIsAssignedToCurrentUser] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // Hooks personalizados
-  const { ticketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
+  const { ticketInfo, isLoading: isLoadingTicketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
   const { comments, setComments, isLoading: isLoadingComments, error: commentsError, fetchComments } = useComments(ticketId, fetchTicketInfo);
   const { isSending, newMessage, setNewMessage, error: sendError, handleSendMessage } = useMessageSending(ticketId, agentId, setComments, fetchComments);
+
+  // Verificar si el ticket está asignado al usuario actual
+  useEffect(() => {
+    if (ticketInfo && session?.user?.id) {
+      // Verificar si el usuario actual es el asignado internamente
+      const currentUserId = session.user.id.toString();
+      setIsAssignedToCurrentUser(
+        ticketInfo.internal_assignee?.id === currentUserId
+      );
+    }
+  }, [ticketInfo, session]);
+
+  // Función para asignarse el ticket
+  const handleAssignToMe = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      setIsAssigning(true);
+      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      
+      // Llamar al endpoint para reasignar el ticket
+      const response = await fetch(`${baseUrl}/zendesk/reassign-ticket/${ticketId}/to-operator/${session.user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Recargar la información del ticket
+      await fetchTicketInfo();
+      setIsAssignedToCurrentUser(true);
+      toast.success('Ticket asignado correctamente');
+    } catch (error) {
+      console.error('Error al asignar ticket:', error);
+      toast.error('Error al asignar el ticket');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   // Efecto para polling de comentarios
   useEffect(() => {
@@ -611,13 +661,31 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] h-[80vh] flex flex-col focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 focus:ring-offset-0 focus-visible:border-none">
         <DialogHeader className="border-b pb-4 focus:outline-none focus-visible:outline-none">
-          <DialogTitle className="text-lg font-semibold focus:outline-none focus-visible:outline-none">
-            Chat con {user?.name || 'Usuario'}
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground focus:outline-none focus-visible:outline-none">
-            {user?.email || 'Sin email'} - Ticket #{ticketId}
-            {session?.user && <span className="ml-2">(Respondiendo como: {session.user.name})</span>}
-          </DialogDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <DialogTitle className="text-lg font-semibold focus:outline-none focus-visible:outline-none">
+                Chat con {user?.name || 'Usuario'}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground focus:outline-none focus-visible:outline-none">
+                {user?.email || 'Sin email'} - Ticket #{ticketId}
+                {ticketInfo?.internal_assignee && (
+                  <span className="ml-2">
+                    (Asignado a: {ticketInfo.internal_assignee.name})
+                  </span>
+                )}
+              </DialogDescription>
+            </div>
+            
+            {!isAssignedToCurrentUser && !isLoadingTicketInfo && (
+              <Button 
+                onClick={handleAssignToMe} 
+                disabled={isAssigning}
+                className="ml-auto"
+              >
+                {isAssigning ? 'Asignando...' : 'Asignarme este ticket'}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         {/* Chat Messages */}
@@ -633,13 +701,21 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
         </div>
 
         {/* Message Input */}
-        <MessageInput
-          newMessage={newMessage}
-          setNewMessage={setNewMessage}
-          handleSendMessage={handleSendMessage}
-          isLoading={isLoadingComments}
-          isSending={isSending}
-        />
+        {isAssignedToCurrentUser ? (
+          <MessageInput
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            handleSendMessage={handleSendMessage}
+            isLoading={isLoadingComments}
+            isSending={isSending}
+          />
+        ) : (
+          <div className="border-t pt-4 text-center p-3 bg-muted/30">
+            <p className="text-sm text-muted-foreground">
+              Debes asignarte este ticket para poder responder
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
