@@ -22,8 +22,24 @@ interface TicketsTableProps {
 
 export function TicketsTable({ tickets = [] }: TicketsTableProps) {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
-  const [agentId] = useState<string>("12345") // Eliminado setAgentId ya que no se usa
+  const [agentId] = useState<string>("12345")
   const [ticketsState, setTicketsState] = useState<Ticket[]>(tickets);
+
+  useEffect(() => {
+    setTicketsState(tickets);
+  }, [tickets]);
+
+  const handleTicketUpdated = (updatedTicket: Ticket) => {
+    setTicketsState(currentTickets => 
+      currentTickets.map(ticket => 
+        ticket.id === updatedTicket.id ? updatedTicket : ticket
+      )
+    );
+    // También actualiza el ticket seleccionado si es el mismo
+    if (selectedTicket && selectedTicket.id === updatedTicket.id) {
+      setSelectedTicket(updatedTicket);
+    }
+  };
 
   const getStatusColor = (status: string = ""): string => {
     switch (status.toLowerCase()) {
@@ -49,23 +65,7 @@ export function TicketsTable({ tickets = [] }: TicketsTableProps) {
     }
   }
 
-  useEffect(() => {
-    setTicketsState(tickets);
-  }, [tickets]);
-
-  const handleTicketUpdated = (updatedTicket: Ticket) => {
-    setTicketsState(currentTickets => 
-      currentTickets.map(ticket => 
-        ticket.id === updatedTicket.id ? updatedTicket : ticket
-      )
-    );
-    // También actualiza el ticket seleccionado si es el mismo
-    if (selectedTicket && selectedTicket.id === updatedTicket.id) {
-      setSelectedTicket(updatedTicket);
-    }
-  };
-
-  if (!Array.isArray(tickets) || tickets.length === 0) {
+  if (!Array.isArray(ticketsState) || ticketsState.length === 0) {
     return (
       <Card className="p-8 text-center">
         <p className="text-muted-foreground">No hay tickets disponibles</p>
@@ -90,7 +90,7 @@ export function TicketsTable({ tickets = [] }: TicketsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tickets.map((ticket) => (
+            {ticketsState.map((ticket) => (
               <TableRow
                 key={ticket.id}
                 className="cursor-pointer hover:bg-muted/50"
