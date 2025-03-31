@@ -535,7 +535,7 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
   const [isAssigning, setIsAssigning] = useState(false);
 
   // Hooks personalizados
-  const { ticketInfo, isLoading: isLoadingTicketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
+  const { ticketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
   const { comments, setComments, isLoading: isLoadingComments, error: commentsError, fetchComments } = useComments(ticketId, fetchTicketInfo);
   const { isSending, newMessage, setNewMessage, error: sendError, handleSendMessage } = useMessageSending(ticketId, agentId, setComments, fetchComments);
 
