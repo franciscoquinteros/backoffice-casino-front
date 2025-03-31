@@ -15,7 +15,7 @@ import { Send } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
-import { TicketUser } from "./tickets-client"
+import { Ticket, TicketUser } from "./tickets-client"
 
 // Tipos
 interface CommentMetadata {
@@ -92,6 +92,7 @@ interface TicketChatModalProps {
   user: TicketUser
   ticketId: number
   agentId: string;
+  onTicketUpdated: (updatedTicket: Ticket) => void;
 }
 
 // Constantes
@@ -388,8 +389,8 @@ const MessageBubble = ({
     >
       <div
         className={`max-w-[80%] rounded-lg px-4 py-2 ${isFromClient
-            ? "bg-muted"
-            : "bg-primary text-primary-foreground ml-auto"
+          ? "bg-muted"
+          : "bg-primary text-primary-foreground ml-auto"
           } ${isTemporary
             ? "opacity-80 transition-all duration-300"
             : "opacity-100 transition-all duration-300"
@@ -526,7 +527,7 @@ const MessageInput = ({
 };
 
 // Componente principal
-export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: TicketChatModalProps) {
+export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTicketUpdated }: TicketChatModalProps) {
   const { data: session } = useSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAssignedToCurrentUser, setIsAssignedToCurrentUser] = useState(false);
@@ -555,7 +556,7 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
     try {
       setIsAssigning(true);
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      
+
       // Llamar al endpoint para reasignar el ticket
       const response = await fetch(`${baseUrl}/zendesk/reassign-ticket/${ticketId}/to-operator/${session.user.id}`, {
         method: 'PUT',
@@ -568,9 +569,17 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      // Recargar la información del ticket
+      const updatedTicket = await response.json();
+
+      // Recargar la información del ticket para el modal
       await fetchTicketInfo();
       setIsAssignedToCurrentUser(true);
+
+      // Actualizar la tabla de tickets a través de la prop onTicketUpdated
+      if (onTicketUpdated) {
+        onTicketUpdated(updatedTicket);
+      }
+
       toast.success('Ticket asignado correctamente');
     } catch (error) {
       console.error('Error al asignar ticket:', error);
@@ -675,10 +684,10 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId }: Ti
                 )}
               </DialogDescription>
             </div>
-            
+
             {!isAssignedToCurrentUser && !isLoadingTicketInfo && (
-              <Button 
-                onClick={handleAssignToMe} 
+              <Button
+                onClick={handleAssignToMe}
                 disabled={isAssigning}
                 className="ml-auto"
               >

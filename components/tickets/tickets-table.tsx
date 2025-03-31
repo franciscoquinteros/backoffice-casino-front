@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ interface TicketsTableProps {
 export function TicketsTable({ tickets = [] }: TicketsTableProps) {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [agentId] = useState<string>("12345") // Eliminado setAgentId ya que no se usa
+  const [ticketsState, setTicketsState] = useState<Ticket[]>(tickets);
 
   const getStatusColor = (status: string = ""): string => {
     switch (status.toLowerCase()) {
@@ -47,6 +48,22 @@ export function TicketsTable({ tickets = [] }: TicketsTableProps) {
       return 'Fecha inválida ' + error
     }
   }
+
+  useEffect(() => {
+    setTicketsState(tickets);
+  }, [tickets]);
+
+  const handleTicketUpdated = (updatedTicket: Ticket) => {
+    setTicketsState(currentTickets => 
+      currentTickets.map(ticket => 
+        ticket.id === updatedTicket.id ? updatedTicket : ticket
+      )
+    );
+    // También actualiza el ticket seleccionado si es el mismo
+    if (selectedTicket && selectedTicket.id === updatedTicket.id) {
+      setSelectedTicket(updatedTicket);
+    }
+  };
 
   if (!Array.isArray(tickets) || tickets.length === 0) {
     return (
@@ -132,6 +149,7 @@ export function TicketsTable({ tickets = [] }: TicketsTableProps) {
           user={selectedTicket.user}
           ticketId={selectedTicket.id}
           agentId={agentId}
+          onTicketUpdated={handleTicketUpdated}
         />
       )}
     </>
