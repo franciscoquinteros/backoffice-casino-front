@@ -63,6 +63,7 @@ function formatRole(role: string): string {
   if (!role) return '';
   
   const roleMap: Record<string, string> = {
+    'superadmin': 'Super Administrador',
     'admin': 'Administrador',
     'administrador': 'Administrador',
     'user': 'Usuario',

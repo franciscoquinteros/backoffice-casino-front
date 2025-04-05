@@ -6,7 +6,7 @@ import { ChatPageSkeleton } from './components/ChatPageSkeleton';
 
 export default function ChatPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'operador', 'encargado']}>
+    <RoleGuard allowedRoles={['admin', 'operador', 'encargado', 'superadmin']}>
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
           <div className="flex items-center gap-2">

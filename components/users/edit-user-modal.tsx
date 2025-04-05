@@ -32,6 +32,7 @@ enum UserStatus {
 
 // Roles disponibles en el sistema
 const AVAILABLE_ROLES = [
+  { value: "superadmin", label: "Super Administrador" },
   { value: "admin", label: "Administrador" },
   { value: "encargado", label: "Encargado" },
   { value: "operador", label: "Operador" }

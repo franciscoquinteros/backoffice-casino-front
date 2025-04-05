@@ -63,7 +63,7 @@ export default async function UsersPage() {
   const internalUsers = await fetchInternalUsers();
 
   return (
-    <RoleGuard allowedRoles={['admin', 'encargado', 'operador']}>
+    <RoleGuard allowedRoles={['admin', 'encargado', 'operador', 'superadmin']}>
       <div className="p-6">
         <Suspense fallback={<LoadingSkeleton />}>
           <UsersClient

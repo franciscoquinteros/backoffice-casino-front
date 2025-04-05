@@ -70,7 +70,7 @@ export default async function ExternalUsersPage() {
     const externalUsers = await fetchExternalUsers() || [];
 
     return (
-        <RoleGuard allowedRoles={['admin', 'encargado', 'operador']}>
+        <RoleGuard allowedRoles={['admin', 'encargado', 'operador', 'superadmin']}>
             <div className="p-6">
                 <Suspense fallback={<LoadingSkeleton />}>
                     <UsersClient

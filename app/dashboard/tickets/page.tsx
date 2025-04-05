@@ -95,7 +95,7 @@ export default async function TicketsPage() {
   const tickets = await fetchTickets()
 
   return (
-    <RoleGuard allowedRoles={['admin', 'operador', 'encargado']} fallbackUrl="/dashboard">
+    <RoleGuard allowedRoles={['admin', 'operador', 'encargado', 'superadmin']} fallbackUrl="/dashboard">
       <Suspense fallback={<TicketsPageSkeleton />}>
         <TicketsContent tickets={tickets} />
       </Suspense>

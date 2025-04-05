@@ -35,7 +35,7 @@ function OfficeConfigurationSkeleton() {
 
 export default function OfficeConfigurationPage() {
   return (
-    <RoleGuard allowedRoles={['admin']}>
+    <RoleGuard allowedRoles={['admin', 'superadmin']}>
       <Suspense fallback={<OfficeConfigurationSkeleton />}>
         <OfficeConfigurationContent />
       </Suspense>

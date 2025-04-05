@@ -38,7 +38,7 @@ function TransferAccountsPageSkeleton() {
 
 export default function TransferAccountsPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'operador', 'encargado']}>
+    <RoleGuard allowedRoles={['admin', 'operador', 'encargado', 'superadmin']}>
       <Suspense fallback={<TransferAccountsPageSkeleton />}>
         <TransferAccountsContent />
       </Suspense>

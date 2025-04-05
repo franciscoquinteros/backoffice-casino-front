@@ -33,7 +33,7 @@ function TransferMonitoringSkeleton() {
 
 export default function TransferMonitoringPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'operador', 'encargado']}>
+    <RoleGuard allowedRoles={['admin', 'operador', 'encargado', 'superadmin']}>
       <Suspense fallback={<TransferMonitoringSkeleton />}>
         <TransferMonitoringContent />
       </Suspense>
