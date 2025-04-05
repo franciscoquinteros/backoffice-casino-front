@@ -311,7 +311,7 @@ const ReportsDashboard = () => {
                             )}
                         </ChartCard>
                         <ChartCard
-                            title="Tickets por Agente"
+                            title="Tickets por Operador"
                             isLoading={!ticketAgentData && !ticketAgentError}
                             error={ticketAgentError}
                         >
@@ -445,7 +445,7 @@ const ReportsDashboard = () => {
                             )}
                         </ChartCard>
                         <ChartCard
-                            title="Tiempo de Respuesta por Agente"
+                            title="Tiempo de Respuesta por Operador"
                             fullWidth
                             isLoading={!responseTimeData && !responseTimeError}
                             error={responseTimeError}

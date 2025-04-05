@@ -27,7 +27,7 @@ export function ChatPageSkeleton() {
               </TabsTrigger>
               <TabsTrigger value="archived" className="flex items-center justify-center gap-0.5 py-1.5 px-0.5 sm:px-1 md:px-2 text-xs sm:text-sm overflow-hidden">
                 <Archive className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden md:inline ml-1 truncate">Archivados</span>
+                <span className="hidden md:inline ml-1 truncate">Resueltos</span>
                 <Skeleton className="ml-0.5 h-4 w-5 rounded-full" />
               </TabsTrigger>
             </TabsList>
