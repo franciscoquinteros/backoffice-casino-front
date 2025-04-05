@@ -4,7 +4,6 @@ import { UsersClient } from "@/components/users/users-client"
 import { RoleGuard } from "@/components/role-guard"
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'
 import { Skeleton } from "@/components/ui/skeleton"
-import { type User } from "@/types/user"
 
 const fetchInternalUsers = async () => {
   const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/users`
