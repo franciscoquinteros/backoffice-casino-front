@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verificar si la ruta actual es pública
-  const isPublicRoute = publicRoutes.some(route => 
+  const isPublicRoute = publicRoutes.some(route =>
     path.startsWith(route) || path === route
   )
 
@@ -81,9 +81,14 @@ export async function middleware(request: NextRequest) {
   if (path.startsWith('/dashboard')) {
     const userRole = session?.user?.role
 
+    if (userRole === 'superadmin') {
+      // El superadmin tiene acceso a todas las rutas, no necesita redirección
+      return NextResponse.next()
+    }
+
     // Restricciones específicas por rol
     if (userRole === 'operador') {
-      const isAllowedOperatorRoute = operatorRoutes.some(route => 
+      const isAllowedOperatorRoute = operatorRoutes.some(route =>
         path.startsWith(route) || path === route
       )
 
@@ -94,7 +99,7 @@ export async function middleware(request: NextRequest) {
 
     if (userRole === 'encargado') {
       // Verificar si el usuario está intentando acceder a una ruta solo para admin
-      const isAttemptingAdminRoute = adminOnlyRoutes.some(route => 
+      const isAttemptingAdminRoute = adminOnlyRoutes.some(route =>
         path.startsWith(route) || path === route
       )
 
@@ -102,7 +107,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard/web-monitoring', request.url))
       }
 
-      const isAllowedEncargadoRoute = encargadoRoutes.some(route => 
+      const isAllowedEncargadoRoute = encargadoRoutes.some(route =>
         path.startsWith(route) || path === route
       )
 
