@@ -18,7 +18,7 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  
+
   // Configuración de columnas para la tabla de usuarios
   const tableColumns: ColumnConfig[] = [
     { cell: { type: 'double', widthClass: 'w-3/4' } }, // Nombre/Email
@@ -27,7 +27,7 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
     { cell: { type: 'badge', widthClass: 'w-14' } },   // Estado
     { width: 'w-[50px]', cell: { type: 'action', align: 'right' }, header: { show: false } } // Acciones
   ]
-  
+
   // Skeleton para los filtros
   const FiltersSkeleton = (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -45,7 +45,7 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
       </div>
     </div>
   )
-  
+
   // Efecto para cargar los datos iniciales
   useEffect(() => {
     if (initialUsers && initialUsers.length > 0) {
@@ -55,7 +55,7 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
       const timer = setTimeout(() => {
         setIsLoading(false)
       }, 800)
-      
+
       return () => clearTimeout(timer)
     }
   }, [initialUsers])
@@ -123,7 +123,9 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
       filtered = filtered.filter(user => {
         switch (field) {
           case 'name':
-            return user.username.toLowerCase().includes(value.toLowerCase())
+            return user.username?.toLowerCase().includes(value.toLowerCase()) ||
+              (user.email && user.email.toLowerCase().includes(value.toLowerCase())) ||
+              (user.name && user.name.toLowerCase().includes(value.toLowerCase()));
           case 'role':
             return user.role.toLowerCase() === value.toLowerCase()
           case 'office':
@@ -153,7 +155,7 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
       />
     </div>
   )
-  
+
   // Skeleton del header
   const HeaderSkeleton = (
     <div className="flex justify-between items-center mb-6">
@@ -164,24 +166,24 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
   return (
     <>
       {/* Header con título y botón de crear */}
-      <SkeletonLoader 
-        skeleton={HeaderSkeleton} 
+      <SkeletonLoader
+        skeleton={HeaderSkeleton}
         isLoading={isLoading}
       >
         {HeaderContent}
       </SkeletonLoader>
-      
+
       {/* Filtros */}
-      <SkeletonLoader 
-        skeleton={FiltersSkeleton} 
+      <SkeletonLoader
+        skeleton={FiltersSkeleton}
         isLoading={isLoading}
       >
         <UsersFilters onFilterChange={handleFilterChange} users={users} />
       </SkeletonLoader>
-      
+
       {/* Tabla de usuarios */}
-      <SkeletonLoader 
-        skeleton={<TableSkeleton columns={tableColumns} rowCount={8} />} 
+      <SkeletonLoader
+        skeleton={<TableSkeleton columns={tableColumns} rowCount={8} />}
         isLoading={isLoading}
       >
         <UsersTable

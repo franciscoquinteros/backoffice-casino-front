@@ -19,19 +19,19 @@ export function useAuth(requireAuth = true) {
     try {
       // Mostrar un indicador de carga (opcional)
       toast.loading('Cerrando sesión...');
-      
+
       // Llamar a signOut con callbackUrl específico
-      await signOut({ 
+      await signOut({
         redirect: false,
         callbackUrl: '/auth/login'
       });
-      
+
       // Limpiar cualquier estado local si es necesario
       localStorage.removeItem('user-preferences');
-      
+
       // Mostrar toast de éxito
       toast.success('Sesión cerrada correctamente');
-      
+
       // Redirigir al login
       setTimeout(() => {
         router.push('/auth/login');
@@ -43,9 +43,13 @@ export function useAuth(requireAuth = true) {
     }
   }
 
+  // Verificar si el usuario es SuperAdmin (Joaquin)
+  const isSuperAdmin = session?.user?.email === 'joaquin@example.com' || session?.user?.role === 'superadmin';
+
   return {
     user: session?.user,
     role: session?.user?.role,
+    isSuperAdmin,
     isAdmin: session?.user?.role === 'admin',
     isManager: session?.user?.role === 'encargado',
     isOperator: session?.user?.role === 'operador',

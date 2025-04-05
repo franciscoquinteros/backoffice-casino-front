@@ -11,6 +11,9 @@ import {
   PieChart,
   Ticket,
   Users,
+  User,
+  UserRound,
+  LucideIcon
 } from "lucide-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -21,13 +24,41 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/useAuth" // Ajusta la ruta según donde tengas useAuth
 
-// Datos estáticos del sidebar fuera del componente
-const navMainItems = [
+// Definir el tipo para los elementos de navegación
+interface NavItem {
+  title: string;
+  url: string; // URL es obligatoria según el error
+  icon: LucideIcon;
+  isActive?: boolean;
+  items?: {
+    title: string;
+    url: string;
+    icon?: LucideIcon;
+  }[];
+}
+
+// Datos estáticos del sidebar para los distintos roles
+const superAdminItems: NavItem[] = [
+  {
+    title: "Oficinas",
+    url: "/dashboard/office-configuration",
+    icon: LampDesk,
+    isActive: true,
+  },
   {
     title: "Usuarios",
-    url: "/dashboard/users",
+    url: "/dashboard/users", // URL explícita que apunta a la página principal de usuarios
     icon: Users,
-    isActive: true,
+    items: [
+      {
+        title: "Usuarios Internos",
+        url: "/dashboard/users",
+      },
+      {
+        title: "Usuarios Externos",
+        url: "/dashboard/external-users",
+      }
+    ]
   },
   {
     title: "Cuentas para transferencias",
@@ -39,14 +70,81 @@ const navMainItems = [
     url: "/dashboard/reports",
     icon: PieChart,
   },
+];
+
+const adminItems: NavItem[] = [
   {
-    title: "Oficinas",
-    url: "/dashboard/office-configuration",
-    icon: LampDesk,
+    title: "Usuarios",
+    url: "/dashboard/users",
+    icon: Users,
+    isActive: true,
+    items: [
+      {
+        title: "Usuarios Internos",
+        url: "/dashboard/users",
+      },
+      {
+        title: "Usuarios Externos",
+        url: "/dashboard/external-users",
+      }
+    ]
+  },
+  {
+    title: "Cuentas para transferencias",
+    url: "/dashboard/transfer-accounts",
+    icon: Landmark,
+  },
+  {
+    title: "Reportes",
+    url: "/dashboard/reports",
+    icon: PieChart,
   },
 ];
 
-const ticketsItems = [
+const managerItems: NavItem[] = [
+  {
+    title: "Usuarios",
+    url: "/dashboard/users",
+    icon: Users,
+    isActive: true,
+    items: [
+      {
+        title: "Usuarios Internos",
+        url: "/dashboard/users",
+      },
+      {
+        title: "Usuarios Externos",
+        url: "/dashboard/external-users",
+      }
+    ]
+  },
+  {
+    title: "Cuentas para transferencias",
+    url: "/dashboard/transfer-accounts",
+    icon: Landmark,
+  },
+];
+
+const operatorItems: NavItem[] = [
+  {
+    title: "Usuarios",
+    url: "/dashboard/users",
+    icon: Users,
+    isActive: true,
+    items: [
+      {
+        title: "Usuarios Internos",
+        url: "/dashboard/users",
+      },
+      {
+        title: "Usuarios Externos",
+        url: "/dashboard/external-users",
+      }
+    ]
+  },
+];
+
+const ticketsItems: NavItem[] = [
   {
     title: "Chat con clientes",
     url: "/dashboard/chat",
@@ -59,7 +157,7 @@ const ticketsItems = [
   },
 ];
 
-const projectsItems = [
+const projectsItems: NavItem[] = [
   {
     title: "Monitoreo pendientes",
     url: "/dashboard/web-monitoring",
@@ -74,7 +172,7 @@ const projectsItems = [
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, isOperator, isManager } = useAuth()
+  const { user, isSuperAdmin, isAdmin, isManager, isOperator } = useAuth();
 
   const userData = useMemo(() => ({
     name: user?.name,
@@ -82,54 +180,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }), [user?.name, user?.email]);
 
   const filteredItems = useMemo(() => {
-    if (isOperator) {
+    // Super Admin (Joaquin) - Acceso a todo, con Oficinas primero
+    if (isSuperAdmin) {
       return {
-        navMain: [
-          {
-            title: "Usuarios",
-            url: "/dashboard/users",
-            icon: Users,
-            isActive: true,
-          }
-        ],
+        navMain: superAdminItems,
         tickets: ticketsItems,
         projects: projectsItems,
-        others: []
       };
     }
 
+    // Admin (dueño de oficina) - Acceso a todo excepto configuración de oficinas
+    if (isAdmin) {
+      return {
+        navMain: adminItems,
+        tickets: ticketsItems,
+        projects: projectsItems,
+      };
+    }
+
+    // Encargado (gestión completa sin reportes financieros)
     if (isManager) {
       return {
-        navMain: [
-          {
-            title: "Usuarios",
-            url: "/dashboard/users",
-            icon: Users,
-            isActive: true,
-          },
-          {
-            title: "Cuentas para transferencias",
-            url: "/dashboard/transfer-accounts",
-            icon: Landmark,
-          },
-          {
-            title: "Reportes",
-            url: "/dashboard/reports",
-            icon: PieChart,
-          },
-        ],
+        navMain: managerItems,
         tickets: ticketsItems,
         projects: projectsItems,
       };
     }
 
-    // Para admin y otros roles
+    // Operador (chat, tickets, depósitos)
     return {
-      navMain: navMainItems,
+      navMain: operatorItems,
       tickets: ticketsItems,
       projects: projectsItems,
     };
-  }, [isOperator, isManager]);
+  }, [isSuperAdmin, isAdmin, isManager, isOperator]);
 
   return (
     <Sidebar variant="inset" {...props}>

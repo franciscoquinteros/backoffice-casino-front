@@ -49,14 +49,20 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
     return getOfficeName(officeId);
   }
 
+  // Manejador del cambio en el input de búsqueda
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    onFilterChange('name', value);
+  }
+
   return (
     <div className="flex flex-wrap gap-4 mb-6">
       <Input
         placeholder="Buscar por usuario..."
         className="max-w-xs"
-        onChange={(e) => onFilterChange('name', e.target.value)}
+        onChange={handleSearchChange}
       />
-      <Select onValueChange={(value) => onFilterChange('role', value)}>
+      <Select onValueChange={(value: string) => onFilterChange('role', value)}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Filtrar por rol" />
         </SelectTrigger>
@@ -69,7 +75,7 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
           ))}
         </SelectContent>
       </Select>
-      <Select onValueChange={(value) => onFilterChange('status', value)}>
+      <Select onValueChange={(value: string) => onFilterChange('status', value)}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Filtrar por estado" />
         </SelectTrigger>
@@ -82,7 +88,7 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
           ))}
         </SelectContent>
       </Select>
-      <Select onValueChange={(value) => onFilterChange('office', value)}>
+      <Select onValueChange={(value: string) => onFilterChange('office', value)}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Filtrar por oficina" />
         </SelectTrigger>
@@ -97,4 +103,4 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
       </Select>
     </div>
   )
-} 
+}
