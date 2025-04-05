@@ -3,5 +3,5 @@ import { redirect } from 'next/navigation';
 
 export default function TransactionsPage() {
   // Redirigir a la página de depósitos pendientes por defecto
-  redirect('/dashboard/transactions/deposits-pending');
+  redirect('/dashboard/transactions/deposit-pending');
 }
