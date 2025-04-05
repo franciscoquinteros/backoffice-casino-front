@@ -1,9 +1,8 @@
-// app/auth/login/page.tsx
 'use client'
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +17,7 @@ interface FormData {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isLoading: isSessionLoading } = useAuth(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +25,9 @@ export default function LoginPage() {
     email: '',
     password: ''
   })
+
+  // Obtener la URL de retorno si existe
+  const callbackUrl = searchParams?.get('callbackUrl') || '/dashboard/chat'
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -46,18 +49,23 @@ export default function LoginPage() {
 
       if (response?.error) {
         setError('Credenciales inválidas');
+        toast.error('Credenciales inválidas');
+        setIsLoading(false);
         return;
       }
 
-      setTimeout(() => {
-        toast.success('Inicio de sesión exitoso');
-      }, 100);
+      toast.success('Inicio de sesión exitoso');
       
-      router.push('/dashboard');
+      // Permitir que la sesión se establezca correctamente antes de redireccionar
+      setTimeout(() => {
+        // Usar la URL de callback si existe, si no, ir a chat
+        router.push(callbackUrl);
+        router.refresh();
+      }, 300);
     } catch (error) {
       console.error('Error de inicio de sesión:', error);
       setError('Error al iniciar sesión');
-    } finally {
+      toast.error('Error al iniciar sesión');
       setIsLoading(false);
     }
   };
