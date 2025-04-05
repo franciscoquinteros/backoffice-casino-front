@@ -116,7 +116,7 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
                                     <SelectValue placeholder="Todas las oficinas" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todas</SelectItem>
+                                    <SelectItem value="all">Todas</SelectItem>
                                     <SelectItem value="Buenos Aires">Buenos Aires</SelectItem>
                                     <SelectItem value="Córdoba">Córdoba</SelectItem>
                                     <SelectItem value="Rosario">Rosario</SelectItem>
@@ -135,7 +135,7 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
                                     <SelectValue placeholder="Todos los métodos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todos</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     <SelectItem value="bank_transfer">Transferencia bancaria</SelectItem>
                                     <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
                                     <SelectItem value="cvu">CVU</SelectItem>
