@@ -6,15 +6,21 @@ import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton
 import { Skeleton } from "@/components/ui/skeleton"
 
 const fetchExternalUsers = async () => {
-    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/external-users`
-    const response = await fetch(url, {
-        cache: 'no-store', // Evitar caché
-    })
-    if (!response.ok) {
-        return []
+    try {
+        const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/external-users`
+        const response = await fetch(url, {
+            cache: 'no-store', // Evitar caché
+        })
+        if (!response.ok) {
+            console.log("Error al obtener usuarios externos, retornando array vacío")
+            return []
+        }
+        const data = await response.json()
+        return data
+    } catch (error) {
+        console.error("Error al obtener usuarios externos:", error)
+        return [] // Siempre retornar un array vacío en caso de error
     }
-    const data = await response.json()
-    return data
 }
 
 // Componente de carga
@@ -60,7 +66,8 @@ function LoadingSkeleton() {
 
 export default async function ExternalUsersPage() {
     // Cargamos los datos de usuarios externos en el servidor
-    const externalUsers = await fetchExternalUsers();
+    // Siempre garantizamos un array, incluso si la API falla
+    const externalUsers = await fetchExternalUsers() || [];
 
     return (
         <RoleGuard allowedRoles={['admin', 'encargado', 'operador']}>
