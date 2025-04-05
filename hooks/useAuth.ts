@@ -8,44 +8,45 @@ export function useAuth(requireAuth = true) {
   const router = useRouter();
 
   useEffect(() => {
-    if (requireAuth && status === 'unauthenticated') {
-      router.push('/auth/login');
-    } else if (!requireAuth && status === 'authenticated') {
-      router.push('/dashboard');
+    // Solo realizamos redirecciones cuando el estado de autenticación es definitivo
+    if (status !== 'loading') {
+      if (requireAuth && status === 'unauthenticated') {
+        router.push('/auth/login');
+      } else if (!requireAuth && status === 'authenticated') {
+        router.push('/dashboard/chat');
+      }
     }
   }, [status, requireAuth, router]);
 
   const logout = async () => {
     try {
-      // Mostrar un indicador de carga (opcional)
+      // Mostrar un indicador de carga
       toast.loading('Cerrando sesión...');
-
-      // Llamar a signOut con callbackUrl específico
-      await signOut({
-        redirect: false,
-        callbackUrl: '/auth/login'
+      
+      // Llamar a signOut con redirect: false para manejar la redirección manualmente
+      await signOut({ 
+        redirect: false
       });
-
+      
       // Limpiar cualquier estado local si es necesario
       localStorage.removeItem('user-preferences');
-
+      
       // Mostrar toast de éxito
       toast.success('Sesión cerrada correctamente');
-
-      // Redirigir al login
-      setTimeout(() => {
-        router.push('/auth/login');
-        router.refresh();
-      }, 100);
+      
+      // Redirigir al login - usamos router.push que es más confiable
+      router.push('/auth/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
       toast.error('Error al cerrar sesión');
+      // Intentar redirección incluso en caso de error
+      router.push('/auth/login');
     }
   }
 
   // Verificar si el usuario es SuperAdmin (Joaquin)
   const isSuperAdmin = session?.user?.email === 'joaquin@example.com' || session?.user?.role === 'superadmin';
-
+  
   return {
     user: session?.user,
     role: session?.user?.role,
