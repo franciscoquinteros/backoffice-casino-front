@@ -11,8 +11,6 @@ import {
   PieChart,
   Ticket,
   Users,
-  User,
-  UserRound,
   LucideIcon
 } from "lucide-react"
 import { NavMain } from "@/components/nav-main"
