@@ -162,11 +162,11 @@ const projectsItems: NavItem[] = [
     items: [
       {
         title: "Depósitos Pendientes",
-        url: "/dashboard/transactions/deposits-pending",
+        url: "/dashboard/transactions/deposit-pending",
       },
       {
         title: "Depósitos Completados",
-        url: "/dashboard/transactions/deposits-completed",
+        url: "/dashboard/transactions/deposit-completed",
       },
       {
         title: "Retiros Pendientes",
