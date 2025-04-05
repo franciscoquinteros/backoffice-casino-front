@@ -157,14 +157,27 @@ const ticketsItems: NavItem[] = [
 
 const projectsItems: NavItem[] = [
   {
-    title: "Monitoreo pendientes",
-    url: "/dashboard/web-monitoring",
+    title: "Depósitos y Retiros",
+    url: "/dashboard/transactions",
     icon: Hourglass,
-  },
-  {
-    title: "Monitoreo de completados",
-    url: "/dashboard/transfer-monitoring",
-    icon: CircleCheckBig,
+    items: [
+      {
+        title: "Depósitos Pendientes",
+        url: "/dashboard/transactions/deposits-pending",
+      },
+      {
+        title: "Depósitos Completados",
+        url: "/dashboard/transactions/deposits-completed",
+      },
+      {
+        title: "Retiros Pendientes",
+        url: "/dashboard/transactions/withdrawals-pending",
+      },
+      {
+        title: "Retiros Completados",
+        url: "/dashboard/transactions/withdrawals-completed",
+      }
+    ]
   },
 ];
 
