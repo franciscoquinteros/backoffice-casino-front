@@ -42,8 +42,13 @@ export function LoginForm({
         return
       }
 
-      router.push("/dashboard")
-      router.refresh()
+      toast.success("Inicio de sesión exitoso")
+      
+      // Cambiado de /dashboard a /dashboard/chat
+      setTimeout(() => {
+        router.push("/dashboard/chat")
+        router.refresh()
+      }, 300)
     } catch (error) {
       console.error("Error al iniciar sesión:", error)
       toast.error("Error al iniciar sesión")
