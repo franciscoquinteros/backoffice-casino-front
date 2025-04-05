@@ -1,4 +1,3 @@
-// app/dashboard/transactions/components/transaction-table.tsx
 "use client";
 
 import { useState } from 'react';
@@ -13,11 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { 
-  ArrowUpDown, 
-  CheckCircle, 
+import {
+  ArrowUpDown,
+  CheckCircle,
   Download,
-  Clock
+  Clock,
+  XCircle,
+  AlertTriangle
 } from "lucide-react";
 import { Transaction, transactionService } from "@/components/transaction-service";
 
@@ -25,12 +26,14 @@ interface TransactionTableProps {
   transactions: Transaction[];
   showApproveButton?: boolean;
   onTransactionApproved?: (updatedTransaction: Transaction) => void;
+  onTransactionRejected?: (transaction: Transaction) => void;
 }
 
-export function TransactionTable({ 
-  transactions, 
+export function TransactionTable({
+  transactions,
   showApproveButton = false,
-  onTransactionApproved 
+  onTransactionApproved,
+  onTransactionRejected
 }: TransactionTableProps) {
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -40,28 +43,28 @@ export function TransactionTable({
   const sortedTransactions = [...transactions].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
-    
+
     if (aValue === bValue) return 0;
-    
+
     // Manejo para diferentes tipos de datos
     if (sortField === 'date_created') {
       const aDate = new Date(a.date_created || '');
       const bDate = new Date(b.date_created || '');
-      return sortDirection === 'asc' 
-        ? aDate.getTime() - bDate.getTime() 
+      return sortDirection === 'asc'
+        ? aDate.getTime() - bDate.getTime()
         : bDate.getTime() - aDate.getTime();
     }
-    
+
     // Para valores numéricos
     if (typeof aValue === 'number' && typeof bValue === 'number') {
       return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
     }
-    
+
     // Para strings
     const aString = String(aValue || '').toLowerCase();
     const bString = String(bValue || '').toLowerCase();
-    return sortDirection === 'asc' 
-      ? aString.localeCompare(bString) 
+    return sortDirection === 'asc'
+      ? aString.localeCompare(bString)
       : bString.localeCompare(aString);
   });
 
@@ -80,16 +83,37 @@ export function TransactionTable({
     try {
       setProcessingId(transaction.id);
       const updatedTransaction = await transactionService.approveTransaction(transaction);
-      
+
       if (onTransactionApproved) {
         onTransactionApproved(updatedTransaction);
       }
-      
+
       // Opcional: mostrar mensaje de éxito
       console.log('Transacción aprobada exitosamente');
     } catch (error) {
       console.error('Error al aprobar la transacción:', error);
       // Opcional: mostrar mensaje de error
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Maneja el rechazo de una transacción
+  const handleReject = async (transaction: Transaction) => {
+    try {
+      setProcessingId(transaction.id);
+
+      // Llamar al servicio de rechazo
+      const rejectedTransaction = await transactionService.rejectTransaction(transaction);
+
+      // Notificar al componente padre
+      if (onTransactionRejected) {
+        onTransactionRejected(rejectedTransaction);
+      }
+
+      console.log('Transacción rechazada exitosamente');
+    } catch (error) {
+      console.error('Error al rechazar la transacción:', error);
     } finally {
       setProcessingId(null);
     }
@@ -107,12 +131,45 @@ export function TransactionTable({
 
   const formatMethod = (method?: string) => {
     if (!method) return 'No disponible';
-    
+
     switch (method) {
       case 'bank_transfer': return 'Transferencia bancaria';
       case 'mercado_pago': return 'Mercado Pago';
       case 'cvu': return 'CVU';
       default: return method;
+    }
+  };
+
+  // Renderizar el badge de estado apropiado
+  const renderStatusBadge = (status: string) => {
+    if (status === 'Pending') {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          <span>Pendiente</span>
+        </Badge>
+      );
+    } else if (status === 'Aceptado' || status === 'approved') {
+      return (
+        <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          <span>Aceptado</span>
+        </Badge>
+      );
+    } else if (status === 'Rechazado') {
+      return (
+        <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+          <XCircle className="h-3 w-3" />
+          <span>Rechazado</span>
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          <span>{status}</span>
+        </Badge>
+      );
     }
   };
 
@@ -138,50 +195,50 @@ export function TransactionTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead 
+            <TableHead
               className="cursor-pointer"
               onClick={() => handleSort('id')}
             >
               <div className="flex items-center">
-                ID 
+                ID
                 <ArrowUpDown className="ml-1 h-4 w-4" />
               </div>
             </TableHead>
-            <TableHead 
+            <TableHead
               className="cursor-pointer"
               onClick={() => handleSort('idCliente')}
             >
               <div className="flex items-center">
-                Cliente 
+                Cliente
                 <ArrowUpDown className="ml-1 h-4 w-4" />
               </div>
             </TableHead>
             <TableHead>Descripción</TableHead>
-            <TableHead 
+            <TableHead
               className="cursor-pointer"
               onClick={() => handleSort('amount')}
             >
               <div className="flex items-center">
-                Monto 
+                Monto
                 <ArrowUpDown className="ml-1 h-4 w-4" />
               </div>
             </TableHead>
             <TableHead>Estado</TableHead>
-            <TableHead 
+            <TableHead
               className="cursor-pointer"
               onClick={() => handleSort('date_created')}
             >
               <div className="flex items-center">
-                Fecha 
+                Fecha
                 <ArrowUpDown className="ml-1 h-4 w-4" />
               </div>
             </TableHead>
-            <TableHead 
+            <TableHead
               className="cursor-pointer"
               onClick={() => handleSort('payment_method_id')}
             >
               <div className="flex items-center">
-                Método 
+                Método
                 <ArrowUpDown className="ml-1 h-4 w-4" />
               </div>
             </TableHead>
@@ -199,39 +256,42 @@ export function TransactionTable({
                 {formatAmount(transaction.amount)}
               </TableCell>
               <TableCell>
-                {transaction.status === 'Pending' ? (
-                  <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>Pendiente</span>
-                  </Badge>
-                ) : (
-                  <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    <span>Aceptado</span>
-                  </Badge>
-                )}
+                {renderStatusBadge(transaction.status)}
               </TableCell>
               <TableCell>{formatDate(transaction.date_created)}</TableCell>
               <TableCell>{formatMethod(transaction.payment_method_id)}</TableCell>
               <TableCell>
-                {transaction.payer_email || 
-                 transaction.wallet_address || 
-                 transaction.cbu || 
-                 'No disponible'}
+                {transaction.payer_email ||
+                  transaction.wallet_address ||
+                  transaction.cbu ||
+                  'No disponible'}
               </TableCell>
               {showApproveButton && (
                 <TableCell>
-                  {transaction.status === 'Aceptado' || transaction.status === 'approved' ? (
-                    <Badge className="bg-green-100 text-green-800">Aceptado</Badge>
+                  {transaction.status === 'Pending' ? (
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => handleApprove(transaction)}
+                        disabled={processingId === transaction.id}
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <span>Aceptar</span>
+                      </Button>
+                      <Button
+                        onClick={() => handleReject(transaction)}
+                        disabled={processingId === transaction.id}
+                        size="sm"
+                        variant="destructive"
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        <span>Rechazar</span>
+                      </Button>
+                    </div>
                   ) : (
-                    <Button
-                      onClick={() => handleApprove(transaction)}
-                      disabled={processingId === transaction.id}
-                      size="sm"
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      {processingId === transaction.id ? 'Procesando...' : 'Aprobar'}
-                    </Button>
+                    renderStatusBadge(transaction.status)
                   )}
                 </TableCell>
               )}
