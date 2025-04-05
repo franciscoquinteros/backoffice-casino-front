@@ -21,14 +21,14 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!emailRef.current?.value || !passwordRef.current?.value) {
       toast.error("Por favor, ingresa tu email y contraseña")
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
       const result = await signIn("credentials", {
         email: emailRef.current.value,
@@ -43,8 +43,8 @@ export function LoginForm({
       }
 
       toast.success("Inicio de sesión exitoso")
-      
-      // Cambiado de /dashboard a /dashboard/chat
+
+      // Redirección al chat
       setTimeout(() => {
         router.push("/dashboard/chat")
         router.refresh()
@@ -78,10 +78,10 @@ export function LoginForm({
               <div className="flex items-center">
                 <Label htmlFor="password">Contraseña</Label>
               </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                required
                 ref={passwordRef}
               />
             </div>
