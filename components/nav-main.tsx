@@ -1,90 +1,134 @@
-"use client"
+// components/nav-main.tsx
+"use client";
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  isActive?: boolean;
+  items?: {
+    title: string;
+    url: string;
+    icon?: React.ElementType;
+  }[];
+}
 
-export function NavMain({
-  items,
-  blockTitle,
-}: {
-  items: {
-    title: string
-    url: string
-    icon: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
-  blockTitle: string
-}) {
-  const pathname = usePathname()
-  
+interface NavMainProps {
+  items: NavItem[];
+  blockTitle?: string;
+}
+
+export function NavMain({ items, blockTitle }: NavMainProps) {
+  const pathname = usePathname();
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  // Verificar si una ruta está activa
+  const isActive = (url: string): boolean => {
+    if (pathname === url) return true;
+    if (url !== '/' && pathname.startsWith(`${url}/`)) return true;
+    return false;
+  };
+
+  // Verificar si un item tiene subitems activos
+  const hasActiveSubItem = (item: NavItem): boolean => {
+    return !!item.items?.some(subItem => isActive(subItem.url));
+  };
+
+  // Inicializar el estado de expansión para los items con subitems activos
+  const initializeExpandedState = () => {
+    const initialExpandedState: Record<string, boolean> = {};
+
+    items.forEach(item => {
+      if (item.items && (hasActiveSubItem(item) || isActive(item.url))) {
+        initialExpandedState[item.title] = true;
+      }
+    });
+
+    return initialExpandedState;
+  };
+
+  // Establecer el estado inicial solo una vez
+  useState(() => {
+    setExpandedItems(initializeExpandedState());
+  });
+
+  // Función para alternar la expansión de un item
+  const toggleItemExpansion = (title: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
+  };
+
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>{blockTitle}</SidebarGroupLabel>
-      <SidebarMenu>
+    <div className="mb-6">
+      {blockTitle && (
+        <h3 className="text-xs font-medium text-muted-foreground px-4 mb-2">
+          {blockTitle}
+        </h3>
+      )}
+      <nav className="grid gap-1 px-2">
         {items.map((item) => {
-          const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`)
-          
+          const isItemActive = isActive(item.url) || hasActiveSubItem(item);
+          const isExpanded = expandedItems[item.title] || false;
+          const Icon = item.icon;
+
           return (
-            <Collapsible key={item.title} asChild defaultOpen={isActive}>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.url}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
+            <div key={item.title} className="w-full">
+              {/* Item principal */}
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer",
+                  isItemActive && "bg-accent/50"
+                )}
+                onClick={() => {
+                  if (item.items?.length) {
+                    toggleItemExpansion(item.title);
+                  }
+                }}
+              >
+                {Icon && <Icon className="h-4 w-4" />}
+                <span className="flex-1">{item.title}</span>
                 {item.items?.length ? (
-                  <>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuAction className="data-[state=open]:rotate-90">
-                        <ChevronRight />
-                        <span className="sr-only">Toggle</span>
-                      </SidebarMenuAction>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items?.map((subItem) => {                     
-                          return (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild>
-                                <Link href={subItem.url}>
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </>
+                  isExpanded ?
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" /> :
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : null}
-              </SidebarMenuItem>
-            </Collapsible>
-          )
+              </div>
+
+              {/* Subitems (si existen y está expandido) */}
+              {item.items?.length && isExpanded && (
+                <div className="pl-6 mt-1">
+                  {item.items.map((subItem) => {
+                    const isSubItemActive = isActive(subItem.url);
+                    const SubIcon = subItem.icon;
+
+                    return (
+                      <Link
+                        key={subItem.title}
+                        href={subItem.url}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
+                          isSubItemActive && "bg-accent/50 text-accent-foreground"
+                        )}
+                      >
+                        {SubIcon && <SubIcon className="h-4 w-4" />}
+                        <span>{subItem.title}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
         })}
-      </SidebarMenu>
-    </SidebarGroup>
-  )
+      </nav>
+    </div>
+  );
 }

@@ -61,7 +61,7 @@ export function LoginForm({
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
-            <h1 className="text-xl font-bold">Bienvenido al Panel de Administración</h1>
+            <h1 className="text-xl font-bold">Cocos Admin</h1>
           </div>
           <div className="flex flex-col gap-6">
             <div className="grid gap-2">
