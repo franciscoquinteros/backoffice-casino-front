@@ -57,7 +57,7 @@ export default function WithdrawalsPendingPage() {
     // Actualización periódica (30 segundos)
     const intervalId = setInterval(fetchTransactions, 30000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filters]); // Agregado filters como dependencia
 
   // Actualizar cuando cambian los filtros
   useEffect(() => {

@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle } from "lucide-react";
 import Link from 'next/link';
 import { 
-    TransactionTable 
-  } from '../../../../components/transaction-table';
-  import { 
-    TransactionFilters 
-  } from '../../../../components/transaction-filters';
+  TransactionTable 
+} from '../../../../components/transaction-table';
+import { 
+  TransactionFilters 
+} from '../../../../components/transaction-filters';
 import { 
   Transaction, 
   TransactionFilter, 
@@ -35,23 +35,9 @@ export default function WithdrawalsCompletedPage() {
         const data = await transactionService.getTransactions();
         setTransactions(data);
         
-        // Filtrar retiros completados
-        const completedWithdrawals = transactionService.filterTransactions(
-          data, 
-          'withdraw', 
-          'Aceptado',
-          filters
-        );
+        // Filtrar retiros completados con los filtros actuales
+        updateFilteredTransactions(data, filters);
         
-        // También incluir los que están marcados como 'approved'
-        const approvedWithdrawals = transactionService.filterTransactions(
-          data, 
-          'withdraw', 
-          'approved',
-          filters
-        );
-        
-        setFilteredTransactions([...completedWithdrawals, ...approvedWithdrawals]);
         setError(null);
       } catch (err) {
         console.error('Error fetching transactions:', err);
@@ -66,28 +52,33 @@ export default function WithdrawalsCompletedPage() {
     // Actualización periódica (30 segundos)
     const intervalId = setInterval(fetchTransactions, 30000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filters]); // Agregado filters como dependencia
 
-  // Actualizar cuando cambian los filtros
+  // Función para actualizar las transacciones filtradas
+  const updateFilteredTransactions = (data: Transaction[], currentFilters: TransactionFilter) => {
+    // Filtrar retiros completados
+    const completedWithdrawals = transactionService.filterTransactions(
+      data, 
+      'withdraw', 
+      'Aceptado',
+      currentFilters
+    );
+    
+    // También incluir los que están marcados como 'approved'
+    const approvedWithdrawals = transactionService.filterTransactions(
+      data, 
+      'withdraw', 
+      'approved',
+      currentFilters
+    );
+    
+    setFilteredTransactions([...completedWithdrawals, ...approvedWithdrawals]);
+  };
+
+  // Actualizar cuando cambian los filtros o las transacciones
   useEffect(() => {
     if (transactions.length > 0) {
-      // Filtrar retiros completados
-      const completedWithdrawals = transactionService.filterTransactions(
-        transactions, 
-        'withdraw', 
-        'Aceptado',
-        filters
-      );
-      
-      // También incluir los que están marcados como 'approved'
-      const approvedWithdrawals = transactionService.filterTransactions(
-        transactions, 
-        'withdraw', 
-        'approved',
-        filters
-      );
-      
-      setFilteredTransactions([...completedWithdrawals, ...approvedWithdrawals]);
+      updateFilteredTransactions(transactions, filters);
     }
   }, [filters, transactions]);
 

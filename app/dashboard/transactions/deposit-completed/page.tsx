@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle } from "lucide-react";
 import Link from 'next/link';
 import { 
-    TransactionTable 
-  } from '../../../../components/transaction-table';
-  import { 
-    TransactionFilters 
-  } from '../../../../components/transaction-filters';
+  TransactionTable 
+} from '../../../../components/transaction-table';
+import { 
+  TransactionFilters 
+} from '../../../../components/transaction-filters';
 import { 
   Transaction, 
   TransactionFilter, 
@@ -35,23 +35,9 @@ export default function DepositsCompletedPage() {
         const data = await transactionService.getTransactions();
         setTransactions(data);
         
-        // Filtrar depósitos completados
-        const completedDeposits = transactionService.filterTransactions(
-          data, 
-          'deposit', 
-          'Aceptado',
-          filters
-        );
+        // Filtrar depósitos completados con los filtros actuales
+        updateFilteredTransactions(data, filters);
         
-        // También incluir los que están marcados como 'approved'
-        const approvedDeposits = transactionService.filterTransactions(
-          data, 
-          'deposit', 
-          'approved',
-          filters
-        );
-        
-        setFilteredTransactions([...completedDeposits, ...approvedDeposits]);
         setError(null);
       } catch (err) {
         console.error('Error fetching transactions:', err);
@@ -66,28 +52,33 @@ export default function DepositsCompletedPage() {
     // Actualización periódica (30 segundos)
     const intervalId = setInterval(fetchTransactions, 30000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filters]); // Agregado filters como dependencia
 
-  // Actualizar cuando cambian los filtros
+  // Función para actualizar las transacciones filtradas
+  const updateFilteredTransactions = (data: Transaction[], currentFilters: TransactionFilter) => {
+    // Filtrar depósitos completados
+    const completedDeposits = transactionService.filterTransactions(
+      data, 
+      'deposit', 
+      'Aceptado',
+      currentFilters
+    );
+    
+    // También incluir los que están marcados como 'approved'
+    const approvedDeposits = transactionService.filterTransactions(
+      data, 
+      'deposit', 
+      'approved',
+      currentFilters
+    );
+    
+    setFilteredTransactions([...completedDeposits, ...approvedDeposits]);
+  };
+
+  // Actualizar cuando cambian los filtros o las transacciones
   useEffect(() => {
     if (transactions.length > 0) {
-      // Filtrar depósitos completados
-      const completedDeposits = transactionService.filterTransactions(
-        transactions, 
-        'deposit', 
-        'Aceptado',
-        filters
-      );
-      
-      // También incluir los que están marcados como 'approved'
-      const approvedDeposits = transactionService.filterTransactions(
-        transactions, 
-        'deposit', 
-        'approved',
-        filters
-      );
-      
-      setFilteredTransactions([...completedDeposits, ...approvedDeposits]);
+      updateFilteredTransactions(transactions, filters);
     }
   }, [filters, transactions]);
 

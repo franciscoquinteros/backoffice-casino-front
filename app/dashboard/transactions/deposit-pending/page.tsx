@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle } from "lucide-react";
 import Link from 'next/link';
 import { 
-    TransactionTable 
-  } from '../../../../components/transaction-table';
-  import { 
-    TransactionFilters 
-  } from '../../../../components/transaction-filters';
+  TransactionTable 
+} from '../../../../components/transaction-table';
+import { 
+  TransactionFilters 
+} from '../../../../components/transaction-filters';
 import { 
   Transaction, 
   TransactionFilter, 
@@ -57,9 +57,9 @@ export default function DepositsPendingPage() {
     // Actualización periódica (30 segundos)
     const intervalId = setInterval(fetchTransactions, 30000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filters]); // Agregado filters como dependencia
 
-  // Actualizar cuando cambian los filtros
+  // Actualizar cuando cambian los filtros o las transacciones
   useEffect(() => {
     if (transactions.length > 0) {
       const filtered = transactionService.filterTransactions(
