@@ -1,3 +1,4 @@
+// app/components/transaction-service.ts
 "use client";
 
 export interface PayerIdentification {
@@ -44,7 +45,7 @@ class TransactionService {
   // Obtener todas las transacciones
   async getTransactions(): Promise<Transaction[]> {
     try {
-      const response = await fetch(`${this.apiUrl}/ipn/transactions`);
+      const response = await fetch(`${this.apiUrl}/transactions`);
 
       if (!response.ok) {
         throw new Error(`Error al obtener transacciones: ${response.status}`);
@@ -127,26 +128,21 @@ class TransactionService {
   async approveTransaction(transaction: Transaction): Promise<Transaction> {
     try {
       const transactionType = transaction.type;
-      const endpoint = `${this.apiUrl}/proxy/${transactionType}`;
+      const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/accept`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: transaction.idCliente || '',
-          amount: transaction.amount,
-          transaction_id: transaction.id.toString()
-        }),
+        }
       });
 
       if (!response.ok) {
         throw new Error(`Error al confirmar la transacción: ${response.status}`);
       }
 
-      const updatedTransaction = { ...transaction, status: 'Aceptado' };
-      return updatedTransaction;
+      const responseData = await response.json();
+      return responseData.transaction;
     } catch (error) {
       console.error('Error al aprobar transacción:', error);
       throw error;
@@ -156,42 +152,38 @@ class TransactionService {
   // Rechazar una transacción
   async rejectTransaction(transaction: Transaction): Promise<Transaction> {
     try {
-      // Aquí implementarías la lógica real para rechazar una transacción
-      // Por ejemplo, una llamada a tu API para marcar la transacción como rechazada
+      // Llamar al endpoint de rechazo con el ID de la transacción
+      const transactionType = transaction.type;
+      const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/reject`;
 
-      // Ejemplo de llamada a API (descomenta y adapta según tu backend)
-      /*
-      const endpoint = `${this.apiUrl}/proxy/${transaction.type}/reject`;
+      console.log(`Rechazando transacción: ${transaction.id} - Endpoint: ${endpoint}`);
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transaction_id: transaction.id.toString(),
-          reason: 'rejected_by_operator'
-        }),
+        }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error al rechazar la transacción: ${response.status}`);
       }
-      */
 
-      // Por ahora, simplemente simulamos que la transacción fue rechazada
-      console.log('Transacción rechazada:', transaction.id);
+      // Obtener la transacción actualizada de la respuesta
+      const responseData = await response.json();
+      return responseData.transaction;
+    } catch (error) {
+      console.error('Error al rechazar transacción:', error);
 
-      // Actualizar el estado de la transacción localmente
-      const updatedTransaction = {
+      // Simulación para desarrollo - eliminar en producción
+      console.log('Modo simulación: Rechazando localmente');
+      const rejectedTransaction = {
         ...transaction,
         status: 'Rechazado',
         description: transaction.description + ' (Rechazado)'
       };
 
-      return updatedTransaction;
-    } catch (error) {
-      console.error('Error al rechazar transacción:', error);
-      throw error;
+      return rejectedTransaction;
     }
   }
 }
