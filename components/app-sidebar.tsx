@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useMemo } from "react"
 import {
-  CircleCheckBig,
   Hourglass,
   LampDesk,
   Landmark,
