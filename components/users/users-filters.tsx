@@ -21,6 +21,9 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
   // Usamos el hook para obtener las oficinas
   const { getOfficeName } = useOffices()
 
+  // Roles predefinidos para asegurar que siempre estén disponibles
+  const predefinedRoles = ['administrador', 'encargado', 'operador'];
+
   // Get unique normalized values for each filter
   const filterOptions = useMemo(() => {
     const getUniqueValues = (field: keyof User) => {
@@ -31,10 +34,14 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
       return Array.from(values).sort()
     }
 
+    // Para status y office, usamos los valores únicos de los usuarios
+    const uniqueStatuses = getUniqueValues('status');
+    const uniqueOffices = getUniqueValues('office');
+
     return {
-      roles: getUniqueValues('role'),
-      offices: getUniqueValues('office'),
-      statuses: getUniqueValues('status')
+      roles: predefinedRoles, // Usamos roles predefinidos
+      offices: uniqueOffices,
+      statuses: uniqueStatuses
     }
   }, [users])
 
@@ -52,7 +59,7 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
   // Manejador del cambio en el input de búsqueda
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
-    onFilterChange('name', value);
+    onFilterChange('username', value); // Cambiado de 'name' a 'username'
   }
 
   return (

@@ -122,10 +122,9 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
     if (value && value !== 'all') {
       filtered = filtered.filter(user => {
         switch (field) {
-          case 'name':
-            return user.username?.toLowerCase().includes(value.toLowerCase()) ||
-              (user.email && user.email.toLowerCase().includes(value.toLowerCase())) ||
-              (user.name && user.name.toLowerCase().includes(value.toLowerCase()));
+          case 'username':
+            // Busca solo por el nombre de usuario
+            return user.username?.toLowerCase().includes(value.toLowerCase());
           case 'role':
             return user.role.toLowerCase() === value.toLowerCase()
           case 'office':
