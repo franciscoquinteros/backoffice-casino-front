@@ -1,12 +1,8 @@
-// app/dashboard/transactions/deposits-pending/page.tsx
+// app/dashboard/transactions/deposit-pending/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle } from "lucide-react";
-import Link from 'next/link';
 import { 
   TransactionTable 
 } from '../../../../components/transaction-table';
@@ -59,7 +55,7 @@ export default function DepositsPendingPage() {
     return () => clearInterval(intervalId);
   }, [filters]); // Agregado filters como dependencia
 
-  // Actualizar cuando cambian los filtros o las transacciones
+  // Actualizar cuando cambian los filtros
   useEffect(() => {
     if (transactions.length > 0) {
       const filtered = transactionService.filterTransactions(
@@ -92,23 +88,6 @@ export default function DepositsPendingPage() {
     // El filtrado automático se realizará en el efecto
   };
 
-  // Contadores para pestañas de navegación
-  const pendingDepositsCount = transactions.filter(
-    tx => tx.type === 'deposit' && tx.status === 'Pending'
-  ).length;
-  
-  const completedDepositsCount = transactions.filter(
-    tx => tx.type === 'deposit' && (tx.status === 'Aceptado' || tx.status === 'approved')
-  ).length;
-  
-  const pendingWithdrawalsCount = transactions.filter(
-    tx => tx.type === 'withdraw' && tx.status === 'Pending'
-  ).length;
-  
-  const completedWithdrawalsCount = transactions.filter(
-    tx => tx.type === 'withdraw' && (tx.status === 'Aceptado' || tx.status === 'approved')
-  ).length;
-
   return (
     <div className="container mx-auto p-4">
       <Card>
@@ -118,69 +97,6 @@ export default function DepositsPendingPage() {
             Gestione los depósitos que requieren aprobación
           </CardDescription>
         </CardHeader>
-        
-        {/* Tabs de navegación */}
-        <div className="px-6">
-          <Tabs defaultValue="deposits-pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger 
-                value="deposits-pending" 
-                className="flex items-center justify-center"
-                asChild
-              >
-                <Link href="/dashboard/transactions/deposits-pending" className="w-full flex items-center justify-center">
-                  <Clock className="mr-2 h-4 w-4" />
-                  <span>Depósitos Pendientes</span>
-                  <Badge className="ml-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                    {pendingDepositsCount}
-                  </Badge>
-                </Link>
-              </TabsTrigger>
-              
-              <TabsTrigger 
-                value="deposits-completed" 
-                className="flex items-center justify-center"
-                asChild
-              >
-                <Link href="/dashboard/transactions/deposits-completed" className="w-full flex items-center justify-center">
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  <span>Depósitos Completados</span>
-                  <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-100">
-                    {completedDepositsCount}
-                  </Badge>
-                </Link>
-              </TabsTrigger>
-              
-              <TabsTrigger 
-                value="withdrawals-pending" 
-                className="flex items-center justify-center"
-                asChild
-              >
-                <Link href="/dashboard/transactions/withdrawals-pending" className="w-full flex items-center justify-center">
-                  <Clock className="mr-2 h-4 w-4" />
-                  <span>Retiros Pendientes</span>
-                  <Badge className="ml-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                    {pendingWithdrawalsCount}
-                  </Badge>
-                </Link>
-              </TabsTrigger>
-              
-              <TabsTrigger 
-                value="withdrawals-completed" 
-                className="flex items-center justify-center"
-                asChild
-              >
-                <Link href="/dashboard/transactions/withdrawals-completed" className="w-full flex items-center justify-center">
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  <span>Retiros Completados</span>
-                  <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-100">
-                    {completedWithdrawalsCount}
-                  </Badge>
-                </Link>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
         
         <div className="p-6 pt-3">
           {/* Filtros */}
