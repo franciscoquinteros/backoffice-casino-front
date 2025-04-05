@@ -1,7 +1,7 @@
 // app/dashboard/transactions/deposit-pending/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   TransactionTable 
@@ -23,37 +23,38 @@ export default function DepositsPendingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar transacciones
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setIsLoading(true);
-        const data = await transactionService.getTransactions();
-        setTransactions(data);
-        
-        // Filtrar depósitos pendientes
-        const pendingDeposits = transactionService.filterTransactions(
-          data, 
-          'deposit', 
-          'Pending',
-          filters
-        );
-        setFilteredTransactions(pendingDeposits);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('No se pudieron cargar las transacciones');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Función para cargar transacciones - extraída para poder reutilizarla
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await transactionService.getTransactions();
+      setTransactions(data);
+      
+      // Filtrar depósitos pendientes
+      const pendingDeposits = transactionService.filterTransactions(
+        data, 
+        'deposit', 
+        'Pending',
+        filters
+      );
+      setFilteredTransactions(pendingDeposits);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError('No se pudieron cargar las transacciones');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters]);
 
+  // Cargar transacciones inicialmente
+  useEffect(() => {
     fetchTransactions();
 
     // Actualización periódica (30 segundos)
     const intervalId = setInterval(fetchTransactions, 30000);
     return () => clearInterval(intervalId);
-  }, [filters]); // Agregado filters como dependencia
+  }, [fetchTransactions]); // Agregado fetchTransactions como dependencia
 
   // Actualizar cuando cambian los filtros
   useEffect(() => {
@@ -79,13 +80,33 @@ export default function DepositsPendingPage() {
   };
 
   // Manejar la aprobación de una transacción
-  const handleTransactionApproved = (updatedTransaction: Transaction) => {
-    // Actualizar las transacciones en estado
-    setTransactions(prev => 
-      prev.map(tx => tx.id === updatedTransaction.id ? updatedTransaction : tx)
-    );
-    
-    // El filtrado automático se realizará en el efecto
+  const handleTransactionApproved = async (updatedTransaction: Transaction) => {
+    try {
+      // Actualizar la transacción en la base de datos
+      await transactionService.approveTransaction(updatedTransaction);
+      
+      // Recargar los datos para reflejar el cambio
+      await fetchTransactions();
+      
+      console.log('Transacción aprobada y datos recargados');
+    } catch (error) {
+      console.error('Error al aprobar la transacción:', error);
+    }
+  };
+
+  // Manejar el rechazo de una transacción
+  const handleTransactionRejected = async (rejectedTransaction: Transaction) => {
+    try {
+      // Actualizar la transacción en la base de datos
+      await transactionService.rejectTransaction(rejectedTransaction);
+      
+      // Recargar los datos para reflejar el cambio
+      await fetchTransactions();
+      
+      console.log('Transacción rechazada y datos recargados');
+    } catch (error) {
+      console.error('Error al rechazar la transacción:', error);
+    }
   };
 
   return (
@@ -117,6 +138,7 @@ export default function DepositsPendingPage() {
               transactions={filteredTransactions} 
               showApproveButton={true}
               onTransactionApproved={handleTransactionApproved}
+              onTransactionRejected={handleTransactionRejected}
             />
           )}
         </div>
