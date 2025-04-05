@@ -1,6 +1,5 @@
 // app/dashboard/users/page.tsx
 import { Suspense } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersClient } from "@/components/users/users-client"
 import { RoleGuard } from "@/components/role-guard"
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'
@@ -19,20 +18,8 @@ const fetchInternalUsers = async () => {
   return data
 }
 
-const fetchExternalUsers = async () => {
-  const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/external-users` // Endpoint diferente
-  const response = await fetch(url, {
-    cache: 'no-store', // Evitar caché
-  })
-  if (!response.ok) {
-    return []
-  }
-  const data = await response.json()
-  return data
-}
-
-// Componente de carga para las pestañas
-function TabsLoadingSkeleton() {
+// Componente de carga
+function LoadingSkeleton() {
   // Configuración de columnas para la tabla de usuarios
   const tableColumns: ColumnConfig[] = [
     { cell: { type: 'double', widthClass: 'w-3/4' } }, // Nombre/Email
@@ -46,14 +33,8 @@ function TabsLoadingSkeleton() {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <Skeleton className="h-10 w-40" />
-        <div className="border rounded-lg p-1">
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-        </div>
       </div>
-      
+
       <div className="mt-6">
         <div className="flex justify-between items-center mb-6">
           <Skeleton className="h-7 w-64" />
@@ -78,49 +59,17 @@ function TabsLoadingSkeleton() {
   )
 }
 
-// Componente contenedor para los datos de usuario
-function UsersData({ 
-  internalUsers, 
-  externalUsers 
-}: { 
-  internalUsers: User[], 
-  externalUsers: User[] 
-}) {
-  return (
-    <Tabs defaultValue="internal" className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Usuarios</h1>
-        <TabsList>
-          <TabsTrigger value="internal">Usuarios Internos</TabsTrigger>
-          <TabsTrigger value="external">Usuarios Externos</TabsTrigger>
-        </TabsList>
-      </div>
-
-      <TabsContent value="internal">
-        <UsersClient initialUsers={internalUsers} userType="internal" />
-      </TabsContent>
-
-      <TabsContent value="external">
-        <UsersClient initialUsers={externalUsers} userType="external" />
-      </TabsContent>
-    </Tabs>
-  )
-}
-
 export default async function UsersPage() {
-  // Cargamos los datos en el servidor
-  const [internalUsers, externalUsers] = await Promise.all([
-    fetchInternalUsers(),
-    fetchExternalUsers()
-  ])
+  // Cargamos los datos de usuarios internos en el servidor
+  const internalUsers = await fetchInternalUsers();
 
   return (
     <RoleGuard allowedRoles={['admin', 'encargado', 'operador']}>
       <div className="p-6">
-        <Suspense fallback={<TabsLoadingSkeleton />}>
-          <UsersData 
-            internalUsers={internalUsers} 
-            externalUsers={externalUsers} 
+        <Suspense fallback={<LoadingSkeleton />}>
+          <UsersClient
+            initialUsers={internalUsers}
+            userType="internal"
           />
         </Suspense>
       </div>
