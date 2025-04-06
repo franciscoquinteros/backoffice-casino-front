@@ -247,8 +247,8 @@ export function TransactionTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedTransactions.map((transaction) => (
-            <TableRow key={transaction.id} className="hover:bg-muted/50">
+          {sortedTransactions.map((transaction, index) => (
+            <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
               <TableCell>{transaction.description}</TableCell>
