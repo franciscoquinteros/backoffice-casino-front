@@ -27,6 +27,7 @@ interface Transaction {
   cbu?: string;
   wallet_address?: string;
   idCliente?: string | number;
+  reference_transaction?: string | null;
 }
 
 export function TransferMonitoringContent() {
@@ -119,8 +120,8 @@ export function TransferMonitoringContent() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {approvedTransactions.map((transaction) => (
-            <TableRow key={transaction.id} className="hover:bg-muted/50">
+          {approvedTransactions.map((transaction, index) => (
+            <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
               <TableCell className="font-medium">{transaction.id}</TableCell>
               <TableCell>{transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}</TableCell>
               <TableCell>
