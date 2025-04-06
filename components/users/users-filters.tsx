@@ -11,6 +11,7 @@ import {
 import { useMemo } from "react"
 import { User } from "@/types/user"
 import { useOffices } from "@/components/hooks/use-offices"
+import { useAuth } from "@/hooks/useAuth"
 
 interface UsersFiltersProps {
   onFilterChange: (field: string, value: string) => void
@@ -20,46 +21,58 @@ interface UsersFiltersProps {
 export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
   // Usamos el hook para obtener las oficinas
   const { getOfficeName } = useOffices()
+  
+  // Obtenemos información del usuario actual
+  const { isSuperAdmin } = useAuth()
 
   // Roles predefinidos para asegurar que siempre estén disponibles
-  const predefinedRoles = ['administrador', 'encargado', 'operador'];
+  const predefinedRoles = ['administrador', 'encargado', 'operador', 'superadmin'];
+  
+  // Estados predefinidos según el backend
+  const predefinedStatuses = ['active', 'inactive'];
+  
+  // Mapeo de estados a nombres en español
+  const statusLabels: Record<string, string> = {
+    'active': 'Activo',
+    'inactive': 'Inactivo'
+  };
 
   // Get unique normalized values for each filter
   const filterOptions = useMemo(() => {
     const getUniqueValues = (field: keyof User) => {
-      let values = new Set<string>()
-      if(users.length > 0){
-        values = new Set(users.map(user => user[field]?.toString().toLowerCase() ?? ''))
+      const values = new Set<string>()
+      
+      if (users && users.length > 0) {
+        users.forEach(user => {
+          if (user[field] !== undefined && user[field] !== null) {
+            const value = String(user[field]).toLowerCase()
+            values.add(value)
+          }
+        })
       }
+      
       return Array.from(values).sort()
     }
 
-    // Para status y office, usamos los valores únicos de los usuarios
-    const uniqueStatuses = getUniqueValues('status');
+    // Para office, usamos los valores únicos de los usuarios
     const uniqueOffices = getUniqueValues('office');
 
     return {
       roles: predefinedRoles, // Usamos roles predefinidos
       offices: uniqueOffices,
-      statuses: uniqueStatuses
+      statuses: predefinedStatuses // Usamos estados predefinidos
     }
   }, [users])
-
+  
   // Helper to capitalize first letter
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
-  }
-  
-  // Get office display name based on ID
-  const getOfficeDisplayName = (officeId: string) => {
-    if (officeId === "remote") return "Remoto";
-    return getOfficeName(officeId);
   }
 
   // Manejador del cambio en el input de búsqueda
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
-    onFilterChange('username', value); // Cambiado de 'name' a 'username'
+    onFilterChange('username', value);
   }
 
   return (
@@ -90,24 +103,26 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
           <SelectItem value="all">Todos los estados</SelectItem>
           {filterOptions.statuses.map(status => (
             <SelectItem key={status} value={status}>
-              {capitalize(status)}
+              {statusLabels[status] || capitalize(status)}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <Select onValueChange={(value: string) => onFilterChange('office', value)}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Filtrar por oficina" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas las oficinas</SelectItem>
-          {filterOptions.offices.map(office => (
-            <SelectItem key={office} value={office}>
-              {getOfficeDisplayName(office)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {isSuperAdmin && (
+        <Select onValueChange={(value: string) => onFilterChange('office', value)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filtrar por oficina" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las oficinas</SelectItem>
+            {filterOptions.offices.map(officeId => (
+              <SelectItem key={officeId} value={officeId}>
+                {officeId === "remote" ? "Remoto" : getOfficeName(officeId)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   )
 }

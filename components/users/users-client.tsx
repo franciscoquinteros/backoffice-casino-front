@@ -117,29 +117,34 @@ export function UsersClient({ initialUsers, userType }: UsersClientProps) {
   }
 
   const handleFilterChange = (field: string, value: string) => {
-    let filtered = [...users]
-
-    if (value && value !== 'all') {
-      filtered = filtered.filter(user => {
-        switch (field) {
-          case 'username':
-            // Busca solo por el nombre de usuario
-            return user.username?.toLowerCase().includes(value.toLowerCase());
-          case 'role':
-            return user.role.toLowerCase() === value.toLowerCase()
-          case 'office':
-            // Convertimos office a string para comparación segura
-            const userOffice = String(user.office).toLowerCase()
-            return userOffice === value.toLowerCase()
-          case 'status':
-            return user.status.toLowerCase() === value.toLowerCase()
-          default:
-            return true
-        }
-      })
+    // Si no hay valor o si es 'all', no aplicamos filtro
+    if (!value || value === 'all') {
+      setFilteredUsers([...users]);
+      return;
     }
 
-    setFilteredUsers(filtered)
+    // Aplicamos el filtro
+    const filtered = users.filter(user => {
+      if (!user) return false;
+      
+      // Normalizamos los valores para comparación
+      const filterValue = value.toLowerCase();
+      
+      switch (field) {
+        case 'username':
+          return user.username?.toLowerCase().includes(filterValue) || false;
+        case 'role':
+          return user.role?.toLowerCase() === filterValue || false;
+        case 'status':
+          return user.status?.toLowerCase() === filterValue || false;
+        case 'office':
+          return user.office ? String(user.office).toLowerCase() === filterValue : false;
+        default:
+          return true;
+      }
+    });
+    
+    setFilteredUsers(filtered);
   }
 
   // Header con título y botón de crear

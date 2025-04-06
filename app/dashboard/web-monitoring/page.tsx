@@ -36,7 +36,7 @@ function WebMonitoringSkeleton() {
 
 export default function WebMonitoringPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'operador', 'encargado', 'superadmin']}>
+    <RoleGuard allowedRoles={['admin', 'encargado', 'superadmin']}>
       <Suspense fallback={<WebMonitoringSkeleton />}>
         <WebMonitoringContent />
       </Suspense>

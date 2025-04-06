@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { User } from "@/types/user"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { EditUserModal } from "./edit-user-modal"
 import { SessionsModal } from "./sessions-modal"
 import { ChangePasswordModal } from "./change-password-modal"
@@ -84,16 +84,9 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [updatedUsers, setUpdatedUsers] = useState<User[]>([])
   
   // Usamos el hook de oficinas para obtener la función de mapeo de ID a nombre
   const { getOfficeName } = useOffices()
-
-  useEffect(() => {
-    if (users && users.length > 0) {
-      setUpdatedUsers(users)
-    }
-  }, [users])
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
@@ -131,25 +124,8 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
         office: updatedUser.office
       }
 
-      // Primero enviamos los datos al servidor
+      // Enviamos los datos al servidor
       await onUpdateUser(selectedUser.id, userData)
-      
-      // Luego actualizamos la UI
-      setUpdatedUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.id === selectedUser.id
-            ? {
-              ...user,
-              status: userData.status || user.status,
-              receivesWithdrawals: updatedUser.receivesWithdrawals !== undefined
-                ? updatedUser.receivesWithdrawals
-                : user.receivesWithdrawals,
-              role: userData.role || user.role,
-              office: userData.office || user.office
-            }
-            : user
-        )
-      )
       
       // Si tenemos una función para refrescar los usuarios, la llamamos
       if (onRefreshUsers) {
@@ -227,10 +203,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
         throw new Error(`Error al eliminar usuario: ${response.statusText}`)
       }
 
-      setUpdatedUsers(prevUsers =>
-        prevUsers.filter(user => user.id !== selectedUser.id)
-      )
-
+      // Si tenemos una función para refrescar los usuarios, la llamamos
       if (onRefreshUsers) {
         await onRefreshUsers()
       }
@@ -251,8 +224,6 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
     }
   }
 
-  const usersToDisplay = updatedUsers.length > 0 ? updatedUsers : users
-
   return (
     <>
       <div className="rounded-md border">
@@ -268,12 +239,12 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!usersToDisplay || usersToDisplay.length === 0 ? (
+            {!users || users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">No hay usuarios</TableCell>
               </TableRow>
             ) : (
-              usersToDisplay.map((user) => (
+              users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div>
