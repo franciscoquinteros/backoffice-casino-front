@@ -37,6 +37,8 @@ interface OfficeFormData {
     minWithdrawal: string;
     minWithdrawalWait: string;
     status: string;
+    agentAssigned: string;
+    adminPassword: string;
 }
 
 export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
@@ -54,6 +56,8 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
             minWithdrawal: "",
             minWithdrawalWait: "",
             status: "active",
+            agentAssigned: "",
+            adminPassword: "",
         },
     })
 
@@ -63,30 +67,74 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
             return
         }
 
+        if (!data.agentAssigned) {
+            toast.error("El email del administrador es obligatorio")
+            return
+        }
+
+        if (!data.adminPassword) {
+            toast.error("La contraseña del administrador es obligatoria")
+            return
+        }
+
         setIsLoading(true)
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/offices`, {
+            // Crear la oficina
+            const officeResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/offices`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                    name: data.name,
+                    whatsapp: data.whatsapp,
+                    telegram: data.telegram,
+                    firstDepositBonus: data.firstDepositBonus,
+                    perpetualBonus: data.perpetualBonus,
+                    minDeposit: data.minDeposit,
+                    minWithdrawal: data.minWithdrawal,
+                    minWithdrawalWait: data.minWithdrawalWait,
+                    status: data.status,
+                    agentAssigned: data.agentAssigned
+                }),
             })
 
-            if (response.ok) {
-                toast.success("Oficina creada exitosamente")
-                form.reset()
-                await onOfficeCreated()
-                setTimeout(() => {
-                    setOpen(false)
-                }, 10)
+            if (officeResponse.ok) {
+                const officeData = await officeResponse.json();
+
+                // Crear el usuario administrador
+                const userResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: data.agentAssigned.split('@')[0],
+                        email: data.agentAssigned,
+                        password: data.adminPassword,
+                        role: 'admin',
+                        office: officeData.name
+                    }),
+                })
+
+                if (userResponse.ok) {
+                    toast.success("Oficina y administrador creados exitosamente")
+                    form.reset()
+                    await onOfficeCreated()
+                    setTimeout(() => {
+                        setOpen(false)
+                    }, 10)
+                } else {
+                    const errorData = await userResponse.json().catch(() => ({ message: "Error desconocido" }))
+                    toast.error(`Error al crear administrador: ${errorData.message || userResponse.statusText}`)
+                }
             } else {
-                const errorData = await response.json().catch(() => ({ message: "Error desconocido" }))
-                toast.error(`Error al crear oficina: ${errorData.message || response.statusText}`)
+                const errorData = await officeResponse.json().catch(() => ({ message: "Error desconocido" }))
+                toast.error(`Error al crear oficina: ${errorData.message || officeResponse.statusText}`)
             }
         } catch (error) {
-            console.error("Error creating office:", error)
+            console.error("Error creating office and admin:", error)
             toast.error("Error al crear oficina. Intenta nuevamente.")
         } finally {
             setIsLoading(false)
@@ -151,6 +199,30 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
                                                 <option value="active">Activo</option>
                                                 <option value="inactive">Inactivo</option>
                                             </select>
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="agentAssigned"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email del Administrador</FormLabel>
+                                        <FormControl>
+                                            <Input type="email" placeholder="admin@ejemplo.com" {...field} required />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="adminPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Contraseña del Administrador</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" placeholder="Mínimo 6 caracteres" {...field} required minLength={6} />
                                         </FormControl>
                                     </FormItem>
                                 )}

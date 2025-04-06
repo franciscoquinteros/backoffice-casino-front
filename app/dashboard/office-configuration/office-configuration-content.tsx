@@ -114,7 +114,7 @@ export function OfficeConfigurationContent() {
             offices.map((office) => (
               <TableRow key={office.id}>
                 <TableCell className="font-medium">{office.name}</TableCell>
-                <TableCell>{office.name}</TableCell>
+                <TableCell>{office.agentAssigned}</TableCell>
                 <TableCell>{office.minDeposit}</TableCell>
                 <TableCell>{office.minWithdrawal}</TableCell>
                 <TableCell>

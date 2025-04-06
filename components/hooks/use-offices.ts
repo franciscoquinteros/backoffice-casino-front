@@ -12,6 +12,7 @@ export interface Office {
   minWithdrawal: string;
   minWithdrawalWait: string;
   status: string;
+  agentAssigned: string;
   // Otros campos que podrían ser relevantes
 }
 
