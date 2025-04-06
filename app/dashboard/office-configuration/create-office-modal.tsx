@@ -114,7 +114,7 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
                         email: data.agentAssigned,
                         password: data.adminPassword,
                         role: 'admin',
-                        office: officeData.name
+                        office: officeData.id
                     }),
                 })
 
