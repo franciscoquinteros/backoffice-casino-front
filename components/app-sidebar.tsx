@@ -3,14 +3,14 @@
 import * as React from "react"
 import { useMemo } from "react"
 import {
-  Hourglass,
   LampDesk,
   Landmark,
   MessagesSquare,
   PieChart,
   Ticket,
   Users,
-  LucideIcon
+  LucideIcon,
+  ArrowRightLeft
 } from "lucide-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -158,7 +158,7 @@ const projectsItems: NavItem[] = [
   {
     title: "Depósitos y Retiros",
     url: "/dashboard/transactions",
-    icon: Hourglass,
+    icon: ArrowRightLeft,
     items: [
       {
         title: "Depósitos Pendientes",
@@ -182,7 +182,7 @@ const projectsItems: NavItem[] = [
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, isSuperAdmin, isAdmin, isManager, isOperator } = useAuth();
+  const { user, isSuperAdmin, isAdmin, isManager } = useAuth();
 
   const userData = useMemo(() => ({
     name: user?.name,
@@ -223,7 +223,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       tickets: ticketsItems,
       projects: projectsItems,
     };
-  }, [isSuperAdmin, isAdmin, isManager, isOperator]);
+  }, [isSuperAdmin, isAdmin, isManager]);
 
   return (
     <Sidebar variant="inset" {...props}>

@@ -78,7 +78,7 @@ export function ChatItem({
               variant={userIsConnected ? "default" : "destructive"}
               className={`text-[10px] sm:text-xs py-0 h-5 flex items-center gap-1 flex-shrink-0 ${userIsConnected
                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                : 'bg-transparent text-red-800 hover:bg-transparent'
                 }`}
             >
               {userIsConnected ? (

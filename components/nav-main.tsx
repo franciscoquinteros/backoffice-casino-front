@@ -1,134 +1,141 @@
-// components/nav-main.tsx
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronRight, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useState } from "react"
 
-interface NavItem {
-  title: string;
-  url: string;
-  icon: React.ElementType;
-  isActive?: boolean;
-  items?: {
-    title: string;
-    url: string;
-    icon?: React.ElementType;
-  }[];
-}
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+} from "@/components/ui/sidebar"
+import { NotificationBadge } from "./notification-badge"
+import { useNotifications } from "@/lib/NotificationContext"
 
-interface NavMainProps {
-  items: NavItem[];
-  blockTitle?: string;
-}
-
-export function NavMain({ items, blockTitle }: NavMainProps) {
-  const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-
-  // Verificar si una ruta está activa
-  const isActive = (url: string): boolean => {
-    if (pathname === url) return true;
-    if (url !== '/' && pathname.startsWith(`${url}/`)) return true;
-    return false;
-  };
-
-  // Verificar si un item tiene subitems activos
-  const hasActiveSubItem = (item: NavItem): boolean => {
-    return !!item.items?.some(subItem => isActive(subItem.url));
-  };
-
-  // Inicializar el estado de expansión para los items con subitems activos
-  const initializeExpandedState = () => {
-    const initialExpandedState: Record<string, boolean> = {};
-
-    items.forEach(item => {
-      if (item.items && (hasActiveSubItem(item) || isActive(item.url))) {
-        initialExpandedState[item.title] = true;
-      }
-    });
-
-    return initialExpandedState;
-  };
-
-  // Establecer el estado inicial solo una vez
-  useState(() => {
-    setExpandedItems(initializeExpandedState());
-  });
-
-  // Función para alternar la expansión de un item
-  const toggleItemExpansion = (title: string) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [title]: !prev[title]
-    }));
-  };
+export function NavMain({
+  items,
+  blockTitle,
+}: {
+  items: {
+    title: string
+    url: string
+    icon: LucideIcon
+    isActive?: boolean
+    items?: {
+      title: string
+      url: string
+    }[]
+  }[]
+  blockTitle: string
+}) {
+  const pathname = usePathname()
+  const { unreadMessages, unreadChats } = useNotifications();
+  const totalChatNotifications = unreadMessages + unreadChats;
 
   return (
-    <div className="mb-6">
-      {blockTitle && (
-        <h3 className="text-xs font-medium text-muted-foreground px-4 mb-2">
-          {blockTitle}
-        </h3>
-      )}
-      <nav className="grid gap-1 px-2">
+    <SidebarGroup>
+      <SidebarGroupLabel>{blockTitle}</SidebarGroupLabel>
+      <SidebarMenu>
         {items.map((item) => {
-          const isItemActive = isActive(item.url) || hasActiveSubItem(item);
-          const isExpanded = expandedItems[item.title] || false;
-          const Icon = item.icon;
-
+          const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`)
+          const hasSubItems = Boolean(item.items && item.items.length > 0)
+          
           return (
-            <div key={item.title} className="w-full">
-              {/* Item principal */}
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer",
-                  isItemActive && "bg-accent/50"
-                )}
-                onClick={() => {
-                  if (item.items?.length) {
-                    toggleItemExpansion(item.title);
-                  }
-                }}
-              >
-                {Icon && <Icon className="h-4 w-4" />}
-                <span className="flex-1">{item.title}</span>
-                {item.items?.length ? (
-                  isExpanded ?
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" /> :
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                ) : null}
+            <NavMenuItem 
+              key={item.title}
+              item={item}
+              isActive={isActive}
+              hasSubItems={hasSubItems}
+              totalChatNotifications={totalChatNotifications}
+            />
+          )
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
+
+// Componente para cada ítem de navegación
+function NavMenuItem({ 
+  item, 
+  isActive, 
+  hasSubItems,
+  totalChatNotifications
+}: { 
+  item: {
+    title: string
+    url: string
+    icon: LucideIcon
+    items?: {
+      title: string
+      url: string
+    }[]
+  },
+  isActive: boolean,
+  hasSubItems: boolean,
+  totalChatNotifications: number
+}) {
+  const [isOpen, setIsOpen] = useState(isActive)
+  
+  return (
+    <Collapsible
+      asChild
+      defaultOpen={isActive}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+    >
+      <SidebarMenuItem>
+        {hasSubItems ? (
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton tooltip={item.title} className="flex justify-between w-full">
+              <div className="flex items-center gap-2">
+                <item.icon className="w-4 h-4" />
+                <span>{item.title}</span>
               </div>
-
-              {/* Subitems (si existen y está expandido) */}
-              {item.items?.length && isExpanded && (
-                <div className="pl-6 mt-1">
-                  {item.items.map((subItem) => {
-                    const isSubItemActive = isActive(subItem.url);
-                    const SubIcon = subItem.icon;
-
-                    return (
-                      <Link
-                        key={subItem.title}
-                        href={subItem.url}
-                        className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
-                          isSubItemActive && "bg-accent/50 text-accent-foreground"
-                        )}
-                      >
-                        {SubIcon && <SubIcon className="h-4 w-4" />}
+              <ChevronRight
+                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-90" : ""
+                  }`}
+              />
+            </SidebarMenuButton>
+          </CollapsibleTrigger>
+        ) : (
+          <SidebarMenuButton asChild tooltip={item.title}>
+            <Link href={item.url}>
+              <item.icon />
+              <span>{item.title}</span>
+              {item.title === 'Chat con clientes' && <NotificationBadge count={totalChatNotifications} />}
+            </Link>
+          </SidebarMenuButton>
+        )}
+        {hasSubItems ? (
+          <CollapsibleContent>
+            <SidebarMenuSub>
+              {item.items?.map((subItem) => {
+                return (
+                  <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubButton asChild>
+                      <Link href={subItem.url}>
                         <span>{subItem.title}</span>
                       </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </nav>
-    </div>
-  );
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )
+              })}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        ) : null}
+      </SidebarMenuItem>
+    </Collapsible>
+  )
 }

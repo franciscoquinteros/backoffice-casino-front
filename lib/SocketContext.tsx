@@ -19,12 +19,6 @@ interface ChatMessage {
   conversationId?: string;
 }
 
-interface NewConversation {
-  userId: string;
-  conversationId: string;
-  timestamp?: string;
-}
-
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false
@@ -51,7 +45,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
   // Verificar si el usuario tiene un rol autorizado para recibir notificaciones
-  const hasAuthorizedRole = user?.role === 'admin' || user?.role === 'operador';
+  const hasAuthorizedRole = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'superadmin' || user?.role === 'encargado';
 
   const agentId = user?.id || 'guest';
   const agentName = user?.name || 'Agente sin nombre';
@@ -109,22 +103,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // Handle new conversations globally
-    function onNewConversation(data: NewConversation) {
-      // Only show notifications for authorized roles
-      if (hasAuthorizedRole) {
-        toast.info(`Nueva conversación de ${data.userId}`, {
-          description: 'Un usuario está esperando atención'
-        });
-      }
-    }
-
     // Register event listeners
     socketInstance.on('connect', onConnect);
     socketInstance.on('connect_error', onConnectError);
     socketInstance.on('disconnect', onDisconnect);
     socketInstance.on('newMessage', onNewMessage);
-    socketInstance.on('newConversation', onNewConversation);
 
     // Periodic ping to keep connection alive
     const pingInterval = setInterval(() => {
@@ -139,7 +122,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketInstance.off('connect_error', onConnectError);
       socketInstance.off('disconnect', onDisconnect);
       socketInstance.off('newMessage', onNewMessage);
-      socketInstance.off('newConversation', onNewConversation);
       socketInstance.disconnect();
     };
   }, [user, agentId, agentName, agentRole, hasAuthorizedRole]);

@@ -36,7 +36,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   
   // Verificar si el usuario tiene un rol autorizado para recibir notificaciones
-  const hasAuthorizedRole = user?.role === 'admin' || user?.role === 'operador';
+  const hasAuthorizedRole = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'superadmin' || user?.role === 'encargado';
 
   // Limpiar notificaciones cuando se navega a la página de chat
   useEffect(() => {

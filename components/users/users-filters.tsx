@@ -62,7 +62,7 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
       offices: uniqueOffices,
       statuses: predefinedStatuses // Usamos estados predefinidos
     }
-  }, [users])
+  }, [users, predefinedRoles, predefinedStatuses])
   
   // Helper to capitalize first letter
   const capitalize = (str: string) => {
