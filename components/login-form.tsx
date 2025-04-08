@@ -30,6 +30,7 @@ export function LoginForm({
     setIsLoading(true)
 
     try {
+      // Try the login
       const result = await signIn("credentials", {
         email: emailRef.current.value,
         password: passwordRef.current.value,
@@ -37,22 +38,58 @@ export function LoginForm({
       })
 
       if (result?.error) {
-        toast.error("Credenciales inválidas")
-        setIsLoading(false)
-        return
+        // If login fails, check if the account exists and is inactive
+        if (result.error === 'Configuration' || result.error === 'CredentialsSignin') {
+          try {
+            const checkResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/check-status?email=${encodeURIComponent(emailRef.current.value)}`, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+            
+            if (checkResponse.ok) {
+              const checkData = await checkResponse.json();
+              
+              // Only show inactive message if the user actually exists and is inactive
+              if (checkData && checkData.status === 'inactive') {
+                toast.error("Tu cuenta está desactivada. Contacta al administrador.");
+                setIsLoading(false);
+                return;
+              }
+            }
+          } catch {
+            // Silently handle status check error
+          }
+          
+          // If we get here, it's just invalid credentials or user doesn't exist
+          toast.error("Credenciales inválidas");
+        } else if (result.error.includes('inactive_user') || result.error.includes('inactive')) {
+          toast.error("Tu cuenta está desactivada. Contacta al administrador.");
+        } else {
+          toast.error("Credenciales inválidas");
+        }
+        
+        setIsLoading(false);
+        return;
       }
 
-      toast.success("Inicio de sesión exitoso")
+      toast.success("Inicio de sesión exitoso");
 
       // Redirección al chat
       setTimeout(() => {
-        router.push("/dashboard/chat")
-        router.refresh()
-      }, 300)
+        router.push("/dashboard/chat");
+        router.refresh();
+      }, 300);
     } catch (error) {
-      console.error("Error al iniciar sesión:", error)
-      toast.error("Error al iniciar sesión")
-      setIsLoading(false)
+      if (error instanceof Error && 
+          (error.message.includes('inactive_user') || error.message.includes('inactive'))) {
+        toast.error("Tu cuenta está desactivada. Contacta al administrador.");
+      } else {
+        toast.error("Error al iniciar sesión");
+      }
+      
+      setIsLoading(false);
     }
   }
 

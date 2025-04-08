@@ -23,38 +23,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             body: JSON.stringify({ email, password })
           });
 
-          // Intentar parsear la respuesta como JSON
+          // Parse response
           let data;
           try {
             data = await response.json();
           } catch (e) {
-            console.error('Error parsing response:', await response.text());
-            return null;
+            throw new Error('server_error');
           }
 
-          if (!response.ok) {
-            console.error('Auth error:', data);
-            return null;
+          // Check for inactive user in response
+          if (data.message === 'User account is inactive' || 
+              (data.statusCode === 401 && data.message === 'User account is inactive')) {
+            throw new Error('inactive_user');
           }
 
-          if (!data.user || !data.user.id || !data.user.email) {
-            console.error('Invalid response format:', data);
-            return null;
+          // Check for general response issues
+          if (!response.ok || !data.user) {
+            throw new Error('invalid_credentials');
           }
 
-          // Asegurarnos de que todos los campos requeridos estén presentes
-          const user = {
+          // Validate response format
+          if (!data.user.id || !data.user.email) {
+            throw new Error('invalid_response');
+          }
+
+          // Check user status from user object
+          if (data.user.status === 'inactive') {
+            throw new Error('inactive_user');
+          }
+
+          // Return user data
+          return {
             id: data.user.id.toString(),
             email: data.user.email,
             name: data.user.name ?? null,
-            role: data.user.role ?? null
+            role: data.user.role ?? null,
+            status: data.user.status ?? 'active'
           } as User;
 
-          return user;
-
         } catch (error) {
-          console.error('Auth error:', error);
-          return null;
+          throw error;
         }
       },
     }),
@@ -101,6 +109,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }
   },
   trustHost: true,
-  // Configuración adicional para Railway
   debug: process.env.NODE_ENV === 'development',
 })

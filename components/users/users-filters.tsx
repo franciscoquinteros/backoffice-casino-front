@@ -24,12 +24,6 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
   
   // Obtenemos información del usuario actual
   const { isSuperAdmin } = useAuth()
-
-  // Roles predefinidos para asegurar que siempre estén disponibles
-  const predefinedRoles = ['administrador', 'encargado', 'operador', 'superadmin'];
-  
-  // Estados predefinidos según el backend
-  const predefinedStatuses = ['active', 'inactive'];
   
   // Mapeo de estados a nombres en español
   const statusLabels: Record<string, string> = {
@@ -39,6 +33,12 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
 
   // Get unique normalized values for each filter
   const filterOptions = useMemo(() => {
+    // Roles predefinidos para asegurar que siempre estén disponibles
+    const predefinedRoles = ['administrador', 'encargado', 'operador', 'superadmin'];
+    
+    // Estados predefinidos según el backend
+    const predefinedStatuses = ['active', 'inactive'];
+
     const getUniqueValues = (field: keyof User) => {
       const values = new Set<string>()
       
@@ -62,7 +62,7 @@ export function UsersFilters({ onFilterChange, users }: UsersFiltersProps) {
       offices: uniqueOffices,
       statuses: predefinedStatuses // Usamos estados predefinidos
     }
-  }, [users, predefinedRoles, predefinedStatuses])
+  }, [users])
   
   // Helper to capitalize first letter
   const capitalize = (str: string) => {
