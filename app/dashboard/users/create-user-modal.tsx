@@ -38,6 +38,7 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
         role: "",
         office: "",
         status: "active",
+        password: "",
     })
     
     // Utilizamos el hook para obtener las oficinas
@@ -50,7 +51,7 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!formData.username || !formData.email || !formData.role || !formData.office) {
+        if (!formData.username || !formData.email || !formData.role || !formData.office || !formData.password) {
             toast.error("Por favor completa todos los campos requeridos")
             return
         }
@@ -82,6 +83,7 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
                     role: "",
                     office: "",
                     status: "active",
+                    password: "",
                 })
                 setOpen(false)
                 await onUserCreated()
@@ -136,6 +138,19 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
                                 className="col-span-3"
                                 value={formData.email}
                                 onChange={(e) => handleChange("email", e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="password" className="text-right">
+                                Contraseña
+                            </Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                className="col-span-3"
+                                value={formData.password}
+                                onChange={(e) => handleChange("password", e.target.value)}
                                 required
                             />
                         </div>

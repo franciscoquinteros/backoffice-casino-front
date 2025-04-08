@@ -535,7 +535,7 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
   const [isAssigning, setIsAssigning] = useState(false);
 
   // Hooks personalizados
-  const { ticketInfo, fetchTicketInfo } = useTicketInfo(ticketId);
+  const { ticketInfo, isLoading, fetchTicketInfo } = useTicketInfo(ticketId);
   const { comments, setComments, isLoading: isLoadingComments, error: commentsError, fetchComments } = useComments(ticketId, fetchTicketInfo);
   const { isSending, newMessage, setNewMessage, error: sendError, handleSendMessage } = useMessageSending(ticketId, agentId, setComments, fetchComments);
 
@@ -567,7 +567,9 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
       });
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+        throw new Error(`Error al asignar ticket: ${errorData}`);
       }
 
       const updatedTicket = await response.json();
@@ -577,14 +579,23 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
       setIsAssignedToCurrentUser(true);
 
       // Actualizar la tabla de tickets a través de la prop onTicketUpdated
-      if (onTicketUpdated) {
-        onTicketUpdated(updatedTicket);
+      if (onTicketUpdated && updatedTicket) {
+        // Asegurarnos de que el ticket tiene toda la información necesaria
+        const completeTicket = {
+          ...updatedTicket,
+          internal_assignee: updatedTicket.internal_assignee || {
+            id: parseInt(session.user.id),
+            name: session.user.name || '',
+            email: session.user.email || ''
+          }
+        };
+        onTicketUpdated(completeTicket);
       }
 
       toast.success('Ticket asignado correctamente');
     } catch (error) {
       console.error('Error al asignar ticket:', error);
-      toast.error('Error al asignar el ticket');
+      toast.error(error instanceof Error ? error.message : 'Error al asignar el ticket');
     } finally {
       setIsAssigning(false);
     }
@@ -699,25 +710,43 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
         </div>
 
         {/* Message Input */}
-        {isAssignedToCurrentUser ? (
-          <MessageInput
-            newMessage={newMessage}
-            setNewMessage={setNewMessage}
-            handleSendMessage={handleSendMessage}
-            isLoading={isLoadingComments}
-            isSending={isSending}
-          />
-        ) : (
-          <div className="border-t pt-4 p-3 bg-muted/30">
-            <Button
-              onClick={handleAssignToMe}
-              disabled={isAssigning}
-              className="w-full"
-            >
-              {isAssigning ? 'Asignando ticket...' : 'Asignarme este ticket para responder'}
-            </Button>
-          </div>
-        )}
+        <div className="border-t pt-4">
+          {isLoading ? (
+            <div className="p-3">
+              <div className="h-10 bg-muted animate-pulse rounded-md" />
+            </div>
+          ) : ticketInfo?.internal_assignee ? (
+            // Ticket is assigned
+            isAssignedToCurrentUser ? (
+              // Assigned to current user - show message input
+              <MessageInput
+                newMessage={newMessage}
+                setNewMessage={setNewMessage}
+                handleSendMessage={handleSendMessage}
+                isLoading={isLoadingComments}
+                isSending={isSending}
+              />
+            ) : (
+              // Assigned to someone else - show warning message
+              <div className="p-3 bg-muted/30 rounded-md">
+                <p className="text-sm text-muted-foreground text-center">
+                  No puedes enviar mensajes en este ticket ya que está asignado a {ticketInfo.internal_assignee.name}
+                </p>
+              </div>
+            )
+          ) : (
+            // Ticket not assigned - show assign button
+            <div className="p-3 bg-muted/30">
+              <Button
+                onClick={handleAssignToMe}
+                disabled={isAssigning}
+                className="w-full"
+              >
+                {isAssigning ? 'Asignando ticket...' : 'Asignarme este ticket para responder'}
+              </Button>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
