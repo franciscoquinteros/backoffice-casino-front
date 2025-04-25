@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
+import { useEffect } from "react";
 
 interface ErrorModalProps {
     isOpen: boolean;
@@ -19,7 +20,16 @@ interface ErrorModalProps {
     onClose: () => void;
 }
 
+// En el componente ErrorModal, agregamos logs para depuración
 export function ErrorModal({ isOpen, title, description, onClose }: ErrorModalProps) {
+    console.log("Renderizando ErrorModal con props:", { isOpen, title, description });
+
+    useEffect(() => {
+        if (isOpen) {
+            console.log("ErrorModal está abierto con título:", title);
+        }
+    }, [isOpen, title]);
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-md">

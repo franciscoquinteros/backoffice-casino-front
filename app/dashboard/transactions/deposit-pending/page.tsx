@@ -98,31 +98,53 @@ export default function DepositsPendingPage() {
 
   // Manejar la aprobación de una transacción
   // Manejar la aprobación de una transacción
+  // Manejar la aprobación de una transacción
   const handleTransactionApproved = async (transaction: Transaction) => {
     try {
-      // Versión mejorada que devuelve un objeto con el resultado
+      // Log antes de la llamada
+      console.log("Iniciando aprobación para transacción:", transaction.id);
+
+      // Llamamos al servicio
       const result = await transactionService.approveTransaction(transaction);
 
-      if (result.success) {
-        // Recargar los datos para reflejar el cambio
+      // Debug explícito
+      console.log("Resultado de approveTransaction:", result);
+      console.log("¿La transacción fue exitosa?", result.success);
+
+      if (result.success === true) {
+        // Solo recargar datos si fue exitoso
+        console.log("Transacción aprobada exitosamente. Recargando datos...");
         await fetchTransactions();
-        console.log('Transacción aprobada y datos recargados');
       } else {
-        // Mostrar error en el modal
+        // Si no es exitoso, SIEMPRE mostrar el modal
+        console.error("ERROR EN LA TRANSACCIÓN:", result.error);
+
         setErrorModalInfo({
           isOpen: true,
           title: 'Error al procesar la transacción',
           description: result.error || 'No se pudo completar la operación. Por favor, intente nuevamente.'
         });
 
-        // Importante: Imprimir un mensaje claro en consola
-        console.error(`Error al aprobar transacción: ${result.error}`);
+        // Verificar que el modal se abrió
+        console.log("Modal de error activado:", {
+          isOpen: true,
+          title: 'Error al procesar la transacción',
+          description: result.error || 'No se pudo completar la operación. Por favor, intente nuevamente.'
+        });
       }
     } catch (error: unknown) {
       // Convertir el error a un tipo más específico
       const transactionError = error as TransactionError;
-      console.error('Error al aprobar la transacción:', transactionError);
+      console.error('Error inesperado al aprobar la transacción:', transactionError);
+
       setErrorModalInfo({
+        isOpen: true,
+        title: 'Error inesperado',
+        description: transactionError.message || 'Ocurrió un error al procesar la solicitud.'
+      });
+
+      // Verificar que el modal se abrió
+      console.log("Modal de error activado para excepción:", {
         isOpen: true,
         title: 'Error inesperado',
         description: transactionError.message || 'Ocurrió un error al procesar la solicitud.'
