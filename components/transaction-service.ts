@@ -25,7 +25,6 @@ export interface Transaction {
   office?: string; // Campo opcional para la oficina
 }
 
-
 export interface TransactionFilter {
   office?: string;
   method?: string;
@@ -36,7 +35,18 @@ export interface TransactionFilter {
   dateTo?: string;
 }
 
+export interface TransactionUpdateInfo {
+  externalBalance?: number;
+  description?: string;
+  [key: string]: string | number | boolean | undefined;
+}
 
+// Define una interfaz para el resultado de approveTransaction
+export interface ApproveTransactionResult {
+  success: boolean;
+  transaction?: Transaction;
+  error?: string;
+}
 
 class TransactionService {
   private apiUrl: string;
@@ -44,8 +54,6 @@ class TransactionService {
   constructor() {
     this.apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
   }
-
-
 
   // Obtener todas las transacciones
   async getTransactions(): Promise<Transaction[]> {
@@ -130,10 +138,7 @@ class TransactionService {
   }
 
   // Aprobar una transacción
-  // components/transaction-service.ts
-  // Añadir al final de la clase TransactionService
-
-  async approveTransaction(transaction: Transaction): Promise<{ success: boolean, transaction?: Transaction, error?: string }> {
+  async approveTransaction(transaction: Transaction): Promise<ApproveTransactionResult> {
     const opId = `fe_approve_${transaction.id}_${Date.now()}`;
     console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
 
@@ -178,8 +183,9 @@ class TransactionService {
         success: true,
         transaction: responseData.transaction
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[${opId}] ERROR: Error al aprobar transacción:`, error);
+      // Manejar el error de forma segura para TypeScript
       const errorMessage = error instanceof Error ? error.message : 'Error al procesar la transacción';
       return {
         success: false,
@@ -211,7 +217,7 @@ class TransactionService {
       // Obtener la transacción actualizada de la respuesta
       const responseData = await response.json();
       return responseData.transaction;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error al rechazar transacción:', error);
 
       // Simulación para desarrollo - eliminar en producción

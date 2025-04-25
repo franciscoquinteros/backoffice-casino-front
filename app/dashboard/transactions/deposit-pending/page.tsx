@@ -17,6 +17,11 @@ import {
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ErrorModal } from '@/components/error-modal';
 
+// Definimos una interfaz para errores
+interface TransactionError extends Error {
+  message: string;
+}
+
 export default function DepositsPendingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
@@ -109,12 +114,14 @@ export default function DepositsPendingPage() {
           description: result.error || 'No se pudo completar la operación. Por favor, intente nuevamente.'
         });
       }
-    } catch (error: any) {
-      console.error('Error al aprobar la transacción:', error);
+    } catch (error: unknown) {
+      // Convertir el error a un tipo más específico
+      const transactionError = error as TransactionError;
+      console.error('Error al aprobar la transacción:', transactionError);
       setErrorModalInfo({
         isOpen: true,
         title: 'Error inesperado',
-        description: error.message || 'Ocurrió un error al procesar la solicitud.'
+        description: transactionError.message || 'Ocurrió un error al procesar la solicitud.'
       });
     }
   };
@@ -129,12 +136,14 @@ export default function DepositsPendingPage() {
       await fetchTransactions();
       
       console.log('Transacción rechazada y datos recargados');
-    } catch (error: any) {
-      console.error('Error al rechazar la transacción:', error);
+    } catch (error: unknown) {
+      // Convertir el error a un tipo más específico
+      const transactionError = error as TransactionError;
+      console.error('Error al rechazar la transacción:', transactionError);
       setErrorModalInfo({
         isOpen: true,
         title: 'Error al rechazar la transacción',
-        description: error.message || 'No se pudo rechazar la transacción. Por favor, intente nuevamente.'
+        description: transactionError.message || 'No se pudo rechazar la transacción. Por favor, intente nuevamente.'
       });
     }
   };
