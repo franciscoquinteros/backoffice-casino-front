@@ -141,19 +141,20 @@ class TransactionService {
   async approveTransaction(transaction: Transaction): Promise<ApproveTransactionResult> {
     const opId = `fe_approve_${transaction.id}_${Date.now()}`;
     console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
-
+  
     try {
       const transactionType = transaction.type;
       const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/accept`;
       console.log(`[${opId}] Enviando solicitud a endpoint:`, endpoint);
-
+  
       const payload = {
         amount: transaction.amount,
         idClient: transaction.idCliente?.toString() || '',
         idTransaction: transaction.id.toString(),
       };
       console.log(`[${opId}] Payload de la solicitud:`, payload);
-
+  
+      // Intentamos hacer la solicitud
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -161,24 +162,41 @@ class TransactionService {
         },
         body: JSON.stringify(payload),
       });
-
-      const responseData = await response.json();
+  
+      // Intentamos parsear la respuesta JSON (puede fallar si la respuesta no es JSON válido)
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error(`[${opId}] ERROR: No se pudo parsear la respuesta como JSON:`, parseError);
+        return {
+          success: false,
+          error: `Error al procesar la respuesta: ${response.statusText}`
+        };
+      }
+  
       console.log(`[${opId}] Respuesta recibida:`, responseData);
-
+  
+      // Verificamos si la respuesta HTTP fue exitosa (códigos 2xx)
       if (!response.ok) {
         // Extraer el mensaje de error de la respuesta si existe
         const errorMsg = responseData.message ||
           responseData.error ||
           `Error al confirmar la transacción: ${response.status}`;
         console.error(`[${opId}] ERROR: ${errorMsg}`);
+        
+        // IMPORTANTE: Mostrar siempre un error claro en consola
+        console.error(`[${opId}] La transacción falló. Status: ${response.status}, Mensaje: ${errorMsg}`);
+        
         return {
           success: false,
           error: errorMsg
         };
       }
-
+  
+      // Solo si llegamos aquí, la transacción fue exitosa
       console.log(`[${opId}] FIN: Transacción aprobada, respuesta:`, responseData);
-
+      
       return {
         success: true,
         transaction: responseData.transaction
@@ -187,6 +205,10 @@ class TransactionService {
       console.error(`[${opId}] ERROR: Error al aprobar transacción:`, error);
       // Manejar el error de forma segura para TypeScript
       const errorMessage = error instanceof Error ? error.message : 'Error al procesar la transacción';
+      
+      // IMPORTANTE: Dejar claro que la transacción NO fue exitosa
+      console.error(`[${opId}] La transacción NO fue aprobada debido a un error: ${errorMessage}`);
+      
       return {
         success: false,
         error: errorMessage
