@@ -82,10 +82,10 @@ export function TransactionTable({
   const handleApprove = async (transaction: Transaction) => {
     try {
       setProcessingId(transaction.id);
-      const updatedTransaction = await transactionService.approveTransaction(transaction);
+      const response = await transactionService.approveTransaction(transaction);
 
-      if (onTransactionApproved) {
-        onTransactionApproved(updatedTransaction);
+      if (onTransactionApproved && response.success && response.transaction) {
+        onTransactionApproved(response.transaction);
       }
 
       // Opcional: mostrar mensaje de éxito

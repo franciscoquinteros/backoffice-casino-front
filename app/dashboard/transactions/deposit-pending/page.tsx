@@ -3,18 +3,19 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { 
-  TransactionTable 
+import {
+  TransactionTable
 } from '../../../../components/transaction-table';
-import { 
-  TransactionFilters 
+import {
+  TransactionFilters
 } from '../../../../components/transaction-filters';
-import { 
-  Transaction, 
-  TransactionFilter, 
-  transactionService 
+import {
+  Transaction,
+  TransactionFilter,
+  transactionService
 } from '@/components/transaction-service';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ErrorModal } from '@/components/error-modal';
 
 export default function DepositsPendingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -23,17 +24,28 @@ export default function DepositsPendingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
+  const [errorModalInfo, setErrorModalInfo] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    title: '',
+    description: ''
+  });
+
   // Función para cargar transacciones - extraída para poder reutilizarla
   const fetchTransactions = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await transactionService.getTransactions();
       setTransactions(data);
-      
+
       // Filtrar depósitos pendientes
       const pendingDeposits = transactionService.filterTransactions(
-        data, 
-        'deposit', 
+        data,
+        'deposit',
         'Pending',
         filters
       );
@@ -60,8 +72,8 @@ export default function DepositsPendingPage() {
   useEffect(() => {
     if (transactions.length > 0) {
       const filtered = transactionService.filterTransactions(
-        transactions, 
-        'deposit', 
+        transactions,
+        'deposit',
         'Pending',
         filters
       );
@@ -80,17 +92,30 @@ export default function DepositsPendingPage() {
   };
 
   // Manejar la aprobación de una transacción
-  const handleTransactionApproved = async (updatedTransaction: Transaction) => {
+  const handleTransactionApproved = async (transaction: Transaction) => {
     try {
-      // Actualizar la transacción en la base de datos
-      await transactionService.approveTransaction(updatedTransaction);
-      
-      // Recargar los datos para reflejar el cambio
-      await fetchTransactions();
-      
-      console.log('Transacción aprobada y datos recargados');
+      // Versión mejorada que devuelve un objeto con el resultado
+      const result = await transactionService.approveTransaction(transaction);
+
+      if (result.success) {
+        // Recargar los datos para reflejar el cambio
+        await fetchTransactions();
+        console.log('Transacción aprobada y datos recargados');
+      } else {
+        // Mostrar error en el modal
+        setErrorModalInfo({
+          isOpen: true,
+          title: 'Error al procesar la transacción',
+          description: result.error || 'No se pudo completar la operación. Por favor, intente nuevamente.'
+        });
+      }
     } catch (error) {
       console.error('Error al aprobar la transacción:', error);
+      setErrorModalInfo({
+        isOpen: true,
+        title: 'Error inesperado',
+        description: error instanceof Error ? error.message : 'Ocurrió un error al procesar la solicitud.'
+      });
     }
   };
 
@@ -99,14 +124,24 @@ export default function DepositsPendingPage() {
     try {
       // Actualizar la transacción en la base de datos
       await transactionService.rejectTransaction(rejectedTransaction);
-      
+
       // Recargar los datos para reflejar el cambio
       await fetchTransactions();
-      
+
       console.log('Transacción rechazada y datos recargados');
     } catch (error) {
       console.error('Error al rechazar la transacción:', error);
+      setErrorModalInfo({
+        isOpen: true,
+        title: 'Error al rechazar la transacción',
+        description: error instanceof Error ? error.message : 'No se pudo rechazar la transacción. Por favor, intente nuevamente.'
+      });
     }
+  };
+
+  // Cerrar el modal de error
+  const closeErrorModal = () => {
+    setErrorModalInfo(prev => ({ ...prev, isOpen: false }));
   };
 
   return (
@@ -118,14 +153,14 @@ export default function DepositsPendingPage() {
             Gestione los depósitos que requieren aprobación
           </CardDescription>
         </CardHeader>
-        
+
         <div className="p-6 pt-3">
           {/* Filtros */}
-          <TransactionFilters 
-            onChange={handleFilterChange} 
-            onReset={handleResetFilters} 
+          <TransactionFilters
+            onChange={handleFilterChange}
+            onReset={handleResetFilters}
           />
-          
+
           {/* Tabla de transacciones */}
           {isLoading ? (
             <TableSkeleton columns={[]} rowCount={5} />
@@ -134,8 +169,8 @@ export default function DepositsPendingPage() {
               <p className="text-red-500">{error}</p>
             </Card>
           ) : (
-            <TransactionTable 
-              transactions={filteredTransactions} 
+            <TransactionTable
+              transactions={filteredTransactions}
               showApproveButton={true}
               onTransactionApproved={handleTransactionApproved}
               onTransactionRejected={handleTransactionRejected}
@@ -143,6 +178,14 @@ export default function DepositsPendingPage() {
           )}
         </div>
       </Card>
+
+      {/* Modal de error */}
+      <ErrorModal
+        isOpen={errorModalInfo.isOpen}
+        title={errorModalInfo.title}
+        description={errorModalInfo.description}
+        onClose={closeErrorModal}
+      />
     </div>
   );
 }
