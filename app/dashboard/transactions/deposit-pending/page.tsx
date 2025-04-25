@@ -15,7 +15,6 @@ import {
   transactionService
 } from '@/components/transaction-service';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
-import { ErrorModal } from '@/components/error-modal';
 
 // Definimos una interfaz para errores
 interface TransactionError extends Error {
@@ -214,13 +213,7 @@ export default function DepositsPendingPage() {
         </div>
       </Card>
 
-      {/* Modal de error */}
-      <ErrorModal
-        isOpen={errorModalInfo.isOpen}
-        title={errorModalInfo.title}
-        description={errorModalInfo.description}
-        onClose={closeErrorModal}
-      />
+
     </div>
   );
 }
