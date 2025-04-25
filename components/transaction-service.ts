@@ -126,28 +126,35 @@ class TransactionService {
 
   // Aprobar una transacción
   async approveTransaction(transaction: Transaction): Promise<Transaction> {
+    const opId = `fe_approve_${transaction.id}_${Date.now()}`;
+    console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
     try {
       const transactionType = transaction.type;
       const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/accept`;
+      console.log(`[${opId}] Enviando solicitud a endpoint:`, endpoint);
+
+      const payload = {
+        amount: transaction.amount,
+        idClient: transaction.idCliente?.toString() || '',
+        idTransaction: transaction.id.toString(),
+      };
+      console.log(`[${opId}] Payload de la solicitud:`, payload);
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Aquí puedes enviar datos adicionales si tu backend los necesita
-        body: JSON.stringify({
-          amount: transaction.amount,
-          idClient: transaction.idCliente?.toString() || '',
-          idTransaction: transaction.id.toString(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
+        console.error(`[${opId}] ERROR: Respuesta no exitosa:`, response.status);
         throw new Error(`Error al confirmar la transacción: ${response.status}`);
       }
 
       const responseData = await response.json();
+      console.log(`[${opId}] FIN: Transacción aprobada, respuesta:`, responseData);
       return responseData.transaction;
     } catch (error) {
       console.error('Error al aprobar transacción:', error);
