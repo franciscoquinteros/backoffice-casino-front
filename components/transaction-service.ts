@@ -134,7 +134,13 @@ class TransactionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        // Aquí puedes enviar datos adicionales si tu backend los necesita
+        body: JSON.stringify({
+          amount: transaction.amount,
+          idClient: transaction.idCliente?.toString() || '',
+          idTransaction: transaction.id.toString(),
+        }),
       });
 
       if (!response.ok) {
