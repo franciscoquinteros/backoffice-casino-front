@@ -21,7 +21,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Transaction, transactionService } from "@/components/transaction-service";
-import { ErrorModal } from "@/components/error-modal";
+import { SimpleErrorModal } from "@/components/error-modal";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -41,20 +41,34 @@ export function TransactionTable({
   const [processingId, setProcessingId] = useState<string | number | null>(null);
 
 
-  const [errorModalInfo, setErrorModalInfo] = useState<{
-    isOpen: boolean;
-    title: string;
-    description: string;
-  }>({
+  const [errorModal, setErrorModal] = useState({
     isOpen: false,
     title: '',
-    description: ''
+    message: ''
   });
+
+  // Función para mostrar el modal de error
+  const showErrorModal = (title: string, message: string) => {
+    console.log("MOSTRANDO MODAL:", { title, message });
+    setErrorModal({
+      isOpen: true,
+      title,
+      message
+    });
+  };
 
   // Función para cerrar el modal
   const closeErrorModal = () => {
-    setErrorModalInfo(prev => ({ ...prev, isOpen: false }));
+    console.log("CERRANDO MODAL");
+    setErrorModal({
+      isOpen: false,
+      title: '',
+      message: ''
+    });
   };
+
+
+
   // Ordenar transacciones
   const sortedTransactions = [...transactions].sort((a, b) => {
     const aValue = a[sortField];
@@ -104,7 +118,6 @@ export function TransactionTable({
       const response = await transactionService.approveTransaction(transaction);
       console.log("Respuesta de aprobación:", response);
 
-      // Solo mostrar mensaje de éxito si realmente fue exitoso
       if (response.success && response.transaction) {
         console.log('Transacción aprobada exitosamente');
 
@@ -112,13 +125,18 @@ export function TransactionTable({
           onTransactionApproved(response.transaction);
         }
       } else {
-        // Mostrar mensaje de error específico si falló
-        console.error('Error al aprobar la transacción:', response.error || 'Error desconocido');
+        const errorMessage = response.error || 'Error desconocido';
+        console.error('Error al aprobar la transacción:', errorMessage);
 
-        // Aquí no llamamos a onTransactionApproved porque la transacción no se aprobó
+        // Mostrar el modal con error directo
+        showErrorModal('Error al procesar la transacción', errorMessage);
       }
     } catch (error) {
-      console.error('Error inesperado al aprobar la transacción:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Error inesperado al aprobar la transacción:', errorMessage);
+
+      // Mostrar modal en caso de excepción
+      showErrorModal('Error inesperado', errorMessage);
     } finally {
       setProcessingId(null);
     }
@@ -328,10 +346,10 @@ export function TransactionTable({
         </Table>
       </Card>
 
-      <ErrorModal
-        isOpen={errorModalInfo.isOpen}
-        title={errorModalInfo.title}
-        description={errorModalInfo.description}
+      <SimpleErrorModal
+        isOpen={errorModal.isOpen}
+        title={errorModal.title}
+        message={errorModal.message}
         onClose={closeErrorModal}
       />
     </>
