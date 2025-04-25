@@ -28,16 +28,7 @@ export default function DepositsPendingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado para el modal de error
-  const [errorModalInfo, setErrorModalInfo] = useState<{
-    isOpen: boolean;
-    title: string;
-    description: string;
-  }>({
-    isOpen: false,
-    title: '',
-    description: ''
-  });
+
 
   // Función para cargar transacciones - extraída para poder reutilizarla
   const fetchTransactions = useCallback(async () => {
@@ -118,11 +109,7 @@ export default function DepositsPendingPage() {
         // Si no es exitoso, SIEMPRE mostrar el modal
         console.error("ERROR EN LA TRANSACCIÓN:", result.error);
 
-        setErrorModalInfo({
-          isOpen: true,
-          title: 'Error al procesar la transacción',
-          description: result.error || 'No se pudo completar la operación. Por favor, intente nuevamente.'
-        });
+
 
         // Verificar que el modal se abrió
         console.log("Modal de error activado:", {
@@ -136,11 +123,7 @@ export default function DepositsPendingPage() {
       const transactionError = error as TransactionError;
       console.error('Error inesperado al aprobar la transacción:', transactionError);
 
-      setErrorModalInfo({
-        isOpen: true,
-        title: 'Error inesperado',
-        description: transactionError.message || 'Ocurrió un error al procesar la solicitud.'
-      });
+
 
       // Verificar que el modal se abrió
       console.log("Modal de error activado para excepción:", {
@@ -165,18 +148,11 @@ export default function DepositsPendingPage() {
       // Convertir el error a un tipo más específico
       const transactionError = error as TransactionError;
       console.error('Error al rechazar la transacción:', transactionError);
-      setErrorModalInfo({
-        isOpen: true,
-        title: 'Error al rechazar la transacción',
-        description: transactionError.message || 'No se pudo rechazar la transacción. Por favor, intente nuevamente.'
-      });
+
     }
   };
 
   // Cerrar el modal de error
-  const closeErrorModal = () => {
-    setErrorModalInfo(prev => ({ ...prev, isOpen: false }));
-  };
 
   return (
     <div className="container mx-auto p-4">
