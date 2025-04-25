@@ -25,6 +25,7 @@ export interface Transaction {
   office?: string; // Campo opcional para la oficina
 }
 
+
 export interface TransactionFilter {
   office?: string;
   method?: string;
@@ -35,12 +36,16 @@ export interface TransactionFilter {
   dateTo?: string;
 }
 
+
+
 class TransactionService {
   private apiUrl: string;
 
   constructor() {
     this.apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
   }
+
+
 
   // Obtener todas las transacciones
   async getTransactions(): Promise<Transaction[]> {
@@ -126,62 +131,62 @@ class TransactionService {
 
   // Aprobar una transacción
   // components/transaction-service.ts
-// Añadir al final de la clase TransactionService
+  // Añadir al final de la clase TransactionService
 
-async approveTransaction(transaction: Transaction): Promise<{success: boolean, transaction?: Transaction, error?: string}> {
-  const opId = `fe_approve_${transaction.id}_${Date.now()}`;
-  console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
-  
-  try {
-    const transactionType = transaction.type;
-    const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/accept`;
-    console.log(`[${opId}] Enviando solicitud a endpoint:`, endpoint);
+  async approveTransaction(transaction: Transaction): Promise<{ success: boolean, transaction?: Transaction, error?: string }> {
+    const opId = `fe_approve_${transaction.id}_${Date.now()}`;
+    console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
 
-    const payload = {
-      amount: transaction.amount,
-      idClient: transaction.idCliente?.toString() || '',
-      idTransaction: transaction.id.toString(),
-    };
-    console.log(`[${opId}] Payload de la solicitud:`, payload);
+    try {
+      const transactionType = transaction.type;
+      const endpoint = `${this.apiUrl}/transactions/${transactionType}/${transaction.id}/accept`;
+      console.log(`[${opId}] Enviando solicitud a endpoint:`, endpoint);
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+      const payload = {
+        amount: transaction.amount,
+        idClient: transaction.idCliente?.toString() || '',
+        idTransaction: transaction.id.toString(),
+      };
+      console.log(`[${opId}] Payload de la solicitud:`, payload);
 
-    const responseData = await response.json();
-    console.log(`[${opId}] Respuesta recibida:`, responseData);
-    
-    if (!response.ok) {
-      // Extraer el mensaje de error de la respuesta si existe
-      const errorMsg = responseData.message || 
-                       responseData.error || 
-                       `Error al confirmar la transacción: ${response.status}`;
-      console.error(`[${opId}] ERROR: ${errorMsg}`);
-      return { 
-        success: false, 
-        error: errorMsg 
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+      console.log(`[${opId}] Respuesta recibida:`, responseData);
+
+      if (!response.ok) {
+        // Extraer el mensaje de error de la respuesta si existe
+        const errorMsg = responseData.message ||
+          responseData.error ||
+          `Error al confirmar la transacción: ${response.status}`;
+        console.error(`[${opId}] ERROR: ${errorMsg}`);
+        return {
+          success: false,
+          error: errorMsg
+        };
+      }
+
+      console.log(`[${opId}] FIN: Transacción aprobada, respuesta:`, responseData);
+
+      return {
+        success: true,
+        transaction: responseData.transaction
+      };
+    } catch (error: any) {
+      console.error(`[${opId}] ERROR: Error al aprobar transacción:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al procesar la transacción';
+      return {
+        success: false,
+        error: errorMessage
       };
     }
-
-    console.log(`[${opId}] FIN: Transacción aprobada, respuesta:`, responseData);
-    
-    return { 
-      success: true, 
-      transaction: responseData.transaction
-    };
-  } catch (error: any) {
-    console.error(`[${opId}] ERROR: Error al aprobar transacción:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'Error al procesar la transacción';
-    return { 
-      success: false, 
-      error: errorMessage
-    };
   }
-}
 
   // Rechazar una transacción
   async rejectTransaction(transaction: Transaction): Promise<Transaction> {
