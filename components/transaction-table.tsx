@@ -21,6 +21,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Transaction, transactionService } from "@/components/transaction-service";
+import { ErrorModal } from "@/components/error-modal";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -39,6 +40,21 @@ export function TransactionTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
 
+
+  const [errorModalInfo, setErrorModalInfo] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    title: '',
+    description: ''
+  });
+
+  // Función para cerrar el modal
+  const closeErrorModal = () => {
+    setErrorModalInfo(prev => ({ ...prev, isOpen: false }));
+  };
   // Ordenar transacciones
   const sortedTransactions = [...transactions].sort((a, b) => {
     const aValue = a[sortField];
@@ -79,20 +95,30 @@ export function TransactionTable({
   };
 
   // Maneja la aprobación de una transacción
+  // Maneja la aprobación de una transacción
   const handleApprove = async (transaction: Transaction) => {
     try {
       setProcessingId(transaction.id);
+      console.log("Iniciando aprobación para:", transaction.id);
+
       const response = await transactionService.approveTransaction(transaction);
+      console.log("Respuesta de aprobación:", response);
 
-      if (onTransactionApproved && response.success && response.transaction) {
-        onTransactionApproved(response.transaction);
+      // Solo mostrar mensaje de éxito si realmente fue exitoso
+      if (response.success && response.transaction) {
+        console.log('Transacción aprobada exitosamente');
+
+        if (onTransactionApproved) {
+          onTransactionApproved(response.transaction);
+        }
+      } else {
+        // Mostrar mensaje de error específico si falló
+        console.error('Error al aprobar la transacción:', response.error || 'Error desconocido');
+
+        // Aquí no llamamos a onTransactionApproved porque la transacción no se aprobó
       }
-
-      // Opcional: mostrar mensaje de éxito
-      console.log('Transacción aprobada exitosamente');
     } catch (error) {
-      console.error('Error al aprobar la transacción:', error);
-      // Opcional: mostrar mensaje de error
+      console.error('Error inesperado al aprobar la transacción:', error);
     } finally {
       setProcessingId(null);
     }
@@ -185,120 +211,130 @@ export function TransactionTable({
   }
 
   return (
-    <Card>
-      <div className="flex justify-end p-4">
-        <Button variant="outline" size="sm" className="flex items-center gap-1">
-          <Download className="h-4 w-4" />
-          <span>Exportar</span>
-        </Button>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => handleSort('id')}
-            >
-              <div className="flex items-center">
-                ID
-                <ArrowUpDown className="ml-1 h-4 w-4" />
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => handleSort('idCliente')}
-            >
-              <div className="flex items-center">
-                Cliente
-                <ArrowUpDown className="ml-1 h-4 w-4" />
-              </div>
-            </TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => handleSort('amount')}
-            >
-              <div className="flex items-center">
-                Monto
-                <ArrowUpDown className="ml-1 h-4 w-4" />
-              </div>
-            </TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => handleSort('date_created')}
-            >
-              <div className="flex items-center">
-                Fecha
-                <ArrowUpDown className="ml-1 h-4 w-4" />
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => handleSort('payment_method_id')}
-            >
-              <div className="flex items-center">
-                Método
-                <ArrowUpDown className="ml-1 h-4 w-4" />
-              </div>
-            </TableHead>
-            <TableHead>Email/Cuenta</TableHead>
-            {showApproveButton && <TableHead>Acción</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedTransactions.map((transaction, index) => (
-            <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
-              <TableCell className="font-medium">{transaction.id}</TableCell>
-              <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
-              <TableCell>{transaction.description}</TableCell>
-              <TableCell className="font-medium">
-                {formatAmount(transaction.amount)}
-              </TableCell>
-              <TableCell>
-                {renderStatusBadge(transaction.status)}
-              </TableCell>
-              <TableCell>{formatDate(transaction.date_created)}</TableCell>
-              <TableCell>{formatMethod(transaction.payment_method_id)}</TableCell>
-              <TableCell>
-                {transaction.payer_email ||
-                  transaction.wallet_address ||
-                  transaction.cbu ||
-                  'No disponible'}
-              </TableCell>
-              {showApproveButton && (
-                <TableCell>
-                  {transaction.status === 'Pending' ? (
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => handleApprove(transaction)}
-                        disabled={processingId === transaction.id}
-                        size="sm"
-                        className="bg-green-500 hover:bg-green-600 text-white"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        <span>Aceptar</span>
-                      </Button>
-                      <Button
-                        onClick={() => handleReject(transaction)}
-                        disabled={processingId === transaction.id}
-                        size="sm"
-                        variant="destructive"
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        <span>Rechazar</span>
-                      </Button>
-                    </div>
-                  ) : (
-                    renderStatusBadge(transaction.status)
-                  )}
-                </TableCell>
-              )}
+    <>
+      <Card>
+        <div className="flex justify-end p-4">
+          <Button variant="outline" size="sm" className="flex items-center gap-1">
+            <Download className="h-4 w-4" />
+            <span>Exportar</span>
+          </Button>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('id')}
+              >
+                <div className="flex items-center">
+                  ID
+                  <ArrowUpDown className="ml-1 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('idCliente')}
+              >
+                <div className="flex items-center">
+                  Cliente
+                  <ArrowUpDown className="ml-1 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>Descripción</TableHead>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('amount')}
+              >
+                <div className="flex items-center">
+                  Monto
+                  <ArrowUpDown className="ml-1 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('date_created')}
+              >
+                <div className="flex items-center">
+                  Fecha
+                  <ArrowUpDown className="ml-1 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('payment_method_id')}
+              >
+                <div className="flex items-center">
+                  Método
+                  <ArrowUpDown className="ml-1 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>Email/Cuenta</TableHead>
+              {showApproveButton && <TableHead>Acción</TableHead>}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+          </TableHeader>
+          <TableBody>
+            {sortedTransactions.map((transaction, index) => (
+              <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
+                <TableCell className="font-medium">{transaction.id}</TableCell>
+                <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
+                <TableCell>{transaction.description}</TableCell>
+                <TableCell className="font-medium">
+                  {formatAmount(transaction.amount)}
+                </TableCell>
+                <TableCell>
+                  {renderStatusBadge(transaction.status)}
+                </TableCell>
+                <TableCell>{formatDate(transaction.date_created)}</TableCell>
+                <TableCell>{formatMethod(transaction.payment_method_id)}</TableCell>
+                <TableCell>
+                  {transaction.payer_email ||
+                    transaction.wallet_address ||
+                    transaction.cbu ||
+                    'No disponible'}
+                </TableCell>
+                {showApproveButton && (
+                  <TableCell>
+                    {transaction.status === 'Pending' ? (
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => handleApprove(transaction)}
+                          disabled={processingId === transaction.id}
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 text-white"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          <span>Aceptar</span>
+                        </Button>
+                        <Button
+                          onClick={() => handleReject(transaction)}
+                          disabled={processingId === transaction.id}
+                          size="sm"
+                          variant="destructive"
+                          className="bg-red-500 hover:bg-red-600 text-white"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          <span>Rechazar</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      renderStatusBadge(transaction.status)
+                    )}
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <ErrorModal
+        isOpen={errorModalInfo.isOpen}
+        title={errorModalInfo.title}
+        description={errorModalInfo.description}
+        onClose={closeErrorModal}
+      />
+    </>
+
   );
 }
