@@ -166,9 +166,18 @@ export function TransactionTable({
       }
 
       console.log('Transacción rechazada exitosamente');
+      
+      // No reseteamos processingId para mantener los botones deshabilitados
+      return;
     } catch (error) {
       console.error('Error al rechazar la transacción:', error);
+      
+      // Mostrar modal de error si hay algún problema
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      showErrorModal('Error al rechazar la transacción', errorMessage);
     } finally {
+      // Solo limpiamos processingId si entramos al bloque finally (cuando hay error)
+      // Si la operación fue exitosa, retornamos antes de llegar aquí
       setProcessingId(null);
     }
   };
