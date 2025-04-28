@@ -28,13 +28,15 @@ interface TransactionTableProps {
   showApproveButton?: boolean;
   onTransactionApproved?: (updatedTransaction: Transaction) => void;
   onTransactionRejected?: (transaction: Transaction) => void;
+  isRefreshing?: boolean;
 }
 
 export function TransactionTable({
   transactions,
   showApproveButton = false,
   onTransactionApproved,
-  onTransactionRejected
+  onTransactionRejected,
+  isRefreshing = false
 }: TransactionTableProps) {
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -109,9 +111,7 @@ export function TransactionTable({
   };
 
   // Maneja la aprobación de una transacción
-  // Maneja la aprobación de una transacción
   const handleApprove = async (transaction: Transaction) => {
-
     if (processingId === transaction.id) {
       console.log(`Transacción ${transaction.id} ya está siendo procesada, ignorando segunda solicitud`);
       return;
@@ -130,6 +130,8 @@ export function TransactionTable({
         if (onTransactionApproved) {
           onTransactionApproved(response.transaction);
         }
+        // No eliminamos processingId para mantener los botones deshabilitados
+        return;
       } else {
         const errorMessage = response.error || 'Error desconocido';
         console.error('Error al aprobar la transacción:', errorMessage);
@@ -144,6 +146,8 @@ export function TransactionTable({
       // Mostrar modal en caso de excepción
       showErrorModal('Error inesperado', errorMessage);
     } finally {
+      // Solo limpiamos processingId si entramos al bloque finally (cuando hay error)
+      // Si la operación fue exitosa, retornamos antes de llegar aquí
       setProcessingId(null);
     }
   };
@@ -236,12 +240,20 @@ export function TransactionTable({
 
   return (
     <>
-      <Card>
-        <div className="flex justify-end p-4">
-          <Button variant="outline" size="sm" className="flex items-center gap-1">
-            <Download className="h-4 w-4" />
-            <span>Exportar</span>
-          </Button>
+      <Card className={isRefreshing ? "opacity-70 transition-opacity" : ""}>
+        <div className="flex justify-between p-4">
+          {isRefreshing && (
+            <div className="flex items-center">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
+              <span className="text-sm text-muted-foreground">Actualizando...</span>
+            </div>
+          )}
+          <div className={isRefreshing ? "ml-auto" : "w-full flex justify-end"}>
+            <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <Download className="h-4 w-4" />
+              <span>Exportar</span>
+            </Button>
+          </div>
         </div>
         <Table>
           <TableHeader>

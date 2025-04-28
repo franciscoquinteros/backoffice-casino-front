@@ -28,15 +28,16 @@ export default function DepositsPendingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
-
   // Función para cargar transacciones - extraída para poder reutilizarla
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (isInitialLoad = false) => {
     try {
-      setIsLoading(true);
+      // Solo mostrar el loading state en la carga inicial
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+      
       const data = await transactionService.getTransactions();
-      setTransactions(data);
-
+      
       // Filtrar depósitos pendientes
       const pendingDeposits = transactionService.filterTransactions(
         data,
@@ -44,6 +45,9 @@ export default function DepositsPendingPage() {
         'Pending',
         filters
       );
+      
+      // Actualizar ambos estados de manera atómica para evitar renders innecesarios
+      setTransactions(data);
       setFilteredTransactions(pendingDeposits);
       setError(null);
     } catch (err) {
@@ -56,10 +60,11 @@ export default function DepositsPendingPage() {
 
   // Cargar transacciones inicialmente
   useEffect(() => {
-    fetchTransactions();
+    // Pasar true para indicar que es la carga inicial
+    fetchTransactions(true);
 
     // Actualización periódica (30 segundos)
-    const intervalId = setInterval(fetchTransactions, 30000);
+    const intervalId = setInterval(() => fetchTransactions(false), 30000);
     return () => clearInterval(intervalId);
   }, [fetchTransactions]); // Agregado fetchTransactions como dependencia
 
@@ -87,8 +92,6 @@ export default function DepositsPendingPage() {
   };
 
   // Manejar la aprobación de una transacción
-  // Manejar la aprobación de una transacción
-  // Manejar la aprobación de una transacción
   const handleTransactionApproved = async (transaction: Transaction) => {
     try {
       // Log antes de la llamada
@@ -102,14 +105,12 @@ export default function DepositsPendingPage() {
       console.log("¿La transacción fue exitosa?", result.success);
 
       if (result.success === true) {
-        // Solo recargar datos si fue exitoso
+        // Solo recargar datos si fue exitoso, sin indicar carga inicial
         console.log("Transacción aprobada exitosamente. Recargando datos...");
-        await fetchTransactions();
+        await fetchTransactions(false);
       } else {
         // Si no es exitoso, SIEMPRE mostrar el modal
         console.error("ERROR EN LA TRANSACCIÓN:", result.error);
-
-
 
         // Verificar que el modal se abrió
         console.log("Modal de error activado:", {
@@ -122,8 +123,6 @@ export default function DepositsPendingPage() {
       // Convertir el error a un tipo más específico
       const transactionError = error as TransactionError;
       console.error('Error inesperado al aprobar la transacción:', transactionError);
-
-
 
       // Verificar que el modal se abrió
       console.log("Modal de error activado para excepción:", {
@@ -140,15 +139,14 @@ export default function DepositsPendingPage() {
       // Actualizar la transacción en la base de datos
       await transactionService.rejectTransaction(rejectedTransaction);
 
-      // Recargar los datos para reflejar el cambio
-      await fetchTransactions();
+      // Recargar los datos para reflejar el cambio, sin indicar carga inicial
+      await fetchTransactions(false);
 
       console.log('Transacción rechazada y datos recargados');
     } catch (error: unknown) {
       // Convertir el error a un tipo más específico
       const transactionError = error as TransactionError;
       console.error('Error al rechazar la transacción:', transactionError);
-
     }
   };
 
@@ -172,7 +170,7 @@ export default function DepositsPendingPage() {
           />
 
           {/* Tabla de transacciones */}
-          {isLoading ? (
+          {isLoading && transactions.length === 0 ? (
             <TableSkeleton columns={[]} rowCount={5} />
           ) : error ? (
             <Card className="p-8 text-center">
@@ -184,6 +182,7 @@ export default function DepositsPendingPage() {
               showApproveButton={true}
               onTransactionApproved={handleTransactionApproved}
               onTransactionRejected={handleTransactionRejected}
+              isRefreshing={isLoading && transactions.length > 0}
             />
           )}
         </div>
