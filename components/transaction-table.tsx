@@ -111,6 +111,12 @@ export function TransactionTable({
   // Maneja la aprobación de una transacción
   // Maneja la aprobación de una transacción
   const handleApprove = async (transaction: Transaction) => {
+
+    if (processingId === transaction.id) {
+      console.log(`Transacción ${transaction.id} ya está siendo procesada, ignorando segunda solicitud`);
+      return;
+    }
+    
     try {
       setProcessingId(transaction.id);
       console.log("Iniciando aprobación para:", transaction.id);
