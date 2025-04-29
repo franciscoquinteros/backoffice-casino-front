@@ -16,6 +16,11 @@ import {
 } from '@/components/transaction-service';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 
+// Definimos una interfaz para errores
+interface TransactionError extends Error {
+  message: string;
+}
+
 export default function WithdrawalsPendingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
@@ -24,12 +29,15 @@ export default function WithdrawalsPendingPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Función para cargar transacciones - extraída para poder reutilizarla
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (isInitialLoad = false) => {
     try {
-      setIsLoading(true);
+      // Solo mostrar el loading state en la carga inicial
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+      
       const data = await transactionService.getTransactions();
-      setTransactions(data);
-
+      
       // Filtrar retiros pendientes
       const pendingWithdrawals = transactionService.filterTransactions(
         data,
@@ -37,6 +45,9 @@ export default function WithdrawalsPendingPage() {
         'Pending',
         filters
       );
+      
+      // Actualizar ambos estados de manera atómica para evitar renders innecesarios
+      setTransactions(data);
       setFilteredTransactions(pendingWithdrawals);
       setError(null);
     } catch (err) {
@@ -49,10 +60,11 @@ export default function WithdrawalsPendingPage() {
 
   // Cargar transacciones inicialmente
   useEffect(() => {
-    fetchTransactions();
+    // Pasar true para indicar que es la carga inicial
+    fetchTransactions(true);
 
     // Actualización periódica (30 segundos)
-    const intervalId = setInterval(fetchTransactions, 30000);
+    const intervalId = setInterval(() => fetchTransactions(false), 30000);
     return () => clearInterval(intervalId);
   }, [fetchTransactions]); // Agregado fetchTransactions como dependencia
 
@@ -82,15 +94,21 @@ export default function WithdrawalsPendingPage() {
   // Manejar la aprobación de una transacción
   const handleTransactionApproved = async (updatedTransaction: Transaction) => {
     try {
-      // Actualizar la transacción en la base de datos
-      await transactionService.approveTransaction(updatedTransaction);
 
-      // Recargar los datos para reflejar el cambio
-      await fetchTransactions();
+      // Llamamos al servicio
+      const result = await transactionService.approveTransaction(updatedTransaction);
 
-      console.log('Transacción aprobada y datos recargados');
-    } catch (error) {
-      console.error('Error al aprobar la transacción:', error);
+      if (result.success === true) {
+        // Solo recargar datos si fue exitoso, sin indicar carga inicial
+        await fetchTransactions(false);
+      } else {
+        // Si no es exitoso, SIEMPRE mostrar el modal
+        console.error("ERROR EN LA TRANSACCIÓN:", result.error);
+      }
+    } catch (error: unknown) {
+      // Convertir el error a un tipo más específico
+      const transactionError = error as TransactionError;
+      console.error('Error inesperado al aprobar la transacción:', transactionError);
     }
   };
 
@@ -100,12 +118,13 @@ export default function WithdrawalsPendingPage() {
       // Actualizar la transacción en la base de datos
       await transactionService.rejectTransaction(rejectedTransaction);
 
-      // Recargar los datos para reflejar el cambio
-      await fetchTransactions();
+      // Recargar los datos para reflejar el cambio, sin indicar carga inicial
+      await fetchTransactions(false);
 
-      console.log('Transacción rechazada y datos recargados');
-    } catch (error) {
-      console.error('Error al rechazar la transacción:', error);
+    } catch (error: unknown) {
+      // Convertir el error a un tipo más específico
+      const transactionError = error as TransactionError;
+      console.error('Error al rechazar la transacción:', transactionError);
     }
   };
 
@@ -127,7 +146,7 @@ export default function WithdrawalsPendingPage() {
           />
 
           {/* Tabla de transacciones */}
-          {isLoading ? (
+          {isLoading && transactions.length === 0 ? (
             <TableSkeleton columns={[]} rowCount={5} />
           ) : error ? (
             <Card className="p-8 text-center">
@@ -139,6 +158,7 @@ export default function WithdrawalsPendingPage() {
               showApproveButton={true}
               onTransactionApproved={handleTransactionApproved}
               onTransactionRejected={handleTransactionRejected}
+              isRefreshing={isLoading && transactions.length > 0}
             />
           )}
         </div>

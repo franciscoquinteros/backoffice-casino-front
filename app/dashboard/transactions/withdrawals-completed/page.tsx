@@ -1,7 +1,7 @@
 // app/dashboard/transactions/withdrawals-completed/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   TransactionTable 
@@ -23,35 +23,8 @@ export default function WithdrawalsCompletedPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar transacciones
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setIsLoading(true);
-        const data = await transactionService.getTransactions();
-        setTransactions(data);
-        
-        // Filtrar retiros completados con los filtros actuales
-        updateFilteredTransactions(data, filters);
-        
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('No se pudieron cargar las transacciones');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTransactions();
-
-    // Actualización periódica (30 segundos)
-    const intervalId = setInterval(fetchTransactions, 30000);
-    return () => clearInterval(intervalId);
-  }, [filters]); // Agregado filters como dependencia
-
   // Función para actualizar las transacciones filtradas
-  const updateFilteredTransactions = (data: Transaction[], currentFilters: TransactionFilter) => {
+  const updateFilteredTransactions = useCallback((data: Transaction[], currentFilters: TransactionFilter) => {
     // Filtrar retiros completados
     const completedWithdrawals = transactionService.filterTransactions(
       data, 
@@ -69,14 +42,46 @@ export default function WithdrawalsCompletedPage() {
     );
     
     setFilteredTransactions([...completedWithdrawals, ...approvedWithdrawals]);
-  };
+  }, []);
+
+  // Función para cargar transacciones - extraída para poder reutilizarla
+  const fetchTransactions = useCallback(async (isInitialLoad = false) => {
+    try {
+      // Solo mostrar el loading state en la carga inicial
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+      
+      const data = await transactionService.getTransactions();
+      
+      // Actualizar las transacciones y aplicar los filtros
+      setTransactions(data);
+      updateFilteredTransactions(data, filters);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError('No se pudieron cargar las transacciones');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, updateFilteredTransactions]);
+
+  // Cargar transacciones inicialmente
+  useEffect(() => {
+    // Pasar true para indicar que es la carga inicial
+    fetchTransactions(true);
+
+    // Actualización periódica (30 segundos)
+    const intervalId = setInterval(() => fetchTransactions(false), 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchTransactions]);
 
   // Actualizar cuando cambian los filtros o las transacciones
   useEffect(() => {
     if (transactions.length > 0) {
       updateFilteredTransactions(transactions, filters);
     }
-  }, [filters, transactions]);
+  }, [filters, transactions, updateFilteredTransactions]);
 
   // Manejar cambios en los filtros
   const handleFilterChange = (newFilters: TransactionFilter) => {
@@ -106,7 +111,7 @@ export default function WithdrawalsCompletedPage() {
           />
           
           {/* Tabla de transacciones */}
-          {isLoading ? (
+          {isLoading && transactions.length === 0 ? (
             <TableSkeleton columns={[]} rowCount={5} />
           ) : error ? (
             <Card className="p-8 text-center">
@@ -116,6 +121,7 @@ export default function WithdrawalsCompletedPage() {
             <TransactionTable 
               transactions={filteredTransactions} 
               showApproveButton={false}
+              isRefreshing={isLoading && transactions.length > 0}
             />
           )}
         </div>
