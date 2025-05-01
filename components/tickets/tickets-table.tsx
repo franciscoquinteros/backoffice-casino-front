@@ -1,157 +1,129 @@
-"use client"
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Ticket } from '@/components/tickets/tickets-client';
 
-import { useState, useEffect } from "react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { TicketChatModal } from "./ticket-chat-modal"
-import { Ticket } from "./tickets-client"
-import { Card } from "@/components/ui/card"
-import { format, parseISO } from "date-fns"
-import { es } from "date-fns/locale"
-
+// Asegúrate de que esta interfaz coincida con la definida en tickets-client.tsx
 interface TicketsTableProps {
-  tickets: Ticket[]
+  tickets: Array<{
+    id: string | number;
+    subject: string;
+    description?: string;
+    status?: string;
+    created_at?: string;
+    updated_at?: string;
+    requester_id?: string | number;
+    assignee_id?: string | number;
+    user?: {
+      name?: string;
+      email?: string;
+    };
+    internal_assignee?: {
+      id: string | number;
+      name?: string;
+      username?: string;
+      email?: string;
+    };
+    group_id?: string | number;
+    custom_fields?: any[];
+  }>;
 }
 
-export function TicketsTable({ tickets = [] }: TicketsTableProps) {
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
-  const [agentId] = useState<string>("12345")
-  const [ticketsState, setTicketsState] = useState<Ticket[]>(tickets);
+export function TicketsTable({ tickets }: TicketsTableProps) {
+  const router = useRouter();
 
-  useEffect(() => {
-    setTicketsState(tickets);
-  }, [tickets]);
-
-  const handleTicketUpdated = (updatedTicket: Ticket) => {
-    setTicketsState(currentTickets => 
-      currentTickets.map(ticket => 
-        ticket.id === updatedTicket.id ? updatedTicket : ticket
-      )
-    );
-    // También actualiza el ticket seleccionado si es el mismo
-    if (selectedTicket && selectedTicket.id === updatedTicket.id) {
-      setSelectedTicket(updatedTicket);
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return formatDistanceToNow(date, { addSuffix: true, locale: es });
+    } catch (e) {
+      return 'Fecha inválida';
     }
   };
 
-  const getStatusColor = (status: string = ""): string => {
+  const getStatusVariant = (status?: string): "default" | "secondary" | "outline" | "destructive" | null | undefined => {
+    if (!status) return 'default';
     switch (status.toLowerCase()) {
-      case 'open':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-      case 'solved':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
-      case 'closed':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
+      case 'open': return 'default';
+      case 'new': return 'default';
+      case 'pending': return 'outline';
+      case 'hold': return 'outline';
+      case 'solved': return 'secondary';
+      case 'closed': return 'secondary';
+      default: return 'outline';
     }
-  }
+  };
 
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A'
-    try {
-      return format(parseISO(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
-    } catch (error) {
-      return 'Fecha inválida ' + error
-    }
-  }
-
-  if (!Array.isArray(ticketsState) || ticketsState.length === 0) {
-    return (
-      <Card className="p-8 text-center">
-        <p className="text-muted-foreground">No hay tickets disponibles</p>
-      </Card>
-    )
-  }
+  const handleRowClick = (ticketId: string | number) => {
+    router.push(`/dashboard/tickets/${ticketId}`);
+  };
 
   return (
-    <>
-      <Card>
-        <Table>
-          <TableHeader>
+    <div className="border rounded-md">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[70px]">ID</TableHead>
+            <TableHead>Usuario</TableHead>
+            <TableHead>Asunto</TableHead>
+            <TableHead>Detalle</TableHead>
+            <TableHead className="w-24">Estado</TableHead>
+            <TableHead>Operador Asignado</TableHead>
+            <TableHead className="w-32">Creado</TableHead>
+            <TableHead className="w-32">Actualizado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tickets.length === 0 ? (
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Asunto</TableHead>
-              <TableHead>Detalle</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Operador Asignado</TableHead>
-              <TableHead>Creado</TableHead>
-              <TableHead>Actualizado</TableHead>
+              <TableCell colSpan={8} className="h-24 text-center">
+                No se encontraron tickets.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ticketsState.map((ticket) => (
-              <TableRow
-                key={ticket.id}
+          ) : (
+            tickets.map((ticket) => (
+              <TableRow 
+                key={ticket.id} 
                 className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedTicket(ticket)}
+                onClick={() => handleRowClick(ticket.id)}
               >
-                <TableCell className="font-medium">#{ticket.id || 'N/A'}</TableCell>
+                <TableCell className="font-medium">{ticket.id}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="font-medium">{ticket.user?.name || 'Usuario desconocido'}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {ticket.user?.email || 'Sin email'}
-                    </span>
+                    <span className="font-medium">{ticket.user?.name || 'Sin nombre'}</span>
+                    <span className="text-xs text-muted-foreground">{ticket.user?.email || 'Sin email'}</span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="font-medium">{ticket.subject || 'Sin asunto'}</span>
+                <TableCell>{ticket.subject || 'Sin asunto'}</TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {ticket.description || 'Sin descripción'}
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-muted-foreground line-clamp-2">
-                    {ticket.description || 'Sin descripción'}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(ticket.status)}>
+                  <Badge variant={getStatusVariant(ticket.status)}>
                     {ticket.status || 'Desconocido'}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   {ticket.internal_assignee ? (
                     <div className="flex flex-col">
-                      <span className="font-medium">{ticket.internal_assignee.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {ticket.internal_assignee.email}
-                      </span>
+                      <span className="font-medium">{ticket.internal_assignee.name || ticket.internal_assignee.username || 'Sin nombre'}</span>
+                      <span className="text-xs text-muted-foreground">{ticket.internal_assignee.email || 'Sin email'}</span>
                     </div>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Sin asignar</span>
+                    <span className="text-muted-foreground">No asignado</span>
                   )}
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{formatDate(ticket.created_at)}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm">{formatDate(ticket.updated_at)}</span>
-                </TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(ticket.created_at)}</TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(ticket.updated_at)}</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {selectedTicket && (
-        <TicketChatModal
-          isOpen={!!selectedTicket}
-          onClose={() => setSelectedTicket(null)}
-          user={selectedTicket.user}
-          ticketId={selectedTicket.id}
-          agentId={agentId}
-          onTicketUpdated={handleTicketUpdated}
-        />
-      )}
-    </>
-  )
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }

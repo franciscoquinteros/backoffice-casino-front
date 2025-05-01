@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner"
 import { PlusCircle } from "lucide-react"
 import { useOffices } from "@/components/hooks/use-offices"
+import { useSession } from "next-auth/react"
 
 interface CreateUserModalProps {
     onUserCreated: () => Promise<void>
@@ -40,7 +41,7 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
         status: "active",
         password: "",
     })
-    
+    const { data: session, status: sessionStatus } = useSession();
     // Utilizamos el hook para obtener las oficinas
     const { activeOffices, isLoading: isLoadingOffices, error: officesError } = useOffices()
 
@@ -51,26 +52,36 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+
         if (!formData.username || !formData.email || !formData.role || !formData.office || !formData.password) {
             toast.error("Por favor completa todos los campos requeridos")
             return
         }
 
         setIsLoading(true)
+        // --- Verificación de Sesión y Token ---
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("Autenticación requerida para crear usuario.");
+            setIsLoading(false);
+            return;
+        }
+        const accessToken = session.accessToken;
+        // --- Fin Verificación ---
 
         try {
             // Usar el endpoint correspondiente según el tipo de usuario
             const endpoint = userType === 'internal' ? 'users' : 'external-users'
-            
+
             // Enviamos los datos sin conversión a número
             const dataToSubmit = {
                 ...formData
             }
-            
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify(dataToSubmit),
             })

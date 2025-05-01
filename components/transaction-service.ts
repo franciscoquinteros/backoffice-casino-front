@@ -41,6 +41,12 @@ export interface TransactionUpdateInfo {
   [key: string]: string | number | boolean | undefined;
 }
 
+export interface TransactionOperationResult {
+    success: boolean;
+    transaction?: Transaction; // Devuelve la transacción actualizada en caso de éxito
+    error?: string; // Devuelve un mensaje de error en caso de fallo
+  }
+
 // Define una interfaz para el resultado de approveTransaction
 export interface ApproveTransactionResult {
   success: boolean;
@@ -56,20 +62,71 @@ class TransactionService {
   }
 
   // Obtener todas las transacciones
-  async getTransactions(): Promise<Transaction[]> {
-    try {
-      const response = await fetch(`${this.apiUrl}/transactions`);
-
-      if (!response.ok) {
-        throw new Error(`Error al obtener transacciones: ${response.status}`);
+  
+    /**
+     * Obtiene las transacciones para una oficina específica desde el backend.
+     * Requiere el ID de la oficina y el token de acceso del usuario.
+     * @param officeId - El ID de la oficina para la cual obtener transacciones.
+     * @param accessToken - El token JWT del usuario autenticado.
+     * @returns Promise<Transaction[]> - Un array de transacciones para esa oficina.
+     */
+    async getTransactionsForOffice(officeId: string, accessToken: string): Promise<Transaction[]> {
+      if (!officeId) {
+          console.error('getTransactionsForOffice: officeId is required');
+          throw new Error('Office ID is required to fetch transactions.');
+      }
+      if (!accessToken) {
+          console.error('getTransactionsForOffice: accessToken is required');
+          // Podrías devolver un array vacío o lanzar un error más específico
+          throw new Error('Authentication token is required.');
+      }
+      if (!this.apiUrl) {
+           throw new Error('API URL is not configured.');
       }
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error obteniendo transacciones:', error);
-      throw error;
-    }
+      // Construye la URL correcta del endpoint del backend
+      const endpoint = `${this.apiUrl}/transactions/${encodeURIComponent(officeId)}`;
+      console.log(`[FE Service] Fetching transactions from: ${endpoint}`);
+
+      try {
+          const response = await fetch(endpoint, {
+              method: 'GET', // GET es el default, pero explícito es más claro
+              headers: {
+                  // Header de autenticación OBLIGATORIO para el backend
+                  'Authorization': `Bearer ${accessToken}`,
+                  // Headers comunes para APIs JSON
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+              },
+          });
+
+          // Manejo de respuestas no exitosas (4xx, 5xx)
+          if (!response.ok) {
+              let errorMsg = `Error fetching transactions: ${response.status} ${response.statusText}`;
+              try {
+                  // Intenta leer un mensaje de error del cuerpo de la respuesta
+                  const errorData = await response.json();
+                  errorMsg = errorData.message || errorData.error || errorMsg;
+              } catch (e) {
+                  // Si no hay cuerpo JSON o falla el parseo, usa el statusText
+              }
+
+              console.error(`getTransactionsForOffice Error (${response.status}): ${errorMsg}`);
+              // Lanza un error para que el componente que llama pueda manejarlo
+              throw new Error(errorMsg);
+          }
+
+          // Si la respuesta es OK (200), parsea y devuelve los datos
+          const data: Transaction[] = await response.json();
+          console.log(`[FE Service] Received ${data.length} transactions for office ${officeId}`);
+          return data;
+
+      } catch (error) {
+          // Captura errores de red u otros errores durante el fetch/parseo
+          console.error('Error during getTransactionsForOffice fetch:', error);
+          // Re-lanza el error para que el componente lo maneje
+          throw error;
+      }
   }
 
   // Filtrar transacciones por tipo y estado
@@ -138,7 +195,7 @@ class TransactionService {
   }
 
   // Aprobar una transacción
-  async approveTransaction(transaction: Transaction): Promise<ApproveTransactionResult> {
+  async approveTransaction(transaction: Transaction, accessToken: string): Promise<ApproveTransactionResult> {
     const opId = `fe_approve_${transaction.id}_${Date.now()}`;
     console.log(`[${opId}] INICIO: Aprobando transacción frontend:`, transaction.id);
 
@@ -159,6 +216,7 @@ class TransactionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -223,7 +281,7 @@ class TransactionService {
   }
 
   // Rechazar una transacción
-  async rejectTransaction(transaction: Transaction): Promise<Transaction> {
+  async rejectTransaction(transaction: Transaction, accessToken: string): Promise<Transaction> {
     try {
       // Llamar al endpoint de rechazo con el ID de la transacción
       const transactionType = transaction.type;
@@ -235,6 +293,7 @@ class TransactionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         }
       });
 
