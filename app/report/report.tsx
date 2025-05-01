@@ -62,7 +62,7 @@ const ReportsDashboard = () => {
         });
         if (!response.ok) {
             let errorMsg = `Error fetching report data (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (e) { }
+            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
             throw new Error(errorMsg);
         }
         return response.json();
@@ -146,13 +146,14 @@ const ReportsDashboard = () => {
         }
         try { // Renderiza el gráfico
             return renderFunction(data as T);
-        } catch (renderError: any) { // Captura errores de renderizado del gráfico
+        } catch (renderError: unknown) { // Captura errores de renderizado del gráfico
             console.error("Error rendering chart:", renderError);
+            const errorMessage = renderError instanceof Error ? renderError.message : "Error desconocido";
             return (
                 <div className="flex flex-col items-center justify-center h-full text-destructive text-center px-2">
                     <AlertCircle className="h-8 w-8 mb-2 text-red-500" />
                     <p className="text-sm font-medium">Error al mostrar gráfico</p>
-                    <p className="text-xs mt-1">{renderError.message}</p>
+                    <p className="text-xs mt-1">{errorMessage}</p>
                 </div>
             );
         }

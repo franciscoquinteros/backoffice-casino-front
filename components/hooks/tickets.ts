@@ -21,7 +21,7 @@ export interface Ticket {
         email?: string;
     };
     group_id?: string | number;
-    custom_fields?: any[];
+    custom_fields?: string[];
 }
 
 export interface TicketFilter {

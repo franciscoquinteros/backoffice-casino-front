@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
-import { toast } from 'sonner';
 import { SkeletonLoader } from '@/components/skeleton-loader';
 import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
@@ -176,14 +175,14 @@ export function TicketsClient() {
       try {
         const fromDate = new Date(currentFilters.dateFrom).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() >= fromDate);
-      } catch (e) { console.error("Filtro dateFrom inválido"); }
+      } catch (_error) { console.error("Filtro dateFrom inválido"); }
     }
     
     if (currentFilters.dateTo) {
       try {
         const toDate = new Date(currentFilters.dateTo).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() <= toDate);
-      } catch (e) { console.error("Filtro dateTo inválido"); }
+      } catch (_error) { console.error("Filtro dateTo inválido"); }
     }
     
     return filtered;

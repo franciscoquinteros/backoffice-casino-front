@@ -56,7 +56,6 @@ export default function WithdrawPendingPage() {
       );
       
       // Actualizar ambos estados de manera atómica para evitar renders innecesarios
-      setTransactions(data);
       setFilteredTransactions(pendingWithdrawals);
 
       if (isInitialLoad) setError(null);

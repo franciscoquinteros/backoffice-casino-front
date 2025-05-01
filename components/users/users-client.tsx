@@ -76,12 +76,10 @@ export function UsersClient({ userType }: UsersClientProps) {
       setUsers(fetchedUsers);
       setFilteredUsers(fetchedUsers); // Inicialmente, filtrados = todos
 
-    } catch (error: any) {
+    } catch (_error) {
       console.error(`Client error fetching ${userType} users:`, error);
-      setError(error.message || `Error al cargar ${userType} usuarios.`);
       setUsers([]); // Limpia datos en caso de error
       setFilteredUsers([]);
-      toast.error(error.message || `Error al cargar ${userType} usuarios.`);
     } finally {
       setIsLoading(false); // Termina carga
     }
@@ -125,9 +123,8 @@ export function UsersClient({ userType }: UsersClientProps) {
       setFilteredUsers(updateList);
       toast.success("Usuario actualizado");
       return updatedUser;
-    } catch (error: any) {
+    } catch (_error) {
       console.error(`Error updating ${userType} user:`, error);
-      toast.error(error.message || `Error al actualizar ${userType} usuario.`);
       throw error;
     }
   };

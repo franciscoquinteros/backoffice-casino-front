@@ -75,10 +75,7 @@ export default function DepositsPendingPage() {
             // Si todo fue bien y era carga inicial, limpiamos errores
             if(isInitialLoad) setError(null);
 
-        } catch (err: any) {
-            console.error('Error fetching transactions:', err);
-            const errorMsg = err.message || 'No se pudieron cargar las transacciones';
-            setError(errorMsg);
+        } catch (err: unknown) {
             // No mostramos toast aquí para no molestar en las recargas automáticas
             // if (isInitialLoad) toast.error(errorMsg);
         } finally {

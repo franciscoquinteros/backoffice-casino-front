@@ -12,12 +12,8 @@ import {
   transactionService
 } from '@/components/transaction-service'; // Ajusta ruta
 import { TableSkeleton } from '@/components/ui/table-skeleton'; // Ajusta ruta
-import { toast } from "sonner"; // Opcional
 
 // Interfaz para errores (opcional)
-interface TransactionError extends Error {
-  message: string;
-}
 
 export default function WithdrawalsCompletedPage() { // <-- Nombre del componente
   // --- 2. Obtiene la sesión y el estado ---
@@ -62,10 +58,8 @@ export default function WithdrawalsCompletedPage() { // <-- Nombre del component
 
       if (isInitialLoad) setError(null);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching transactions (Withdrawals Completed):', err);
-      const errorMsg = err.message || 'No se pudieron cargar las transacciones';
-      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -105,20 +99,14 @@ export default function WithdrawalsCompletedPage() { // <-- Nombre del component
 
   // --- 7. useEffect para RE-FILTRAR en el cliente ---
   useEffect(() => {
-    if (allOfficeTransactions.length > 0) {
-      console.log("Applying client-side filters (Withdrawals Completed)...");
-      // --- CAMBIO: Filtra para RETIROS COMPLETADOS ---
-      const filtered = transactionService.filterTransactions(
-        allOfficeTransactions,
-        'withdraw', // <--- Tipo: Retiro
-        'Aceptado', // <--- Estado: Completado (incluye rechazados)
-        filters
-      );
-      setFilteredTransactions(filtered);
-    } else if (filteredTransactions.length > 0) {
-      setFilteredTransactions([]);
-    }
-  }, [filters, allOfficeTransactions]); // Depende de filtros y datos base
+    const filtered = transactionService.filterTransactions(
+      allOfficeTransactions,
+      'withdraw', // <-- Cambia a withdraw
+      'Aceptado',
+      filters
+    );
+    setFilteredTransactions(filtered);
+  }, [filters, allOfficeTransactions]);
 
 
   // Manejadores de filtros (sin cambios)

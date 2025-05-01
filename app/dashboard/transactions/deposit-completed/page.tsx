@@ -12,12 +12,8 @@ import {
     transactionService
 } from '@/components/transaction-service'; // Ajusta ruta
 import { TableSkeleton } from '@/components/ui/table-skeleton'; // Ajusta ruta
-import { toast } from "sonner"; // Opcional: Para notificaciones
 
-// Interfaz para errores (opcional, si la usas)
-interface TransactionError extends Error {
-    message: string;
-}
+// Interfaz para errores (opcional, si la usas
 
 export default function DepositsCompletedPage() {
     // --- 2. Obtiene la sesión y el estado ---
@@ -37,8 +33,8 @@ export default function DepositsCompletedPage() {
             console.log("Fetch prevented (Completed Page): Session not ready or missing data.", { sessionStatus });
             if (!isInitialLoad) setIsLoading(false); // Quita el loading si es recarga
             if (sessionStatus === "authenticated") {
-                 setError("Datos de sesión incompletos para cargar transacciones.");
-                 // No mostramos toast aquí para no ser molestos en recargas
+                setError("Datos de sesión incompletos para cargar transacciones.");
+                // No mostramos toast aquí para no ser molestos en recargas
             }
             // Si no está autenticado, el render lo manejará
             return; // No continuar
@@ -73,53 +69,51 @@ export default function DepositsCompletedPage() {
             setFilteredTransactions(completedDeposits); // Actualiza las transacciones a mostrar
 
             // Limpia error si todo salió bien
-            if(isInitialLoad) setError(null);
+            if (isInitialLoad) setError(null);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error fetching transactions (Completed Page):', err);
-            const errorMsg = err.message || 'No se pudieron cargar las transacciones';
-            setError(errorMsg);
             // No mostramos toast en recargas automáticas
             // if (isInitialLoad) toast.error(errorMsg);
         } finally {
             setIsLoading(false); // Quita el estado de carga
         }
-    // Depende de la sesión/status para saber si puede ejecutar y con qué credenciales,
-    // y de 'filters' para aplicar el filtro correcto inmediatamente después de recibir datos nuevos.
+        // Depende de la sesión/status para saber si puede ejecutar y con qué credenciales,
+        // y de 'filters' para aplicar el filtro correcto inmediatamente después de recibir datos nuevos.
     }, [filters, session, sessionStatus]);
 
 
     // --- 5. useEffect para la Carga Inicial ---
     useEffect(() => {
-        // Llama a fetchTransactions solo cuando la sesión esté autenticada
-        if (sessionStatus === "authenticated") {
-            console.log("Session authenticated, performing initial fetch (Completed Page).");
-            fetchTransactions(true); // true indica carga inicial
-        } else if (sessionStatus === "unauthenticated") {
-            setIsLoading(false); // No está cargando si no está autenticado
-            setError("Necesitas iniciar sesión.");
-        }
-        // No hace nada si status === 'loading'
-    }, [sessionStatus, fetchTransactions]); // Depende del status y de la función fetch
+        // Solo re-filtra si ya tenemos datos base de la oficina
+        // Aplica filtros a la lista base y actualiza el estado filtrado
+        const filtered = transactionService.filterTransactions(
+            allOfficeTransactions, // Usa la lista completa ya cargada
+            'deposit',             // Tipo para esta página
+            'Aceptado',           // Estado para esta página (tu lógica maneja completados)
+            filters                // Los filtros ACTUALES de la UI
+        );
+        setFilteredTransactions(filtered);
+    }, [filters, allOfficeTransactions]);// Depende del status y de la función fetch
 
 
     // --- 6. useEffect para la Actualización Periódica ---
-     useEffect(() => {
-         let intervalId: NodeJS.Timeout | null = null;
-         if (sessionStatus === "authenticated") {
-             console.log("Setting up interval fetch (Completed Page)...");
-             intervalId = setInterval(() => {
-                  console.log("Interval fetch triggered (Completed Page)...");
-                  fetchTransactions(false); // false para no mostrar el skeleton grande
-             }, 30000); // 30 segundos
-         }
-         return () => { // Limpieza al desmontar o cambiar status
-              if (intervalId) {
-                 console.log("Clearing interval fetch (Completed Page).");
-                 clearInterval(intervalId);
-             }
-         };
-     }, [sessionStatus, fetchTransactions]); // Depende del status y de la función fetch
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout | null = null;
+        if (sessionStatus === "authenticated") {
+            console.log("Setting up interval fetch (Completed Page)...");
+            intervalId = setInterval(() => {
+                console.log("Interval fetch triggered (Completed Page)...");
+                fetchTransactions(false); // false para no mostrar el skeleton grande
+            }, 30000); // 30 segundos
+        }
+        return () => { // Limpieza al desmontar o cambiar status
+            if (intervalId) {
+                console.log("Clearing interval fetch (Completed Page).");
+                clearInterval(intervalId);
+            }
+        };
+    }, [sessionStatus, fetchTransactions]); // Depende del status y de la función fetch
 
 
     // --- 7. useEffect para RE-FILTRAR en el cliente cuando cambian los filtros de UI ---
@@ -136,10 +130,10 @@ export default function DepositsCompletedPage() {
             );
             setFilteredTransactions(filtered); // Actualiza solo la lista mostrada
         }
-         // Si allOfficeTransactions se vacía (ej. por un error), limpia las filtradas
-         else if (filteredTransactions.length > 0) {
-             setFilteredTransactions([]);
-         }
+        // Si allOfficeTransactions se vacía (ej. por un error), limpia las filtradas
+        else if (filteredTransactions.length > 0) {
+            setFilteredTransactions([]);
+        }
     }, [filters, allOfficeTransactions]); // Depende de los filtros de UI y de la lista base
 
     // Manejadores de filtros (sin cambios)
@@ -151,11 +145,11 @@ export default function DepositsCompletedPage() {
     // --- 8. Renderizado Condicional ---
     if (sessionStatus === "loading") {
         return (
-             <div className="container mx-auto p-4">
-                 <Card><CardHeader><CardTitle>Cargando Sesión...</CardTitle></CardHeader>
-                     <div className="p-6 pt-3"><TableSkeleton columns={[]} rowCount={5} /></div>
-                 </Card>
-             </div>
+            <div className="container mx-auto p-4">
+                <Card><CardHeader><CardTitle>Cargando Sesión...</CardTitle></CardHeader>
+                    <div className="p-6 pt-3"><TableSkeleton columns={[]} rowCount={5} /></div>
+                </Card>
+            </div>
         );
     }
 
@@ -171,7 +165,7 @@ export default function DepositsCompletedPage() {
                     {/* Título y Descripción actualizados */}
                     <CardTitle className="text-2xl font-bold">Depósitos Completados</CardTitle>
                     <CardDescription>
-                         Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'})
+                        Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'})
                     </CardDescription>
                 </CardHeader>
 
@@ -185,7 +179,7 @@ export default function DepositsCompletedPage() {
                     {isLoading && allOfficeTransactions.length === 0 ? (
                         <TableSkeleton columns={[]} rowCount={5} />
                     ) : error ? (
-                         <Card className="p-8 text-center"><p className="text-red-500">{error}</p></Card>
+                        <Card className="p-8 text-center"><p className="text-red-500">{error}</p></Card>
                     ) : (
                         <TransactionTable
                             // Pasa las transacciones ya filtradas para esta vista

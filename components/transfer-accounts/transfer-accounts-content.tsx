@@ -105,7 +105,7 @@ export function TransferAccountsContent() {
           if (response.status === 400 && errorMsg.toLowerCase().includes('officeid query parameter is required')) {
             errorMsg = "Error: El backend requiere el ID de oficina en la URL.";
           }
-        } catch (e) { }
+        } catch (_error) { }
         console.error(`Error fetching accounts (${response.status}): ${errorMsg}`);
         throw new Error(errorMsg);
       }
@@ -134,10 +134,8 @@ export function TransferAccountsContent() {
       setAccounts(transformedAccounts);
       console.log("Accounts fetched successfully:", transformedAccounts.length);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching accounts:', error);
-      setError(error.message || 'No se pudieron cargar las cuentas');
-      toast.error(error.message || 'No se pudieron cargar las cuentas');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -208,15 +206,16 @@ export function TransferAccountsContent() {
 
       if (!response.ok) {
         let errorMsg = 'Error al actualizar la cuenta';
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (e) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
         throw new Error(errorMsg);
       }
 
       await fetchAccounts(true);
       toast.success('Cuenta actualizada correctamente');
       setEditingAccount(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al actualizar la cuenta');
+    } catch (error: unknown) {
+      console.error('Error updating account:', error);
+      toast.error((error as Error).message || 'Error al actualizar la cuenta');
     }
   };
   // --- Fin handleEdit ---
@@ -240,15 +239,16 @@ export function TransferAccountsContent() {
 
       if (!response.ok) {
         let errorMsg = 'Error al eliminar la cuenta';
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (e) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
         throw new Error(errorMsg);
       }
 
       await fetchAccounts(true);
       toast.success('Cuenta eliminada correctamente');
       // setDeletingAccount(null); // Ya se hace en finally
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar la cuenta');
+    } catch (error: unknown) {
+      console.error('Error deleting account:', error);
+      toast.error((error as Error).message || 'Error al eliminar la cuenta');
     } finally {
       // Asegura limpiar el estado incluso si la recarga falla
       setDeletingAccount(null);

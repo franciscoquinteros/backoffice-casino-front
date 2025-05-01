@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { TicketsClient } from "@/components/tickets/tickets-client";
 import { RoleGuard } from "@/components/role-guard";
 

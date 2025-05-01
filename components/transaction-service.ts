@@ -107,7 +107,7 @@ class TransactionService {
                   // Intenta leer un mensaje de error del cuerpo de la respuesta
                   const errorData = await response.json();
                   errorMsg = errorData.message || errorData.error || errorMsg;
-              } catch (e) {
+              } catch (_error) {
                   // Si no hay cuerpo JSON o falla el parseo, usa el statusText
               }
 

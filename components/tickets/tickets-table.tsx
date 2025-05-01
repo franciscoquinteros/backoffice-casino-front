@@ -4,7 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Ticket } from '@/components/tickets/tickets-client';
 
 // Asegúrate de que esta interfaz coincida con la definida en tickets-client.tsx
 interface TicketsTableProps {
@@ -40,7 +39,7 @@ export function TicketsTable({ tickets }: TicketsTableProps) {
     try {
       const date = new Date(dateString);
       return formatDistanceToNow(date, { addSuffix: true, locale: es });
-    } catch (e) {
+    } catch (error: unknown) {
       return 'Fecha inválida';
     }
   };
