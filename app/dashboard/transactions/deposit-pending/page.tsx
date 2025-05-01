@@ -32,16 +32,16 @@ export default function DepositsPendingPage() {
     const fetchTransactions = useCallback(async (isInitialLoad = false) => {
         // --- 3. Verifica la sesión antes de llamar al servicio ---
         if (sessionStatus !== "authenticated" || !session?.user?.officeId || !session?.accessToken) {
-             console.log("Fetch prevented: Session not ready or missing data.", { sessionStatus, officeId: session?.user?.officeId, hasToken: !!session?.accessToken });
-             // Si no está autenticado o faltan datos clave, no intentes cargar.
-             // Podrías poner isLoading a false aquí si no es la carga inicial.
-             if (!isInitialLoad) setIsLoading(false);
-             // Si no está autenticado, el renderizado principal lo manejará.
-             // Si está autenticado pero faltan datos, muestra error.
-             if (sessionStatus === "authenticated") {
-                  setError("Datos de sesión incompletos. Intenta re-loguearte.");
-                  toast.error("Datos de sesión incompletos. Intenta re-loguearte.");
-             }
+            console.log("Fetch prevented: Session not ready or missing data.", { sessionStatus, officeId: session?.user?.officeId, hasToken: !!session?.accessToken });
+            // Si no está autenticado o faltan datos clave, no intentes cargar.
+            // Podrías poner isLoading a false aquí si no es la carga inicial.
+            if (!isInitialLoad) setIsLoading(false);
+            // Si no está autenticado, el renderizado principal lo manejará.
+            // Si está autenticado pero faltan datos, muestra error.
+            if (sessionStatus === "authenticated") {
+                setError("Datos de sesión incompletos. Intenta re-loguearte.");
+                toast.error("Datos de sesión incompletos. Intenta re-loguearte.");
+            }
             return; // No continuar
         }
 
@@ -73,16 +73,19 @@ export default function DepositsPendingPage() {
             setFilteredTransactions(pendingDeposits);
 
             // Si todo fue bien y era carga inicial, limpiamos errores
-            if(isInitialLoad) setError(null);
+            if (isInitialLoad) setError(null);
 
-        } catch (err: unknown) {
-            // No mostramos toast aquí para no molestar en las recargas automáticas
-            // if (isInitialLoad) toast.error(errorMsg);
+        } catch (err: unknown) { // <-- Cambia a unknown
+            console.error('Error fetching transactions (Deposit Pending):', err);
+            // Usa el mensaje de error
+            const message = err instanceof Error ? err.message : 'No se pudieron cargar las transacciones';
+            setError(message);
+            // toast.error(message); // Si quieres mostrar toast
         } finally {
             // Siempre quita el loading state global al final (incluso si es recarga)
             setIsLoading(false);
         }
-    // --- 5. Añade 'session' y 'sessionStatus' a las dependencias ---
+        // --- 5. Añade 'session' y 'sessionStatus' a las dependencias ---
     }, [filters, session, sessionStatus]);
 
     // Cargar transacciones inicialmente CUANDO la sesión esté lista
@@ -100,21 +103,21 @@ export default function DepositsPendingPage() {
 
     // Actualización periódica (si la sesión está activa)
     useEffect(() => {
-         let intervalId: NodeJS.Timeout | null = null;
+        let intervalId: NodeJS.Timeout | null = null;
         if (sessionStatus === "authenticated") {
             console.log("Setting up interval fetch...");
-             intervalId = setInterval(() => {
-                 console.log("Interval fetch triggered...");
-                 fetchTransactions(false); // false para no mostrar loading grande
-             }, 30000); // 30 segundos
+            intervalId = setInterval(() => {
+                console.log("Interval fetch triggered...");
+                fetchTransactions(false); // false para no mostrar loading grande
+            }, 30000); // 30 segundos
         }
-         // Limpia el intervalo si el componente se desmonta o el estado de sesión cambia
-         return () => {
-             if (intervalId) {
-                 console.log("Clearing interval fetch.");
-                 clearInterval(intervalId);
-             }
-         };
+        // Limpia el intervalo si el componente se desmonta o el estado de sesión cambia
+        return () => {
+            if (intervalId) {
+                console.log("Clearing interval fetch.");
+                clearInterval(intervalId);
+            }
+        };
     }, [sessionStatus, fetchTransactions]); // Depende del estado de la sesión
 
     // Re-filtrar client-side CUANDO cambian los filtros o las transacciones base
@@ -130,8 +133,8 @@ export default function DepositsPendingPage() {
             );
             setFilteredTransactions(filtered);
         } else {
-             // Si no hay transacciones base, aseguramos que las filtradas también estén vacías
-             setFilteredTransactions([]);
+            // Si no hay transacciones base, aseguramos que las filtradas también estén vacías
+            setFilteredTransactions([]);
         }
     }, [filters, transactions]); // Depende de los filtros y las transacciones base
 
@@ -146,16 +149,16 @@ export default function DepositsPendingPage() {
     };
 
     // --- 6. Modifica handlers para pasar el accessToken ---
-    const handleTransactionApproved = async (transaction: Transaction, ) => {
-         if (sessionStatus !== "authenticated" || !session?.accessToken) {
-             toast.error("No estás autenticado o falta el token para aprobar.");
-             console.error("Approve failed: Missing session or accessToken.");
-             return;
-         }
+    const handleTransactionApproved = async (transaction: Transaction,) => {
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado o falta el token para aprobar.");
+            console.error("Approve failed: Missing session or accessToken.");
+            return;
+        }
         const accessToken = session.accessToken; // Obtiene el token de la sesión
         try {
             console.log("Iniciando aprobación para transacción:", transaction.id);
-             // --- Pasa el accessToken al servicio ---
+            // --- Pasa el accessToken al servicio ---
             const result = await transactionService.approveTransaction(transaction, accessToken);
             console.log("Resultado de approveTransaction:", result);
 
@@ -172,19 +175,19 @@ export default function DepositsPendingPage() {
             const transactionError = error as TransactionError;
             console.error('Error inesperado al aprobar la transacción:', transactionError);
             toast.error(`Error inesperado: ${transactionError.message || 'Ocurrió un error'}`);
-             // Podrías tener un estado para un modal aquí si prefieres
+            // Podrías tener un estado para un modal aquí si prefieres
         }
     };
 
     const handleTransactionRejected = async (rejectedTransaction: Transaction) => {
-         if (sessionStatus !== "authenticated" || !session?.accessToken) {
-             toast.error("No estás autenticado o falta el token para rechazar.");
-             console.error("Reject failed: Missing session or accessToken.");
-             return;
-         }
-         const accessToken = session.accessToken; // Obtiene el token de la sesión
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado o falta el token para rechazar.");
+            console.error("Reject failed: Missing session or accessToken.");
+            return;
+        }
+        const accessToken = session.accessToken; // Obtiene el token de la sesión
         try {
-             // --- Pasa el accessToken al servicio ---
+            // --- Pasa el accessToken al servicio ---
             await transactionService.rejectTransaction(rejectedTransaction, accessToken);
             toast.success("Transacción rechazada");
             console.log('Transacción rechazada. Recargando datos...');
@@ -192,7 +195,7 @@ export default function DepositsPendingPage() {
         } catch (error: unknown) {
             const transactionError = error as TransactionError;
             console.error('Error al rechazar la transacción:', transactionError);
-             toast.error(`Error al rechazar: ${transactionError.message || 'Ocurrió un error'}`);
+            toast.error(`Error al rechazar: ${transactionError.message || 'Ocurrió un error'}`);
         }
     };
 
@@ -200,12 +203,12 @@ export default function DepositsPendingPage() {
     if (sessionStatus === "loading") {
         // Muestra un skeleton mientras se carga la sesión
         return (
-             <div className="container mx-auto p-4">
-                 <Card>
-                     <CardHeader className="pb-3"><CardTitle>Cargando...</CardTitle></CardHeader>
-                     <div className="p-6 pt-3"><TableSkeleton columns={[]} rowCount={5} /></div>
-                 </Card>
-             </div>
+            <div className="container mx-auto p-4">
+                <Card>
+                    <CardHeader className="pb-3"><CardTitle>Cargando...</CardTitle></CardHeader>
+                    <div className="p-6 pt-3"><TableSkeleton columns={[]} rowCount={5} /></div>
+                </Card>
+            </div>
         );
     }
 
@@ -221,7 +224,7 @@ export default function DepositsPendingPage() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-2xl font-bold">Depósitos Pendientes</CardTitle>
                     <CardDescription>
-                         Gestione los depósitos que requieren aprobación (Oficina: {session?.user?.officeId || 'N/A'})
+                        Gestione los depósitos que requieren aprobación (Oficina: {session?.user?.officeId || 'N/A'})
                     </CardDescription>
                 </CardHeader>
 
@@ -229,27 +232,27 @@ export default function DepositsPendingPage() {
                     <TransactionFilters
                         onChange={handleFilterChange}
                         onReset={handleResetFilters}
-                        // Podrías pasar aquí una lista de oficinas si tuvieras un rol admin
+                    // Podrías pasar aquí una lista de oficinas si tuvieras un rol admin
                     />
 
-                     {/* Mostrar skeleton mientras cargan los datos iniciales, incluso si la sesión ya cargó */}
-                     {isLoading && transactions.length === 0 ? (
-                         <TableSkeleton columns={[]} rowCount={5} />
-                     ) : error ? (
-                         <Card className="p-8 text-center">
-                             <p className="text-red-500">{error}</p>
-                         </Card>
-                     ) : (
-                         <TransactionTable
-                             // Pasa las transacciones filtradas localmente
-                             transactions={filteredTransactions}
-                             showApproveButton={true}
-                             onTransactionApproved={handleTransactionApproved}
-                             onTransactionRejected={handleTransactionRejected}
-                             // Indicador visual para recargas en segundo plano
-                             isRefreshing={isLoading && transactions.length > 0}
-                         />
-                     )}
+                    {/* Mostrar skeleton mientras cargan los datos iniciales, incluso si la sesión ya cargó */}
+                    {isLoading && transactions.length === 0 ? (
+                        <TableSkeleton columns={[]} rowCount={5} />
+                    ) : error ? (
+                        <Card className="p-8 text-center">
+                            <p className="text-red-500">{error}</p>
+                        </Card>
+                    ) : (
+                        <TransactionTable
+                            // Pasa las transacciones filtradas localmente
+                            transactions={filteredTransactions}
+                            showApproveButton={true}
+                            onTransactionApproved={handleTransactionApproved}
+                            onTransactionRejected={handleTransactionRejected}
+                            // Indicador visual para recargas en segundo plano
+                            isRefreshing={isLoading && transactions.length > 0}
+                        />
+                    )}
                 </div>
             </Card>
         </div>

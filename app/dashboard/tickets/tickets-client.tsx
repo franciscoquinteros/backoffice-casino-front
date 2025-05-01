@@ -32,7 +32,7 @@ export interface Ticket {
     email?: string;
   };
   group_id?: string | number;
-  custom_fields?: any[];
+  custom_fields?: string[];
 }
 
 export interface TicketFilter {
@@ -73,7 +73,7 @@ export function TicketsClient() {
       setIsLoading(false);
       return;
     }
-    
+
     const accessToken = session.accessToken;
     const userOffice = session.user.officeId;
 
@@ -83,7 +83,7 @@ export function TicketsClient() {
     try {
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/zendesk/tickets/all`;
       console.log(`Cargando tickets para oficina ${userOffice} desde: ${url}`);
-      
+
       // La oficina se envía automáticamente mediante el token JWT
       // El backend extraerá la oficina del token en el controlador
       const response = await fetch(url, {
@@ -98,8 +98,8 @@ export function TicketsClient() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.message || errorMsg;
-        } catch (e) { }
-        
+        } catch (error: unknown) { }
+
         if (response.status === 500 && errorMsg.toLowerCase().includes('invalid url')) {
           console.warn("Backend reportó error de URL de Zendesk, mostrando lista vacía.");
           setTickets([]);
@@ -109,7 +109,7 @@ export function TicketsClient() {
         }
         throw new Error(errorMsg);
       }
-      
+
       const fetchedTickets: Ticket[] = await response.json();
       setTickets(fetchedTickets);
       const currentlyFiltered = applyTicketFilters(fetchedTickets, filters);
@@ -145,17 +145,17 @@ export function TicketsClient() {
   const applyTicketFilters = (allTickets: Ticket[], currentFilters: TicketFilter): Ticket[] => {
     let filtered = [...allTickets];
     console.log("Filtrando tickets:", currentFilters);
-    
+
     // Status
     if (currentFilters.status && currentFilters.status !== 'all') {
       filtered = filtered.filter(t => t.status?.toLowerCase() === currentFilters.status?.toLowerCase());
     }
-    
+
     // Agente Asignado (interno)
     if (currentFilters.agentId && currentFilters.agentId !== 'all') {
       filtered = filtered.filter(t => t.internal_assignee?.id?.toString() === currentFilters.agentId);
     }
-    
+
     // Búsqueda General
     if (currentFilters.search) {
       const searchLower = currentFilters.search.toLowerCase();
@@ -169,7 +169,7 @@ export function TicketsClient() {
         (t.internal_assignee?.email?.toLowerCase() ?? '').includes(searchLower)
       );
     }
-    
+
     // Fechas
     if (currentFilters.dateFrom) {
       try {
@@ -177,14 +177,14 @@ export function TicketsClient() {
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() >= fromDate);
       } catch (_error) { console.error("Filtro dateFrom inválido"); }
     }
-    
+
     if (currentFilters.dateTo) {
       try {
         const toDate = new Date(currentFilters.dateTo).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() <= toDate);
       } catch (_error) { console.error("Filtro dateTo inválido"); }
     }
-    
+
     return filtered;
   };
 
@@ -192,7 +192,7 @@ export function TicketsClient() {
   const handleFilterChange = (newFilters: Partial<TicketFilter>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
-  
+
   const handleResetFilters = () => {
     setFilters({});
   };
@@ -207,7 +207,7 @@ export function TicketsClient() {
       </div>
     );
   }
-  
+
   if (sessionStatus === "unauthenticated") {
     return <div className="p-6"><p>Necesitas iniciar sesión para ver los tickets.</p></div>;
   }

@@ -117,24 +117,18 @@ export default function DepositsCompletedPage() {
 
 
     // --- 7. useEffect para RE-FILTRAR en el cliente cuando cambian los filtros de UI ---
+    // Reemplaza el useEffect que causa el warning por este:
     useEffect(() => {
         // Solo re-filtra si ya tenemos datos base de la oficina
-        if (allOfficeTransactions.length > 0) {
-            console.log("Applying client-side filters due to change in UI filters (Completed Page)...");
-            // Filtra la lista COMPLETA (allOfficeTransactions) con los NUEVOS filtros (filters)
-            const filtered = transactionService.filterTransactions(
-                allOfficeTransactions, // Usa la lista completa ya cargada
-                'deposit',             // Tipo para esta página
-                'Aceptado',           // Estado para esta página
-                filters                // Los filtros ACTUALES de la UI
-            );
-            setFilteredTransactions(filtered); // Actualiza solo la lista mostrada
-        }
-        // Si allOfficeTransactions se vacía (ej. por un error), limpia las filtradas
-        else if (filteredTransactions.length > 0) {
-            setFilteredTransactions([]);
-        }
-    }, [filters, allOfficeTransactions]); // Depende de los filtros de UI y de la lista base
+        // Aplica filtros a la lista base y actualiza el estado filtrado
+        const filtered = transactionService.filterTransactions(
+            allOfficeTransactions, // Usa la lista completa ya cargada
+            'deposit',             // Tipo para esta página
+            'Aceptado',           // Estado para esta página (tu lógica maneja completados)
+            filters                // Los filtros ACTUALES de la UI
+        );
+        setFilteredTransactions(filtered);
+    }, [filters, allOfficeTransactions]); // <-- Depende solo de filtros y datos base
 
     // Manejadores de filtros (sin cambios)
     const handleFilterChange = (newFilters: TransactionFilter) => setFilters(newFilters);

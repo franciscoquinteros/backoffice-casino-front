@@ -14,9 +14,6 @@ import { toast } from "sonner";
 import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
 
-interface TransactionError extends Error {
-  message: string;
-}
 
 // --- 1. Cambia el nombre del componente ---
 export default function WithdrawPendingPage() {
@@ -54,15 +51,15 @@ export default function WithdrawPendingPage() {
         'Pending',
         filters
       );
-      
+
       // Actualizar ambos estados de manera atómica para evitar renders innecesarios
       setFilteredTransactions(pendingWithdrawals);
 
       if (isInitialLoad) setError(null);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching transactions (Withdraw Pending):', err);
-      setError(err.message || 'No se pudieron cargar las transacciones');
+      setError("Error al cargar transacciones. Intenta de nuevo más tarde.");
     } finally {
       setIsLoading(false);
     }
@@ -85,19 +82,14 @@ export default function WithdrawPendingPage() {
 
   // useEffect para re-filtrar (cambia el tipo en el filtro)
   useEffect(() => {
-    if (allOfficeTransactions.length > 0) {
-      // --- 3. Re-filtra para RETIROS PENDIENTES ---
-      const filtered = transactionService.filterTransactions(
-        allOfficeTransactions,
-        'withdraw', // <-- CAMBIADO
-        'Pending',
-        filters
-      );
-      setFilteredTransactions(filtered);
-    } else if (filteredTransactions.length > 0) {
-      setFilteredTransactions([]);
-    }
-  }, [filters, allOfficeTransactions]);
+    const filtered = transactionService.filterTransactions(
+      allOfficeTransactions,
+      'withdraw', // <-- Tipo correcto
+      'Pending',  // <-- Estado correcto
+      filters
+    );
+    setFilteredTransactions(filtered);
+  }, [filters, allOfficeTransactions]); // <-- Dependencias correctas
 
   // Manejadores de filtros (sin cambios)
   const handleFilterChange = (newFilters: TransactionFilter) => setFilters(newFilters);
@@ -111,7 +103,7 @@ export default function WithdrawPendingPage() {
       const result = await transactionService.approveTransaction(transaction, accessToken);
       if (result.success) { toast.success("Retiro aprobado"); fetchTransactions(false); }
       else { toast.error(`Error: ${result.error || 'Desconocido'}`); }
-    } catch (error: any) { toast.error(`Error: ${error.message || 'Inesperado'}`); }
+    } catch (error: unknown) { toast.error(`Error: ${error instanceof Error ? error.message : 'Inesperado'}`); }
   };
 
   const handleTransactionRejected = async (rejectedTransaction: Transaction) => {
@@ -121,7 +113,7 @@ export default function WithdrawPendingPage() {
       await transactionService.rejectTransaction(rejectedTransaction, accessToken);
       toast.success("Retiro rechazado");
       fetchTransactions(false);
-    } catch (error: any) { toast.error(`Error: ${error.message || 'Inesperado'}`); }
+    } catch (error: unknown) { toast.error(`Error: ${error instanceof Error ? error.message : 'Inesperado'}`); }
   };
 
   // Renderizado condicional (sin cambios)

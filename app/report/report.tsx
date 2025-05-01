@@ -62,7 +62,7 @@ const ReportsDashboard = () => {
         });
         if (!response.ok) {
             let errorMsg = `Error fetching report data (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
+            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch {} { }
             throw new Error(errorMsg);
         }
         return response.json();
