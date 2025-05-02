@@ -42,10 +42,10 @@ export interface TransactionUpdateInfo {
 }
 
 export interface TransactionOperationResult {
-    success: boolean;
-    transaction?: Transaction; // Devuelve la transacción actualizada en caso de éxito
-    error?: string; // Devuelve un mensaje de error en caso de fallo
-  }
+  success: boolean;
+  transaction?: Transaction; // Devuelve la transacción actualizada en caso de éxito
+  error?: string; // Devuelve un mensaje de error en caso de fallo
+}
 
 // Define una interfaz para el resultado de approveTransaction
 export interface ApproveTransactionResult {
@@ -62,71 +62,69 @@ class TransactionService {
   }
 
   // Obtener todas las transacciones
-  
-    /**
-     * Obtiene las transacciones para una oficina específica desde el backend.
-     * Requiere el ID de la oficina y el token de acceso del usuario.
-     * @param officeId - El ID de la oficina para la cual obtener transacciones.
-     * @param accessToken - El token JWT del usuario autenticado.
-     * @returns Promise<Transaction[]> - Un array de transacciones para esa oficina.
-     */
-    async getTransactionsForOffice(officeId: string, accessToken: string): Promise<Transaction[]> {
-      if (!officeId) {
-          console.error('getTransactionsForOffice: officeId is required');
-          throw new Error('Office ID is required to fetch transactions.');
+
+  /**
+   * Obtiene las transacciones para una oficina específica desde el backend.
+   * Requiere el ID de la oficina y el token de acceso del usuario.
+   * @param officeId - El ID de la oficina para la cual obtener transacciones.
+   * @param accessToken - El token JWT del usuario autenticado.
+   * @returns Promise<Transaction[]> - Un array de transacciones para esa oficina.
+   */
+  async getTransactionsForOffice(officeId: string, accessToken: string): Promise<Transaction[]> {
+    if (!officeId) {
+      console.error('getTransactionsForOffice: officeId is required');
+      throw new Error('Office ID is required to fetch transactions.');
+    }
+    if (!accessToken) {
+      console.error('getTransactionsForOffice: accessToken is required');
+      // Podrías devolver un array vacío o lanzar un error más específico
+      throw new Error('Authentication token is required.');
+    }
+    if (!this.apiUrl) {
+      throw new Error('API URL is not configured.');
+    }
+
+    // Construye la URL correcta del endpoint del backend
+    const endpoint = `${this.apiUrl}/transactions/${encodeURIComponent(officeId)}`;
+    console.log(`[FE Service] Fetching transactions from: ${endpoint}`);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET', // GET es el default, pero explícito es más claro
+        headers: {
+          // Header de autenticación OBLIGATORIO para el backend
+          'Authorization': `Bearer ${accessToken}`,
+          // Headers comunes para APIs JSON
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+
+      // Manejo de respuestas no exitosas (4xx, 5xx)
+      if (!response.ok) {
+        let errorMsg = `Error fetching transactions: ${response.status} ${response.statusText}`;
+        try {
+          // Intenta leer un mensaje de error del cuerpo de la respuesta
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorData.error || errorMsg;
+        } catch { }
+
+        console.error(`getTransactionsForOffice Error (${response.status}): ${errorMsg}`);
+        // Lanza un error para que el componente que llama pueda manejarlo
+        throw new Error(errorMsg);
       }
-      if (!accessToken) {
-          console.error('getTransactionsForOffice: accessToken is required');
-          // Podrías devolver un array vacío o lanzar un error más específico
-          throw new Error('Authentication token is required.');
-      }
-      if (!this.apiUrl) {
-           throw new Error('API URL is not configured.');
-      }
 
-      // Construye la URL correcta del endpoint del backend
-      const endpoint = `${this.apiUrl}/transactions/${encodeURIComponent(officeId)}`;
-      console.log(`[FE Service] Fetching transactions from: ${endpoint}`);
+      // Si la respuesta es OK (200), parsea y devuelve los datos
+      const data: Transaction[] = await response.json();
+      console.log(`[FE Service] Received ${data.length} transactions for office ${officeId}`);
+      return data;
 
-      try {
-          const response = await fetch(endpoint, {
-              method: 'GET', // GET es el default, pero explícito es más claro
-              headers: {
-                  // Header de autenticación OBLIGATORIO para el backend
-                  'Authorization': `Bearer ${accessToken}`,
-                  // Headers comunes para APIs JSON
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-              },
-          });
-
-          // Manejo de respuestas no exitosas (4xx, 5xx)
-          if (!response.ok) {
-              let errorMsg = `Error fetching transactions: ${response.status} ${response.statusText}`;
-              try {
-                  // Intenta leer un mensaje de error del cuerpo de la respuesta
-                  const errorData = await response.json();
-                  errorMsg = errorData.message || errorData.error || errorMsg;
-              } catch (_error) {
-                  // Si no hay cuerpo JSON o falla el parseo, usa el statusText
-              }
-
-              console.error(`getTransactionsForOffice Error (${response.status}): ${errorMsg}`);
-              // Lanza un error para que el componente que llama pueda manejarlo
-              throw new Error(errorMsg);
-          }
-
-          // Si la respuesta es OK (200), parsea y devuelve los datos
-          const data: Transaction[] = await response.json();
-          console.log(`[FE Service] Received ${data.length} transactions for office ${officeId}`);
-          return data;
-
-      } catch (error) {
-          // Captura errores de red u otros errores durante el fetch/parseo
-          console.error('Error during getTransactionsForOffice fetch:', error);
-          // Re-lanza el error para que el componente lo maneje
-          throw error;
-      }
+    } catch (error) {
+      // Captura errores de red u otros errores durante el fetch/parseo
+      console.error('Error during getTransactionsForOffice fetch:', error);
+      // Re-lanza el error para que el componente lo maneje
+      throw error;
+    }
   }
 
   // Filtrar transacciones por tipo y estado

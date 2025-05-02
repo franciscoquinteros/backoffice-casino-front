@@ -206,7 +206,7 @@ export function TransferAccountsContent() {
 
       if (!response.ok) {
         let errorMsg = 'Error al actualizar la cuenta';
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
         throw new Error(errorMsg);
       }
 
@@ -239,7 +239,7 @@ export function TransferAccountsContent() {
 
       if (!response.ok) {
         let errorMsg = 'Error al eliminar la cuenta';
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (_error) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
         throw new Error(errorMsg);
       }
 

@@ -2,7 +2,7 @@
 // Definición compartida de tipos para tickets
 
 export interface Ticket {
-    id: string | number;
+    id: number;
     subject: string;
     description?: string;
     status?: string;
@@ -23,6 +23,7 @@ export interface Ticket {
     group_id?: string | number;
     custom_fields?: string[];
 }
+
 
 export interface TicketFilter {
     status?: string;

@@ -4,31 +4,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Ticket } from '../hooks/tickets';
+
 
 // Asegúrate de que esta interfaz coincida con la definida en tickets-client.tsx
 interface TicketsTableProps {
-  tickets: Array<{
-    id: string | number;
-    subject: string;
-    description?: string;
-    status?: string;
-    created_at?: string;
-    updated_at?: string;
-    requester_id?: string | number;
-    assignee_id?: string | number;
-    user?: {
-      name?: string;
-      email?: string;
-    };
-    internal_assignee?: {
-      id: string | number;
-      name?: string;
-      username?: string;
-      email?: string;
-    };
-    group_id?: string | number;
-    custom_fields?: any[];
-  }>;
+  // Usa directamente el tipo Ticket importado
+  tickets: Ticket[];
+  // Añade aquí otras props que SÍ necesites pasar desde TicketsClient
+  // Por ejemplo, si la navegación la manejas desde el padre:
+  // onViewDetails?: (ticketId: number | string) => void;
 }
 
 export function TicketsTable({ tickets }: TicketsTableProps) {
@@ -39,8 +24,9 @@ export function TicketsTable({ tickets }: TicketsTableProps) {
     try {
       const date = new Date(dateString);
       return formatDistanceToNow(date, { addSuffix: true, locale: es });
-    } catch (error: unknown) {
-      return 'Fecha inválida';
+    } catch { // <-- Mejor así si no usas la variable 'error'
+      console.error('Error parsing date:', dateString);
+      return 'Fecha inválida'; // Devuelve un string simple
     }
   };
 
@@ -85,8 +71,8 @@ export function TicketsTable({ tickets }: TicketsTableProps) {
             </TableRow>
           ) : (
             tickets.map((ticket) => (
-              <TableRow 
-                key={ticket.id} 
+              <TableRow
+                key={ticket.id}
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleRowClick(ticket.id)}
               >

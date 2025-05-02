@@ -25,6 +25,7 @@ export interface TicketUser {
 
 // Interfaz para el operador asignado internamente
 export interface InternalAssignee {
+  username: string
   id: number
   name: string
   email: string

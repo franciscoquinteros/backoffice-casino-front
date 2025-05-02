@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Card } from '../ui/card';
 import { useSession } from 'next-auth/react';
-import { TicketFilter } from '@/app/dashboard/tickets/tickets-client';
+import { TicketFilter } from '../hooks/tickets';
 
 interface TicketsFiltersProps {
     onChange: (newFilters: Partial<TicketFilter>) => void;
@@ -38,7 +38,7 @@ export function TicketsFilters({ onChange, onReset }: TicketsFiltersProps) {
         if (session?.accessToken) {
             fetchOperators();
         }
-    }, [session]);
+    }, [session,]);
 
     const fetchOperators = async () => {
         try {

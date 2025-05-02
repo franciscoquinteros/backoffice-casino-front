@@ -10,38 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
 import { TicketsTable } from '@/components/tickets/tickets-table';
 import { TicketsFilters } from '@/components/tickets/tickets-filters';
-
+import { Ticket, TicketFilter } from '@/components/hooks/tickets';
+; // Ajusta la ruta según tu estructura de carpetas
 // Definir interfaz Ticket
-export interface Ticket {
-  id: string | number;
-  subject: string;
-  description?: string;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-  requester_id?: string | number;
-  assignee_id?: string | number;
-  user?: {
-    name?: string;
-    email?: string;
-  };
-  internal_assignee?: {
-    id: string | number;
-    name?: string;
-    username?: string;
-    email?: string;
-  };
-  group_id?: string | number;
-  custom_fields?: string[];
-}
 
-export interface TicketFilter {
-  status?: string;
-  agentId?: string;
-  search?: string;
-  dateFrom?: string;
-  dateTo?: string;
-}
+
 
 export function TicketsClient() {
   const { data: session, status: sessionStatus } = useSession();
@@ -98,7 +71,7 @@ export function TicketsClient() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.message || errorMsg;
-        } catch (error: unknown) { }
+        } catch { }
 
         if (response.status === 500 && errorMsg.toLowerCase().includes('invalid url')) {
           console.warn("Backend reportó error de URL de Zendesk, mostrando lista vacía.");
@@ -115,9 +88,9 @@ export function TicketsClient() {
       const currentlyFiltered = applyTicketFilters(fetchedTickets, filters);
       setFilteredTickets(currentlyFiltered);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error al cargar tickets:`, error);
-      setError(error.message || `Error al cargar tickets.`);
+      setError("Error al cargar tickets. Intenta de nuevo más tarde.");
       setTickets([]);
       setFilteredTickets([]);
     } finally {
@@ -175,14 +148,14 @@ export function TicketsClient() {
       try {
         const fromDate = new Date(currentFilters.dateFrom).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() >= fromDate);
-      } catch (_error) { console.error("Filtro dateFrom inválido"); }
+      } catch (error) { }
     }
 
     if (currentFilters.dateTo) {
       try {
         const toDate = new Date(currentFilters.dateTo).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() <= toDate);
-      } catch (_error) { console.error("Filtro dateTo inválido"); }
+      } catch (error) { }
     }
 
     return filtered;

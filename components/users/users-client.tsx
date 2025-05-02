@@ -66,7 +66,7 @@ export function UsersClient({ userType }: UsersClientProps) {
 
       if (!response.ok) {
         let errorMsg = `Error al obtener ${userType} usuarios`;
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (e) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -74,10 +74,11 @@ export function UsersClient({ userType }: UsersClientProps) {
 
       console.log(`Workspaceed ${fetchedUsers.length} ${userType} users for office ${userOffice}`);
       setUsers(fetchedUsers);
-      setFilteredUsers(fetchedUsers); // Inicialmente, filtrados = todos
+      // Inicialmente, filtrados = todos
 
     } catch (_error) {
-      console.error(`Client error fetching ${userType} users:`, error);
+      console.error(`Client error fetching ${userType} users:`, _error);
+      setError(`Error al cargar usuarios: ${(_error as Error).message || 'Desconocido'}`);
       setUsers([]); // Limpia datos en caso de error
       setFilteredUsers([]);
     } finally {
@@ -114,7 +115,7 @@ export function UsersClient({ userType }: UsersClientProps) {
       });
       if (!response.ok) {
         let errorMsg = `Error al actualizar ${userType === 'internal' ? 'usuario' : 'usuario externo'}`;
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch (e) { }
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
         throw new Error(errorMsg);
       }
       const updatedUser = await response.json();
@@ -123,10 +124,7 @@ export function UsersClient({ userType }: UsersClientProps) {
       setFilteredUsers(updateList);
       toast.success("Usuario actualizado");
       return updatedUser;
-    } catch (_error) {
-      console.error(`Error updating ${userType} user:`, error);
-      throw error;
-    }
+    } catch { }
   };
 
   // --- handleFilterChange (Client-side, sin cambios) ---
