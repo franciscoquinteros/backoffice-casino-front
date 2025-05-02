@@ -1,77 +1,40 @@
 // app/dashboard/users/page.tsx
-import { Suspense } from "react"
-import { UsersClient } from "@/components/users/users-client"
-import { RoleGuard } from "@/components/role-guard"
-import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'
-import { Skeleton } from "@/components/ui/skeleton"
 
-const fetchInternalUsers = async () => {
-  const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/users`
-  const response = await fetch(url, {
-    cache: 'no-store', // Evitar caché
-  })
-  if (!response.ok) {
-    return []
-  }
-  const data = await response.json()
-  return data
-}
+// Quita Suspense si UsersClient maneja su skeleton
+// import { Suspense } from "react";
+import { UsersClient } from "@/components/users/users-client"; // Ajusta ruta
+import { RoleGuard } from "@/components/role-guard"; // Ajusta ruta
+// Quita imports de Skeleton si UsersClient los maneja internamente
+// import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
+// import { Skeleton } from '@/components/ui/skeleton';
 
-// Componente de carga
-function LoadingSkeleton() {
-  // Configuración de columnas para la tabla de usuarios
-  const tableColumns: ColumnConfig[] = [
-    { cell: { type: 'double', widthClass: 'w-3/4' } }, // Nombre/Email
-    { cell: { type: 'text', widthClass: 'w-16' } },    // Rol
-    { cell: { type: 'text', widthClass: 'w-20' } },    // Oficina
-    { cell: { type: 'badge', widthClass: 'w-14' } },   // Estado
-    { width: 'w-[50px]', cell: { type: 'action', align: 'right' }, header: { show: false } } // Acciones
-  ]
+// --- 1. ELIMINA la función fetchInternalUsers ---
+// const fetchInternalUsers = async () => { ... }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <Skeleton className="h-10 w-40" />
-      </div>
+// --- 2. ELIMINA el componente LoadingSkeleton ---
+// function LoadingSkeleton() { ... }
 
-      <div className="mt-6">
-        <div className="flex justify-between items-center mb-6">
-          <Skeleton className="h-7 w-64" />
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="flex-1">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="flex-1">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="flex-1">
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-        <TableSkeleton columns={tableColumns} rowCount={8} />
-      </div>
-    </div>
-  )
-}
 
-export default async function UsersPage() {
-  // Cargamos los datos de usuarios internos en el servidor
-  const internalUsers = await fetchInternalUsers();
+export default async function UsersPage() { // Cambia nombre si prefieres InternalUsersPage
+
+  // --- 3. ELIMINA la llamada a fetchInternalUsers ---
+  // const internalUsers = await fetchInternalUsers();
 
   return (
     <RoleGuard allowedRoles={['admin', 'encargado', 'superadmin']}>
+      {/* El div wrapper opcional */}
       <div className="p-6">
-        <Suspense fallback={<LoadingSkeleton />}>
-          <UsersClient
-            initialUsers={internalUsers}
-            userType="internal"
-          />
-        </Suspense>
+        {/* --- 4. ELIMINA Suspense --- */}
+        {/* <Suspense fallback={<LoadingSkeleton />}> */}
+
+        {/* --- 5. Llama a UsersClient SIN initialUsers --- */}
+        <UsersClient
+          userType="internal" // Solo pasas userType
+        />
+        {/* --- Fin llamada corregida --- */}
+
+        {/* </Suspense> */}
       </div>
     </RoleGuard>
-  )
+  );
 }
