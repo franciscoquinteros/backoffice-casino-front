@@ -18,7 +18,8 @@ import {
   Download,
   Clock,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Transaction, transactionService } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
@@ -111,74 +112,43 @@ export function TransactionTable({
   };
 
   // Maneja la aprobación de una transacción
-  const handleApprove = async (transaction: Transaction) => {
-    if (processingId === transaction.id) {
-      console.log(`Transacción ${transaction.id} ya está siendo procesada, ignorando segunda solicitud`);
-      return;
-    }
-    
-    try {
-      setProcessingId(transaction.id);
-      console.log("Iniciando aprobación para:", transaction.id);
+  const handleApprove = (transaction: Transaction) => {
+    if (processingId === transaction.id) return; // Evita doble click
 
-      const response = await transactionService.approveTransaction(transaction);
-      console.log("Respuesta de aprobación:", response);
-
-      if (response.success && response.transaction) {
-        console.log('Transacción aprobada exitosamente');
-
-        if (onTransactionApproved) {
-          onTransactionApproved(response.transaction);
-        }
-        // No eliminamos processingId para mantener los botones deshabilitados
-        return;
-      } else {
-        const errorMessage = response.error || 'Error desconocido';
-        console.error('Error al aprobar la transacción:', errorMessage);
-
-        // Mostrar el modal con error directo
-        showErrorModal('Error al procesar la transacción', errorMessage);
+    // Llama a la función del padre si existe
+    if (onTransactionApproved) {
+      setProcessingId(transaction.id); // Marca como procesando (visualmente)
+      console.log("Notificando al padre para aprobar:", transaction.id);
+      try {
+        onTransactionApproved(transaction); // <-- Llama a la PROP del padre
+        // El padre se encargará de llamar al servicio, mostrar toasts,
+        // y eventualmente recargar la lista (lo que limpiará processingId vía useEffect)
+      } catch (error) {
+        // Si el handler del padre lanza un error síncrono (poco común)
+        console.error("Error calling onTransactionApproved:", error);
+        setProcessingId(null); // Limpia estado local si falla la llamada al handler
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      console.error('Error inesperado al aprobar la transacción:', errorMessage);
-
-      // Mostrar modal en caso de excepción
-      showErrorModal('Error inesperado', errorMessage);
-    } finally {
-      // Solo limpiamos processingId si entramos al bloque finally (cuando hay error)
-      // Si la operación fue exitosa, retornamos antes de llegar aquí
-      setProcessingId(null);
+      // Quitamos el finally de aquí, el estado se limpia por useEffect o en el padre
+    } else {
+      console.warn("onTransactionApproved prop is missing from TransactionTable");
     }
   };
 
   // Maneja el rechazo de una transacción
-  const handleReject = async (transaction: Transaction) => {
-    try {
-      setProcessingId(transaction.id);
+  const handleReject = (transaction: Transaction) => {
+    if (processingId === transaction.id) return;
 
-      // Llamar al servicio de rechazo
-      const rejectedTransaction = await transactionService.rejectTransaction(transaction);
-
-      // Notificar al componente padre
-      if (onTransactionRejected) {
-        onTransactionRejected(rejectedTransaction);
+    if (onTransactionRejected) {
+      setProcessingId(transaction.id); // Marca como procesando
+      console.log("Notificando al padre para rechazar:", transaction.id);
+      try {
+        onTransactionRejected(transaction); // <-- Llama a la PROP del padre
+      } catch (error) {
+        console.error("Error calling onTransactionRejected:", error);
+        setProcessingId(null);
       }
-
-      console.log('Transacción rechazada exitosamente');
-      
-      // No reseteamos processingId para mantener los botones deshabilitados
-      return;
-    } catch (error) {
-      console.error('Error al rechazar la transacción:', error);
-      
-      // Mostrar modal de error si hay algún problema
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      showErrorModal('Error al rechazar la transacción', errorMessage);
-    } finally {
-      // Solo limpiamos processingId si entramos al bloque finally (cuando hay error)
-      // Si la operación fue exitosa, retornamos antes de llegar aquí
-      setProcessingId(null);
+    } else {
+      console.warn("onTransactionRejected prop is missing from TransactionTable");
     }
   };
 
@@ -343,23 +313,24 @@ export function TransactionTable({
                     {transaction.status === 'Pending' ? (
                       <div className="flex space-x-2">
                         <Button
-                          onClick={() => handleApprove(transaction)}
-                          disabled={processingId === transaction.id}
+                          onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }} // Llama a handleApprove local
+                          disabled={processingId === transaction.id || isRefreshing}
                           size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white"
+                          className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs" // Ajusta padding/texto
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          <span>Aceptar</span>
+                          {/* Muestra loader si se está procesando ESTE ticket */}
+                          {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span> {/* Ajusta margen si es necesario */}
                         </Button>
                         <Button
-                          onClick={() => handleReject(transaction)}
-                          disabled={processingId === transaction.id}
+                          onClick={(e) => { e.stopPropagation(); handleReject(transaction); }} // Llama a handleReject local
+                          disabled={processingId === transaction.id || isRefreshing}
                           size="sm"
                           variant="destructive"
-                          className="bg-red-500 hover:bg-red-600 text-white"
+                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs" // Ajusta padding/texto
                         >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          <span>Rechazar</span>
+                          {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
                         </Button>
                       </div>
                     ) : (
