@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import { Card } from "@/components/ui/card";               // Ajusta ruta
 import { Badge } from "@/components/ui/badge";             // Ajusta ruta
 import { Button } from "@/components/ui/button";           // Ajusta ruta
-import { Loader2, PlusCircle } from "lucide-react";       // Para botones
 
 // Interfaz para Filtros (asegúrate que coincida con UsersFilters)
 export interface UserFilter {
