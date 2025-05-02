@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   Loader2
 } from "lucide-react";
-import { Transaction, transactionService } from "@/components/transaction-service";
+import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
 
 interface TransactionTableProps {
@@ -50,15 +50,6 @@ export function TransactionTable({
     message: ''
   });
 
-  // Función para mostrar el modal de error
-  const showErrorModal = (title: string, message: string) => {
-    console.log("MOSTRANDO MODAL:", { title, message });
-    setErrorModal({
-      isOpen: true,
-      title,
-      message
-    });
-  };
 
   // Función para cerrar el modal
   const closeErrorModal = () => {
