@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TicketsTable } from "./tickets-table"
 import { Input } from "@/components/ui/input"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -16,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'
 import { SkeletonLoader } from "@/components/skeleton-loader"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TicketsTable } from "./tickets-table"
+import { Ticket } from "../hooks/tickets"
 
 // Sharing the same type definition between components
 export interface TicketUser {
@@ -31,23 +32,7 @@ export interface InternalAssignee {
   email: string
 }
 
-export interface Ticket {
-  id: number
-  subject: string
-  description: string
-  status: string
-  requester_id: number
-  assignee_id: number
-  user: TicketUser
-  group_id: number
-  created_at: string
-  updated_at: string
-  custom_fields: Array<{
-    id: number
-    value: string | null
-  }>
-  internal_assignee?: InternalAssignee  // Campo opcional para el operador asignado
-}
+
 
 interface TicketsClientProps {
   initialTickets: Ticket[]
@@ -56,7 +41,7 @@ interface TicketsClientProps {
 export function TicketsClient({ initialTickets }: TicketsClientProps) {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
-  const [operators, setOperators] = useState<{id: number, username: string, email: string, ticketCount: number}[]>([])
+  const [operators, setOperators] = useState<{ id: number, username: string, email: string, ticketCount: number }[]>([])
   const [filters, setFilters] = useState({
     subject: "",
     status: "all",
@@ -66,7 +51,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
   })
   // Estado para controlar la carga inicial
   const [isLoading, setIsLoading] = useState(true)
-  
+
   // Configuración de columnas para la tabla de tickets (para el skeleton)
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[70px]', cell: { type: 'text', widthClass: 'w-12' } },    // ID
@@ -116,28 +101,28 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       const ticketStatus = ticket.status || ""
       const userName = ticket.user?.name || ""
       const userEmail = ticket.user?.email || ""
-      
+
       // Obtener el ID del operador asignado
       const operatorId = ticket.internal_assignee?.id?.toString() || "";
-      
+
       const subjectMatch = ticketSubject.toLowerCase().includes(filters.subject.toLowerCase())
       const statusMatch = filters.status === "all" || ticketStatus.toLowerCase() === filters.status.toLowerCase()
-      const userMatch = !filters.user || 
+      const userMatch = !filters.user ||
         userName.toLowerCase().includes(filters.user.toLowerCase()) ||
         userEmail.toLowerCase().includes(filters.user.toLowerCase())
-      
+
       // Filtrado por operador por ID
-      const operatorMatch = 
-        filters.operator === "all" || 
-        (filters.operator === "unassigned" && !operatorId) || 
+      const operatorMatch =
+        filters.operator === "all" ||
+        (filters.operator === "unassigned" && !operatorId) ||
         operatorId === filters.operator;
-      
+
       // Date filtering logic
       let dateMatch = true
       if (filters.dateRange !== "all" && ticket.created_at) {
         const ticketDate = new Date(ticket.created_at)
         const now = new Date()
-        
+
         switch (filters.dateRange) {
           case "today":
             dateMatch = ticketDate.toDateString() === now.toDateString()
@@ -153,18 +138,18 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
             dateMatch = ticketDate >= weekStart
             break
           case "thisMonth":
-            dateMatch = 
-              ticketDate.getMonth() === now.getMonth() && 
+            dateMatch =
+              ticketDate.getMonth() === now.getMonth() &&
               ticketDate.getFullYear() === now.getFullYear()
             break
           default:
             dateMatch = true
         }
       }
-      
+
       return subjectMatch && statusMatch && userMatch && dateMatch && operatorMatch
     })
-    
+
     setFilteredTickets(filtered)
   }, [tickets, filters])
 
@@ -232,7 +217,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
               />
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Estado</label>
             <Select
@@ -251,7 +236,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Usuario</label>
             <Input
@@ -279,7 +264,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Operador Asignado</label>
             <Select
@@ -304,7 +289,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       </CardContent>
     </Card>
   )
-  
+
   const FiltersSkeleton = (
     <Card className="mb-4 p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -335,7 +320,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       </div>
     </Card>
   )
-  
+
   const TableContent = (
     <Card>
       <TicketsTable tickets={filteredTickets} />
@@ -351,7 +336,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       >
         {FiltersContent}
       </SkeletonLoader>
-      
+
       {/* Tabla con skeleton */}
       <SkeletonLoader
         skeleton={

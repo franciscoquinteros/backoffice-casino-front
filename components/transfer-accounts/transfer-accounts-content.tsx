@@ -105,7 +105,7 @@ export function TransferAccountsContent() {
           if (response.status === 400 && errorMsg.toLowerCase().includes('officeid query parameter is required')) {
             errorMsg = "Error: El backend requiere el ID de oficina en la URL.";
           }
-        } catch (_error) { }
+        } catch { }
         console.error(`Error fetching accounts (${response.status}): ${errorMsg}`);
         throw new Error(errorMsg);
       }

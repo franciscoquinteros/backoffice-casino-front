@@ -27,10 +27,14 @@ export interface Ticket {
 
 export interface TicketFilter {
     status?: string;
-    agentId?: string;
+    agentId?: string;   // <-- USA agentId consistentemente
     search?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    dateRange?: string; // <-- AÑADIDO (para 'all', 'today', etc.)
+    dateFrom?: string;  // (Estos ya los tenías, necesarios si usas date pickers)
+    dateTo?: string;    // (Estos ya los tenías, necesarios si usas date pickers)
+    user?: string;
+    operator?: string;      // <-- AÑADIDO si filtras por texto de usuario
+    // Quita 'operator' si no lo usas en ningún otro lado
 }
 
 export interface Operator {

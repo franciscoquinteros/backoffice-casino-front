@@ -148,14 +148,18 @@ export function TicketsClient() {
       try {
         const fromDate = new Date(currentFilters.dateFrom).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() >= fromDate);
-      } catch (error) { }
+      } catch { // <-- Sin variable 'error'
+        console.error("Invalid dateFrom filter");
+      }
     }
 
     if (currentFilters.dateTo) {
       try {
         const toDate = new Date(currentFilters.dateTo).getTime();
         filtered = filtered.filter(t => t.created_at && new Date(t.created_at).getTime() <= toDate);
-      } catch (error) { }
+      } catch { // <-- Sin variable 'error'
+        console.error("Invalid dateTo filter");
+      }
     }
 
     return filtered;
