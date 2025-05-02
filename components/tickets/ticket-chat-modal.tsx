@@ -15,7 +15,8 @@ import { Send } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
-import { Ticket, TicketUser } from "./tickets-client"
+import { TicketUser } from "./tickets-client"
+import { Ticket } from "../hooks/tickets"
 
 // Tipos
 interface CommentMetadata {
