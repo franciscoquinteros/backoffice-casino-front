@@ -173,8 +173,8 @@ const authOptions: NextAuthConfig = {
 
       return session;
     }
-  }
-  // trustHost: true, // Puede ser necesario en algunos entornos
+  },
+  trustHost: true, // Puede ser necesario en algunos entornos
   // debug: process.env.NODE_ENV === 'development', // Activa logs detallados de NextAuth
 };
 
