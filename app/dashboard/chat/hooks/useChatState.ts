@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { ChatData, User, ChatTab } from '../types';
+import { useSession } from 'next-auth/react';
 
 interface UseChatStateProps {
   socket: Socket;
@@ -40,22 +41,35 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [assigningChat, setAssigningChat] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const { data: session, status: sessionStatus } = useSession();
 
   const fetchUsers = useCallback(async () => {
     try {
+      if (sessionStatus !== 'authenticated' || !session?.accessToken) {
+        console.error('Cannot fetch users: Not authenticated or missing access token.');
+        return;
+      }
+
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/users`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
 
       if (response.ok) {
         const data = await response.json();
         setUsers(data);
       } else {
-        console.error('Error fetching users:', response.status, response.statusText);
+        console.error('Error fetching users:', response.status, response.statusText, await response.text());
+        toast.error(`Error al obtener usuarios: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast.error('Error de red al obtener usuarios.');
     }
-  }, []);
+  }, [sessionStatus, session]);
 
   const getUsernameById = useCallback((id: string | null) => {
     if (!id) return 'Sin asignar';
