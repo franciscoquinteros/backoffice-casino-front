@@ -9,6 +9,7 @@ interface UseChatStateProps {
   agentId: string;
   isConnected: boolean;
   agentName?: string | null;
+  userOffice?: string;
 }
 
 interface UseChatStateReturn {
@@ -31,7 +32,7 @@ interface UseChatStateReturn {
   isUserConnected: (userId: string) => boolean;
 }
 
-export function useChatState({ socket, agentId, agentName }: UseChatStateProps): UseChatStateReturn {
+export function useChatState({ socket, agentId, isConnected, agentName, userOffice }: UseChatStateProps): UseChatStateReturn {
   const [activeChats, setActiveChats] = useState<ChatData[]>([]);
   const [connectedUsers, setConnectedUsers] = useState<Set<string>>(new Set());
   const [pendingChats, setPendingChats] = useState<ChatData[]>([]);
@@ -84,7 +85,7 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
   useEffect(() => {
     if (!socket) return;
 
-    function onActiveChats(chats: { userId: string; agentId: string; conversationId: string }[]) {
+    function onActiveChats(chats: { userId: string; agentId: string; conversationId: string; officeId?: string }[]) {
       const active: ChatData[] = [];
       const pending: ChatData[] = [];
 
@@ -93,7 +94,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
           const mappedChat: ChatData = {
             chat_user_id: chat.userId,
             chat_agent_id: chat.agentId,
-            conversationId: chat.conversationId
+            conversationId: chat.conversationId,
+            officeId: chat.officeId
           };
 
           if (mappedChat.chat_agent_id) {
@@ -113,12 +115,13 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
       setPendingChats(pending);
     }
 
-    function onArchivedChats(chats: { userId: string; agentId: string; conversationId: string }[]) {
+    function onArchivedChats(chats: { userId: string; agentId: string; conversationId: string; officeId?: string }[]) {
       if (Array.isArray(chats)) {
         const mapped = chats.map(chat => ({
           chat_user_id: chat.userId,
           chat_agent_id: chat.agentId,
           conversationId: chat.conversationId,
+          officeId: chat.officeId,
           status: 'archived' as const
         }));
         setArchivedChats(mapped);
@@ -130,7 +133,10 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
     function onAgentAssigned(data: { userId: string; agentId: string; success: boolean; conversationId: string }) {
       if (data.success && data.agentId === agentId) {
         if (assigningChat !== data.userId) {
-          socket.emit('getActiveChats');
+          socket.emit('getActiveChats', {
+            officeId: userOffice,
+            agentId
+          });
         }
 
         if (selectedChat === data.userId) {
@@ -181,7 +187,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
             chat_user_id: userId,
             chat_agent_id: agentId,
             conversationId: conversationId,
-            status: 'archived'
+            status: 'archived',
+            officeId: userOffice
           }
         ]);
         
@@ -203,7 +210,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
           ...prev,
           {
             ...chatToArchive,
-            status: 'archived'
+            status: 'archived',
+            officeId: userOffice
           }
         ]);
         
@@ -229,7 +237,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
             chat_user_id: userId,
             chat_agent_id: agentId,
             conversationId: conversationId,
-            status: 'active'
+            status: 'active',
+            officeId: userOffice
           }
         ]);
         
@@ -251,7 +260,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
           ...prev,
           {
             ...chatToUnarchive,
-            status: 'active'
+            status: 'active',
+            officeId: userOffice
           }
         ]);
         
@@ -262,6 +272,19 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
       }
     }
 
+    function onRefreshChats() {
+      console.log('Solicitando actualización de chats con filtros');
+      // Solicitar actualización de chats con los filtros apropiados
+      socket.emit('getActiveChats', {
+        officeId: userOffice,
+        agentId
+      });
+      socket.emit('getArchivedChats', {
+        officeId: userOffice,
+        agentId
+      });
+    }
+
     socket.on('activeChats', onActiveChats);
     socket.on('archivedChats', onArchivedChats);
     socket.on('agentAssigned', onAgentAssigned);
@@ -270,6 +293,17 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
     socket.on('connectedUsers', onConnectedUsers);
     socket.on('chatArchived', onChatArchived);
     socket.on('chatUnarchived', onChatUnarchived);
+    socket.on('refreshChats', onRefreshChats);
+
+    socket.emit('getActiveChats', {
+      officeId: userOffice,
+      agentId
+    });
+    socket.emit('getArchivedChats', {
+      officeId: userOffice,
+      agentId
+    });
+    socket.emit('getConnectedUsers');
 
     return () => {
       socket.off('activeChats', onActiveChats);
@@ -280,8 +314,9 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
       socket.off('connectedUsers', onConnectedUsers);
       socket.off('chatArchived', onChatArchived);
       socket.off('chatUnarchived', onChatUnarchived);
+      socket.off('refreshChats', onRefreshChats);
     };
-  }, [socket, agentId, assigningChat, selectedChat, activeChats, archivedChats]);
+  }, [socket, agentId, isConnected, userOffice]);
 
   useEffect(() => {
     if (currentConversationId && socket.connected) {
@@ -314,7 +349,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
       
       socket.emit('getConversationId', { 
         userId, 
-        isArchived 
+        isArchived,
+        officeId: userOffice
       }, (response: { success: boolean; conversationId?: string; error?: string }) => {
         if (response && response.success && response.conversationId) {
           setCurrentConversationId(response.conversationId);
@@ -326,7 +362,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
                 const updatedChats = [...prev];
                 updatedChats[chatIndex] = {
                   ...updatedChats[chatIndex],
-                  conversationId: response.conversationId
+                  conversationId: response.conversationId,
+                  officeId: userOffice
                 };
                 return updatedChats;
               }
@@ -336,7 +373,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
                   chat_user_id: userId,
                   chat_agent_id: null,
                   status: 'archived',
-                  conversationId: response.conversationId
+                  conversationId: response.conversationId,
+                  officeId: userOffice
                 }
               ];
             });
@@ -347,7 +385,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
                 const updatedChats = [...prev];
                 updatedChats[chatIndex] = {
                   ...updatedChats[chatIndex],
-                  conversationId: response.conversationId
+                  conversationId: response.conversationId,
+                  officeId: userOffice
                 };
                 return updatedChats;
               }
@@ -360,7 +399,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
                 const updatedChats = [...prev];
                 updatedChats[chatIndex] = {
                   ...updatedChats[chatIndex],
-                  conversationId: response.conversationId
+                  conversationId: response.conversationId,
+                  officeId: userOffice
                 };
                 return updatedChats;
               }
@@ -383,7 +423,7 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
         }
       });
     }
-  }, [activeChats, pendingChats, archivedChats, agentId, socket, selectedTab]);
+  }, [activeChats, pendingChats, archivedChats, agentId, socket, selectedTab, userOffice]);
 
   const assignToMe = useCallback((userId: string, conversationId: string) => {
     const loadingToast = toast.loading('Asignando chat...');
@@ -411,7 +451,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
               chat_user_id: userId,
               chat_agent_id: agentId,
               status: 'active',
-              conversationId
+              conversationId,
+              officeId: userOffice
             };
             return updatedChats;
           }
@@ -422,7 +463,8 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
               chat_user_id: userId,
               chat_agent_id: agentId,
               status: 'active',
-              conversationId
+              conversationId,
+              officeId: userOffice
             }
           ];
         });
@@ -437,7 +479,7 @@ export function useChatState({ socket, agentId, agentName }: UseChatStateProps):
         toast.error(`Error al asignar el chat: ${errorMessage}`);
       }
     });
-  }, [agentId, selectChat, socket, agentName]);
+  }, [agentId, selectChat, socket, agentName, userOffice]);
 
   const archiveChat = useCallback((userId: string) => {
     const chatToArchive = activeChats.find(chat => chat.chat_user_id === userId);

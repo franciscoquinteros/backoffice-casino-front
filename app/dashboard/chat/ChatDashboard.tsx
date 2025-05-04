@@ -16,6 +16,7 @@ export default function ChatDashboard() {
   // Get authentication context
   const { user, isAuthenticated } = useAuth();
   const agentId = user?.id || 'guest';
+  const userOffice = user?.officeId; // Get the user's office ID
 
   // Initialize socket connection
   const { socket, isConnected, isLoading, error } = useSocket();
@@ -39,7 +40,8 @@ export default function ChatDashboard() {
     socket: socket as Socket,
     agentId,
     isConnected,
-    agentName: user?.name
+    agentName: user?.name,
+    userOffice // Pass the user's office
   });
 
   // Initialize messages

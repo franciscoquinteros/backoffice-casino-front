@@ -13,6 +13,7 @@ export interface ChatData {
   chat_agent_id: string | null;
   status?: 'active' | 'pending' | 'archived';
   conversationId?: string;
+  officeId?: string;
 }
 
 export interface User {

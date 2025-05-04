@@ -65,12 +65,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketInstance.emit('joinAgent', {
         agentId,
         agentName,
-        agentRole
+        agentRole,
+        officeId: user?.officeId
       });
 
-      // Request current chats after connection
-      socketInstance.emit('getActiveChats');
-      socketInstance.emit('getArchivedChats');
+      // Request current chats after connection with proper filtering
+      socketInstance.emit('getActiveChats', {
+        officeId: user?.officeId,
+        agentId
+      });
+      socketInstance.emit('getArchivedChats', {
+        officeId: user?.officeId,
+        agentId
+      });
       socketInstance.emit('getConnectedUsers');
     }
 
