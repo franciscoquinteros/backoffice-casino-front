@@ -251,11 +251,18 @@ export function TransferAccountsContent() {
     const accessToken = session.accessToken;
     const accountIdToDelete = deletingAccount.id;
 
+    // Obtener el ID de la oficina (puedes obtenerlo del session o del deletingAccount)
+    const officeId = session.user.officeId; // O podrías usar deletingAccount.office si contiene el ID de oficina
+
     try {
       console.log(`Deleting account ${accountIdToDelete}`);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts/${accountIdToDelete}`, {
+
+      // Construir la URL incluyendo officeId como parámetro de consulta
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts/${accountIdToDelete}?officeId=${encodeURIComponent(officeId)}`;
+
+      const response = await fetch(url, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${accessToken}` } // Auth Header
+        headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
       if (!response.ok) {

@@ -41,7 +41,7 @@ const formSchema = z.object({
   cbu: z.string().min(1, 'El CBU es requerido'),
   alias: z.string().min(1, 'El alias es requerido'),
   wallet: z.enum(['mercadopago', 'paypal']),
-  operator: z.string().min(1, 'El operador es requerido'),
+  operator: z.string().optional(),
   agent: z.string().min(1, 'El agente es requerido'),
   status: z.enum(['active', 'inactive']),
   mp_client_id: z.string().optional(),
@@ -91,9 +91,11 @@ export function CreateTransferAccountModal({
     if (sessionStatus === 'authenticated' && session?.user?.officeId) {
       // Si no es superadmin O si es superadmin pero el campo está vacío, establece su oficina
       if (!isSuperAdmin || !form.getValues('office')) {
+        const officeIdValue = session.user.officeId;
         form.reset({
           ...form.getValues(), // Mantén otros valores si ya se escribieron
-          office: session.user.officeId
+          office: session.user.officeId,
+          agent: officeIdValue
         });
       }
     }
@@ -112,11 +114,17 @@ export function CreateTransferAccountModal({
     const accessToken = session.accessToken;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts`, {
+      // Obtén el ID de oficina del formulario
+      const officeId = values.office;
+
+      // Construye la URL con el parámetro de consulta officeId
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts?officeId=${encodeURIComponent(officeId)}`;
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`, // Usa el token de sesión
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(values),
       })
@@ -290,7 +298,7 @@ export function CreateTransferAccountModal({
                 name="operator"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Operador</FormLabel>
+                    <FormLabel>Operador (Opcional)</FormLabel>
                     <FormControl>
                       <Input {...field} disabled={isSubmitting} />
                     </FormControl>
@@ -305,7 +313,7 @@ export function CreateTransferAccountModal({
                   <FormItem>
                     <FormLabel>Agente</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={isSubmitting} />
+                      <Input {...field} disabled={true} className="bg-muted/50 cursor-not-allowed" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
