@@ -48,6 +48,7 @@ const formSchema = z.object({
   mp_client_secret: z.string().optional(),
   mp_public_key: z.string().optional(),
   mp_access_token: z.string().optional(),
+  receiver_id: z.string().optional(),
 })
 
 interface EditTransferAccountModalProps {
@@ -66,7 +67,7 @@ export function EditTransferAccountModal({
   const [showClientSecret, setShowClientSecret] = useState(false)
   const [showPublicKey, setShowPublicKey] = useState(false)
   const [showAccessToken, setShowAccessToken] = useState(false)
-  
+
   const {
     verifyingField,
     startVerification,
@@ -91,6 +92,8 @@ export function EditTransferAccountModal({
       mp_client_secret: account?.mp_client_secret || '',
       mp_public_key: account?.mp_public_key || '',
       mp_access_token: account?.mp_access_token || '',
+      receiver_id: account?.receiver_id || '',
+      
     },
   })
 
@@ -178,7 +181,7 @@ export function EditTransferAccountModal({
   const handleVerificationSuccess = (success: boolean) => {
     if (verifyingField) {
       handleVerificationResult(verifyingField, success)
-      
+
       // Si la verificación fue exitosa, mostrar el campo correspondiente
       if (success) {
         switch (verifyingField) {
@@ -497,6 +500,22 @@ export function EditTransferAccountModal({
                   </div>
                 </>
               )}
+
+              <FormField
+                control={form.control}
+                name="receiver_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>User ID (MP)</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+
 
               <FormField
                 control={form.control}

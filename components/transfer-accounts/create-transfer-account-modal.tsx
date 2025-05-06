@@ -32,6 +32,8 @@ import { Switch } from '@/components/ui/switch'
 import { useState, useEffect } from 'react'
 import { Loader2, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSession } from 'next-auth/react'
+import { useOffices } from '../hooks/use-offices'
 
 const formSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
@@ -46,6 +48,7 @@ const formSchema = z.object({
   mp_client_secret: z.string().optional(),
   mp_public_key: z.string().optional(),
   mp_access_token: z.string().optional(),
+  receiver_id: z.string().optional(),
 })
 
 interface CreateTransferAccountModalProps {
@@ -58,12 +61,17 @@ export function CreateTransferAccountModal({
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [triggerReset, setTriggerReset] = useState(false)
+  const { data: session, status: sessionStatus } = useSession(); // <-- Obtiene sesión
+  // Obtiene oficinas SÓLO si es superadmin (el hook debe manejar la lógica condicional o lo hacemos aquí)
+  const isSuperAdmin = session?.user?.role === 'superadmin';
+  const { activeOffices, isLoading: isLoadingOffices, error: officesError } = useOffices(); // Pasa flag al hook si lo soporta
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      office: '',
+      office: session?.user?.officeId || '',
       cbu: '',
       alias: '',
       wallet: 'mercadopago',
@@ -74,27 +82,41 @@ export function CreateTransferAccountModal({
       mp_client_secret: '',
       mp_public_key: '',
       mp_access_token: '',
+      receiver_id: '',
     },
   })
 
   // Resetear el formulario cuando se cierra el modal o cuando se activa el trigger
   useEffect(() => {
-    if (!open || triggerReset) {
-      form.reset();
-      setTriggerReset(false);
+    if (sessionStatus === 'authenticated' && session?.user?.officeId) {
+      // Si no es superadmin O si es superadmin pero el campo está vacío, establece su oficina
+      if (!isSuperAdmin || !form.getValues('office')) {
+        form.reset({
+          ...form.getValues(), // Mantén otros valores si ya se escribieron
+          office: session.user.officeId
+        });
+      }
     }
-  }, [open, triggerReset, form]);
+  }, [sessionStatus, session?.user?.officeId, form, isSuperAdmin]);
 
   const watchWallet = form.watch('wallet')
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
 
+    if (sessionStatus !== "authenticated" || !session?.accessToken) {
+      toast.error("Autenticación requerida para crear cuenta.");
+      setIsSubmitting(false);
+      return;
+    }
+    const accessToken = session.accessToken;
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`, // Usa el token de sesión
         },
         body: JSON.stringify(values),
       })
@@ -171,9 +193,36 @@ export function CreateTransferAccountModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Oficina</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isSubmitting} />
-                    </FormControl>
+                    {isSuperAdmin ? (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isSubmitting || isLoadingOffices}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingOffices ? "Cargando..." : "Seleccionar"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {officesError ? (<SelectItem value="error" disabled>Error</SelectItem>)
+                            : isLoadingOffices ? (<SelectItem value="loading" disabled>Cargando...</SelectItem>)
+                              : ( // --- CORRECCIÓN AQUÍ ---
+                                activeOffices.map(office => (
+                                  // Usa office.id y office.name (o los nombres correctos de tu tipo OfficeOption)
+                                  <SelectItem key={office.value} value={office.value}>
+                                    {office.label} ({office.value}) {/* Muestra label y value (ID) */}
+                                  </SelectItem>
+                                ))
+                                // --- FIN CORRECCIÓN ---
+                              )}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <FormControl>
+                        <Input {...field} readOnly className="bg-muted/50 cursor-not-allowed" />
+                      </FormControl>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -316,6 +365,19 @@ export function CreateTransferAccountModal({
                         <FormLabel>Access Token</FormLabel>
                         <FormControl>
                           <Input {...field} type="password" disabled={isSubmitting} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receiver_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>User ID (MP)</FormLabel>
+                        <FormControl>
+                          <Input {...field} disabled={isSubmitting} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

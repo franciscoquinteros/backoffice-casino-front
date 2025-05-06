@@ -13,110 +13,86 @@ import { JWT } from "next-auth/jwt";
 const authOptions: NextAuthConfig = {
   providers: [
     CredentialsProvider({
-      // No necesitas 'credentials' aquí si usas tu propio formulario,
-      // pero 'authorize' es esencial.
-      name: "Credentials", // Nombre para el proveedor
+      name: "Credentials",
       credentials: {
-        // Define los campos que tu formulario envía, ayuda a NextAuth
-        email: { label: "Email", type: "email", placeholder: "admin@example.com" },
-        password: { label: "Password", type: "password" }
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+        // --- Opcional pero recomendado: Añade viewOfficeId aquí para claridad ---
+        viewOfficeId: { label: "View Office ID", type: "text" }
       },
       async authorize(credentials): Promise<User | null> {
-        console.log("[NextAuth Authorize] Attempting authorization...");
+        // --- Log para ver qué credenciales llegan ---
+        console.log("[NextAuth Authorize] 1. Received credentials:", credentials);
+
         try {
-          // 1. Validar las credenciales de entrada (email/password)
-          // Usamos safeParse para manejar errores de validación explícitamente
-          const validationResult = await signInSchema.safeParseAsync(credentials);
-          if (!validationResult.success) {
-            console.warn("[NextAuth Authorize] Input validation failed:", validationResult.error.flatten());
-            // Podrías lanzar un error específico o devolver null
-            // Devolver null generalmente resulta en un error genérico de credenciales
+          // Valida email y password (Zod u otra)
+          // const validationResult = await signInSchema.safeParseAsync(credentials); ...
+          // if (!validationResult.success) return null;
+          // const { email, password } = validationResult.data;
+          // O validación simple si Zod no incluye viewOfficeId:
+          if (!credentials?.email || !credentials?.password) {
+            console.error("[NextAuth Authorize] Missing email or password in credentials.");
             return null;
           }
-          const { email, password } = validationResult.data;
-          console.log(`[NextAuth Authorize] Input validated for email: ${email}`);
+          const email = credentials.email as string;
+          const password = credentials.password as string;
+          // Guarda el viewOfficeId si existe
+          const viewOfficeId = credentials.viewOfficeId as string | undefined; // Obtiene el ID opcional
 
-          // 2. Llamar al backend NestJS para el login real
+
+          // --- CORRECCIÓN: Construye el payload para el backend ---
+          const bodyPayload: Record<string, string> = {
+            email,
+            password
+          };
+          // Añade viewOfficeId si existe
+          if (viewOfficeId) {
+            bodyPayload.viewOfficeId = viewOfficeId;
+          }
+          console.log("[NextAuth Authorize] 2. Sending this body to backend:", bodyPayload);
+          // --- FIN CORRECCIÓN ---
+
+
+          // Llamada al backend
           const backendUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`;
-          console.log(`[NextAuth Authorize] Calling backend login: POST ${backendUrl}`);
           const response = await fetch(backendUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(bodyPayload) // <-- Envía el payload correcto
           });
 
-          console.log(`[NextAuth Authorize] Backend response status: ${response.status}`);
-
-          // 3. Parsear la respuesta del backend
+          console.log(`[NextAuth Authorize] 3. Backend response status: ${response.status}`);
           let data;
-          try {
-            data = await response.json();
-            // --- LOG CLAVE: Muestra la respuesta completa del backend ---
-            console.log("[NextAuth Authorize] RAW Backend Response Data:", JSON.stringify(data, null, 2));
-          } catch (e) {
-            console.error("[NextAuth Authorize] Failed to parse backend JSON response:", e);
-            // Si no podemos parsear Y el status no fue OK, es un error de servidor/respuesta
-            if (!response.ok) {
-              console.error(`[NextAuth Authorize] Backend returned status ${response.status} but response is not valid JSON.`);
-              // Podrías lanzar un error específico para debugging
-              throw new Error(`server_error_invalid_json_status_${response.status}`);
-            }
-            // Si fue OK pero no es JSON (raro), es un problema
-            throw new Error('invalid_backend_response_format');
-          }
+          try { data = await response.json(); } catch (e) { data = null; } // Manejo básico de parseo
+          console.log("[NextAuth Authorize] 4. Backend response data:", JSON.stringify(data, null, 2));
 
-          // 4. Validar la respuesta del backend y extraer datos
-          // --- Si la respuesta NO fue exitosa (status no es 2xx) ---
-          if (!response.ok) {
+          // Validar respuesta del backend
+          if (!response.ok || !data?.user || !data?.accessToken || !data.user.officeId) {
             const backendErrorMsg = data?.message || `Backend returned status ${response.status}`;
             console.warn("[NextAuth Authorize] Backend login failed:", backendErrorMsg);
-            // Mapear errores conocidos del backend a errores de NextAuth si es necesario
-            if (backendErrorMsg.toLowerCase().includes('inactive')) {
-              throw new Error('inactive_user'); // Error específico para usuario inactivo
-            }
-            // Para otros errores (ej: credenciales inválidas devueltas por NestJS),
-            // devolver null es lo estándar para CredentialsProvider
-            return null; // Indica a NextAuth que las credenciales no son válidas
+            // Lanza error para que signIn reciba el mensaje
+            throw new Error(backendErrorMsg);
           }
 
-          // --- Si la respuesta FUE exitosa (status 2xx) ---
-          // Verificar que la estructura esperada exista
-          if (!data || !data.user || !data.accessToken || !data.user.officeId) {
-            console.error("[NextAuth Authorize] Backend response OK, but missing expected data (accessToken, user.id, user.email, user.officeId):", data);
-            // Esto indica un problema en cómo el backend NestJS formatea su respuesta exitosa
-            throw new Error('invalid_backend_response_structure');
-          }
-
-          // 5. Construir y RETORNAR el objeto 'User' para NextAuth
-          // Este objeto DEBE incluir TODO lo que necesiten los callbacks jwt/session
-          // y DEBE coincidir con la interfaz 'User' en next-auth.d.ts
+          // Construir y retornar el objeto User para NextAuth
           const userForNextAuth: User = {
             id: data.user.id.toString(),
             email: data.user.email,
             name: data.user.name ?? null,
             role: data.user.role ?? null,
-            officeId: data.user.officeId,   // <-- Incluido
-            accessToken: data.accessToken, // <-- Incluido
-            // No incluir status aquí si no se necesita persistir en el token/sesión
+            officeId: data.user.officeId,   // <-- El officeId devuelto por el backend
+            accessToken: data.accessToken, // <-- El token del backend
           };
+          console.log("[NextAuth Authorize] 5. Returning user object to NextAuth:", userForNextAuth);
+          return userForNextAuth;
 
-          console.log("[NextAuth Authorize] Authorization successful. Returning user object to NextAuth:", userForNextAuth);
-          return userForNextAuth; // Devuelve el objeto completo
-
-        } catch (error: any) {
-          // Capturar errores lanzados explícitamente (inactive_user, etc.) o errores de fetch/parseo
-          console.error("[NextAuth Authorize] Error during authorization process:", error.message || error);
-          // Devolver null indica fallo de credenciales a NextAuth,
-          // excepto si lanzas un error específico que quieras manejar diferente.
-          // Para errores como 'inactive_user', puedes manejarlo en la página de login
-          // basándote en el parámetro ?error= en la URL si no usas redirect:false.
-          // Si usas redirect:false, el error se devuelve en el resultado de signIn().
-          // Re-lanzar el error puede ser útil si tienes una página de error personalizada.
-          // throw error; // O simplemente devuelve null para error genérico
-          return null;
+        } catch (error: unknown) {
+          console.error("[NextAuth Authorize] Error:", error);
+          // Lanza el error para que signIn lo maneje
+          // Puedes personalizar el mensaje aquí si quieres
+          throw new Error(error instanceof Error ? error.message : "Authentication process failed");
+          // Devolver null también funciona, pero lanzar da más info
+          // return null;
         }
       },
     }),

@@ -13,4 +13,5 @@ export interface TransferAccount {
   mp_client_secret?: string;
   mp_access_token?: string;
   mp_public_key?: string;
+  receiver_id?: string;
 } 

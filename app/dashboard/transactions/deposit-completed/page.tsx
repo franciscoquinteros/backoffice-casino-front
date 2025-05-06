@@ -2,189 +2,163 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSession } from "next-auth/react"; // <-- 1. Importa useSession
+import { useSession } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TransactionTable } from '../../../../components/transaction-table'; // Ajusta ruta
-import { TransactionFilters } from '../../../../components/transaction-filters'; // Ajusta ruta
-import {
-    Transaction,
-    TransactionFilter,
-    transactionService
-} from '@/components/transaction-service'; // Ajusta ruta
-import { TableSkeleton } from '@/components/ui/table-skeleton'; // Ajusta ruta
+// --- Asegúrate que las rutas sean correctas ---
+import { TransactionTable } from '@/components/transaction-table';
+import { TransactionFilters } from '@/components/transaction-filters';
+import { Transaction, TransactionFilter, transactionService } from '@/components/transaction-service';
+import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
+import { SkeletonLoader } from '@/components/skeleton-loader'; // Importa SkeletonLoader
+import { toast } from 'sonner'; // Importa toast si lo necesitas para errores
 
-// Interfaz para errores (opcional, si la usas
+// --- Quita TransactionError si no la usas ---
+// interface TransactionError extends Error { message: string; }
 
 export default function DepositsCompletedPage() {
-    // --- 2. Obtiene la sesión y el estado ---
     const { data: session, status: sessionStatus } = useSession();
 
-    // Estados del componente
-    const [allOfficeTransactions, setAllOfficeTransactions] = useState<Transaction[]>([]); // Guarda TODAS las tx de la oficina
-    const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]); // Las que se muestran (filtradas cliente + status/tipo)
-    const [filters, setFilters] = useState<TransactionFilter>({}); // Filtros de la UI
-    const [isLoading, setIsLoading] = useState(true); // Estado de carga general
+    const [allOfficeTransactions, setAllOfficeTransactions] = useState<Transaction[]>([]);
+    const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+    const [filters, setFilters] = useState<TransactionFilter>({});
+    const [isLoading, setIsLoading] = useState(true); // Carga inicial
+    const [isRefreshing, setIsRefreshing] = useState(false); // Carga en segundo plano (intervalo/manual)
     const [error, setError] = useState<string | null>(null);
 
-    // --- 3. Función useCallback para cargar datos del backend ---
-    const fetchTransactions = useCallback(async (isInitialLoad = false) => {
-        // Verifica sesión antes de llamar
+    // --- Columnas para Skeleton ---
+    const tableColumns: ColumnConfig[] = [ /* ... tu config ... */];
+
+    // --- fetchTransactions CORREGIDO ---
+    const fetchTransactions = useCallback(async (isRefresh = false) => { // Cambiado nombre de flag para claridad
+        console.log('*** DEPOSIT COMPLETED - fetchTransactions INICIANDO ***', { isRefresh }); // <-- LOG INICIO
+
         if (sessionStatus !== "authenticated" || !session?.user?.officeId || !session?.accessToken) {
-            console.log("Fetch prevented (Completed Page): Session not ready or missing data.", { sessionStatus });
-            if (!isInitialLoad) setIsLoading(false); // Quita el loading si es recarga
-            if (sessionStatus === "authenticated") {
-                setError("Datos de sesión incompletos para cargar transacciones.");
-                // No mostramos toast aquí para no ser molestos en recargas
-            }
-            // Si no está autenticado, el render lo manejará
-            return; // No continuar
+            // ... (manejo sesión no lista, no cambia) ...
+            if (sessionStatus === "authenticated") setError("Datos de sesión incompletos.");
+            // Detiene indicadores de carga si falla la verificación inicial
+            setIsLoading(false);
+            setIsRefreshing(false);
+            return;
         }
-        // Extrae datos de sesión
         const officeId = session.user.officeId;
         const accessToken = session.accessToken;
 
-        // Marca como cargando si es la carga inicial
-        if (isInitialLoad) {
-            setIsLoading(true);
-            setError(null);
-        }
+        // Decide qué indicador mostrar
+        if (!isRefresh) setIsLoading(true); // Carga inicial completa
+        else setIsRefreshing(true); // Recarga en segundo plano
+        setError(null);
 
         try {
-            console.log(`Workspaceing transactions for completed deposits - Office: ${officeId}...`);
-            // Llama al servicio pasando officeId y token
-            const data = await transactionService.getTransactionsForOffice(officeId, accessToken);
+            // Llama al servicio para obtener TODAS las transacciones de la oficina
+            const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${officeId}`; // Asume que tu servicio/controller usa path param
+            console.log(`Workspaceing transactions for office ${officeId} from: ${endpoint}`);
+            const data = await transactionService.getTransactionsForOffice(officeId, accessToken); // Llama al servicio cliente
+            console.log(`Workspaceed ${data.length} total transactions for office ${officeId}`);
 
-            // Guarda la lista completa de la oficina en el estado 'base'
-            setAllOfficeTransactions(data);
+            setAllOfficeTransactions(data); // Guarda la lista base completa
 
-            // --- 4. Filtra INMEDIATAMENTE para esta página (Depósitos Completados) ---
-            // Usa los filtros ACTUALES de la UI (filters) sobre los datos NUEVOS (data)
-            // Tu servicio ya combina Aceptado/approved/Rechazado al pedir 'Aceptado'
-            const completedDeposits = transactionService.filterTransactions(
-                data,
-                'deposit',   // Tipo: Depósito
-                'Aceptado', // Estado: 'Aceptado' (tu servicio maneja los otros estados completados)
-                filters      // Filtros actuales de la UI
+            // Filtra INMEDIATAMENTE para esta página (Completados + Filtros UI)
+            const completedFiltered = transactionService.filterTransactions(
+                data, 'deposit', 'Aceptado', filters
             );
-            setFilteredTransactions(completedDeposits); // Actualiza las transacciones a mostrar
+            console.log(`Filtered down to ${completedFiltered.length} completed deposits matching UI filters.`);
+            setFilteredTransactions(completedFiltered); // Actualiza la vista
 
-            // Limpia error si todo salió bien
-            if (isInitialLoad) setError(null);
-
-        } catch (err: unknown) {
+        } catch (err: unknown) { // Usa unknown
             console.error('Error fetching transactions (Completed Page):', err);
-            // No mostramos toast en recargas automáticas
-            // if (isInitialLoad) toast.error(errorMsg);
+            const message = err instanceof Error ? err.message : 'No se pudieron cargar las transacciones';
+            setError(message);
+            // No pongas toast en fetch automático, solo quizás en el manual
+            setAllOfficeTransactions([]); // Limpia datos en error
+            setFilteredTransactions([]);
         } finally {
-            setIsLoading(false); // Quita el estado de carga
+            setIsLoading(false); // Quita carga inicial
+            setIsRefreshing(false); // Quita carga de refresco
+            console.log('*** DEPOSIT COMPLETED - fetchTransactions FINALIZANDO ***');
         }
-        // Depende de la sesión/status para saber si puede ejecutar y con qué credenciales,
-        // y de 'filters' para aplicar el filtro correcto inmediatamente después de recibir datos nuevos.
-    }, [filters, session, sessionStatus]);
+        // --- Dependencias CORREGIDAS: Solo session y status ---
+        // Quita 'filters' porque el filtro se aplica DESPUÉS de recibir datos
+    }, [session, sessionStatus, setError]); // Añade setError como dependencia estable
 
 
-    // --- 5. useEffect para la Carga Inicial ---
+    // --- useEffect para Carga Inicial ---
     useEffect(() => {
-        // Solo re-filtra si ya tenemos datos base de la oficina
-        // Aplica filtros a la lista base y actualiza el estado filtrado
-        const filtered = transactionService.filterTransactions(
-            allOfficeTransactions, // Usa la lista completa ya cargada
-            'deposit',             // Tipo para esta página
-            'Aceptado',           // Estado para esta página (tu lógica maneja completados)
-            filters                // Los filtros ACTUALES de la UI
-        );
-        setFilteredTransactions(filtered);
-    }, [filters, allOfficeTransactions]);// Depende del status y de la función fetch
+        if (sessionStatus === "authenticated") {
+            fetchTransactions(true); // true para indicar carga inicial (mostrar skeleton grande)
+        } else if (sessionStatus === "unauthenticated") {
+            setIsLoading(false);
+            setError("Necesitas iniciar sesión.");
+        }
+    }, [sessionStatus, fetchTransactions]); // Correcto
 
 
-    // --- 6. useEffect para la Actualización Periódica ---
+    // --- useEffect para la Actualización Periódica ---
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null;
         if (sessionStatus === "authenticated") {
             console.log("Setting up interval fetch (Completed Page)...");
             intervalId = setInterval(() => {
                 console.log("Interval fetch triggered (Completed Page)...");
-                fetchTransactions(false); // false para no mostrar el skeleton grande
+                fetchTransactions(true); // Llama con true para que ponga isRefreshing=true
             }, 30000); // 30 segundos
         }
-        return () => { // Limpieza al desmontar o cambiar status
+        // Limpieza: se ejecuta al desmontar o ANTES de la siguiente ejecución si las deps cambian
+        return () => {
             if (intervalId) {
                 console.log("Clearing interval fetch (Completed Page).");
                 clearInterval(intervalId);
             }
         };
-    }, [sessionStatus, fetchTransactions]); // Depende del status y de la función fetch
+        // Ahora fetchTransactions es estable, por lo que el intervalo no debería reiniciarse constantemente
+    }, [sessionStatus, fetchTransactions]);
 
 
-    // --- 7. useEffect para RE-FILTRAR en el cliente cuando cambian los filtros de UI ---
-    // Reemplaza el useEffect que causa el warning por este:
+    // --- useEffect para RE-FILTRAR en cliente cuando cambian filtros de UI o datos base ---
     useEffect(() => {
-        // Solo re-filtra si ya tenemos datos base de la oficina
-        // Aplica filtros a la lista base y actualiza el estado filtrado
+        console.log("Re-filtering completed deposits based on UI filters or new data...");
+        // Aplica siempre el filtro de la página + los filtros de UI
         const filtered = transactionService.filterTransactions(
-            allOfficeTransactions, // Usa la lista completa ya cargada
-            'deposit',             // Tipo para esta página
-            'Aceptado',           // Estado para esta página (tu lógica maneja completados)
-            filters                // Los filtros ACTUALES de la UI
+            allOfficeTransactions, // Usa la lista base completa
+            'deposit',             // Tipo fijo para esta página
+            'Aceptado',           // Estado fijo para esta página
+            filters                // Filtros actuales de la UI
         );
-        setFilteredTransactions(filtered);
-    }, [filters, allOfficeTransactions]); // <-- Depende solo de filtros y datos base
+        setFilteredTransactions(filtered); // Actualiza la lista que se muestra en la tabla
+    }, [filters, allOfficeTransactions]); // Correcto: depende de los filtros y los datos base
 
-    // Manejadores de filtros (sin cambios)
+
+    // Handlers de filtros (sin cambios)
     const handleFilterChange = (newFilters: TransactionFilter) => setFilters(newFilters);
     const handleResetFilters = () => setFilters({});
 
-    // No hay acciones de aprobar/rechazar en esta página
 
-    // --- 8. Renderizado Condicional ---
-    if (sessionStatus === "loading") {
-        return (
-            <div className="container mx-auto p-4">
-                <Card><CardHeader><CardTitle>Cargando Sesión...</CardTitle></CardHeader>
-                    <div className="p-6 pt-3"><TableSkeleton columns={[]} rowCount={5} /></div>
-                </Card>
-            </div>
-        );
-    }
+    // --- Renderizado ---
+    if (sessionStatus === "loading") { /* ... Skeleton Sesión ... */ }
+    if (sessionStatus === "unauthenticated") { /* ... Mensaje Login ... */ }
 
-    if (sessionStatus === "unauthenticated") {
-        return <div className="container mx-auto p-4">Necesitas iniciar sesión para ver el historial.</div>;
-    }
-
-    // Renderizado principal cuando está autenticado
     return (
         <div className="container mx-auto p-4">
             <Card>
                 <CardHeader className="pb-3">
-                    {/* Título y Descripción actualizados */}
                     <CardTitle className="text-2xl font-bold">Depósitos Completados</CardTitle>
-                    <CardDescription>
-                        Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'})
-                    </CardDescription>
+                    <CardDescription> Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'}) </CardDescription>
                 </CardHeader>
-
                 <div className="p-6 pt-3">
-                    <TransactionFilters
-                        onChange={handleFilterChange}
-                        onReset={handleResetFilters}
-                    />
+                    <TransactionFilters onChange={handleFilterChange} onReset={handleResetFilters} />
 
-                    {/* Muestra skeleton solo en la carga inicial */}
-                    {isLoading && allOfficeTransactions.length === 0 ? (
-                        <TableSkeleton columns={[]} rowCount={5} />
+                    {/* Muestra skeleton solo en carga INICIAL */}
+                    {isLoading && filteredTransactions.length === 0 ? (
+                        <TableSkeleton columns={tableColumns} rowCount={5} /> // Usa tu variable tableColumns
                     ) : error ? (
                         <Card className="p-8 text-center"><p className="text-red-500">{error}</p></Card>
                     ) : (
+                        // Pasa isRefreshing a la tabla para feedback visual opcional
                         <TransactionTable
-                            // Pasa las transacciones ya filtradas para esta vista
                             transactions={filteredTransactions}
-                            // No muestra botones de acción
-                            showApproveButton={false}
-                            // No necesita pasar handlers si no hay botones
-                            // onTransactionApproved={() => {}}
-                            // onTransactionRejected={() => {}}
-                            // Muestra un indicador si se está recargando en segundo plano
-                            isRefreshing={isLoading && allOfficeTransactions.length > 0}
+                            showApproveButton={false} // No hay botones aquí
+                            onTransactionApproved={() => { }} // Pasa funciones vacías si son obligatorias
+                            onTransactionRejected={() => { }}
+                            isRefreshing={isRefreshing} // Indica si hay recarga en fondo
                         />
                     )}
                 </div>

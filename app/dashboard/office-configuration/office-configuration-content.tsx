@@ -25,11 +25,15 @@ import { useOffices, Office } from "@/components/hooks/use-offices";
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "next-auth/react";
+import { OfficeSelector } from "@/components/office-selector";
 
 export function OfficeConfigurationContent() {
   // Utilizamos el hook useOffices para obtener los datos
   const { offices, isLoading, error, refreshOffices } = useOffices();
-  
+  const { data: session } = useSession();
+
+
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [currentOffice, setCurrentOffice] = useState<Office | null>(null);
@@ -49,6 +53,7 @@ export function OfficeConfigurationContent() {
   // Efecto para cerrar el menú desplegable cuando se abre un modal
   useEffect(() => {
     if (openEditDialog || openDeleteDialog) {
+      console.log("session", session);
       setOpenDropdownId(null);
     }
   }, [openEditDialog, openDeleteDialog]);
@@ -72,15 +77,17 @@ export function OfficeConfigurationContent() {
     await refreshOffices();
     return Promise.resolve();
   };
-  
+
   // Header con título y botón de crear
   const HeaderContent = (
     <div className="flex justify-between items-center">
       <h1 className="text-2xl font-bold tracking-tight">Oficinas</h1>
+
+      {session?.user?.role === 'superadmin' && <OfficeSelector />}
       <CreateOfficeModal onOfficeCreated={handleOfficeChange} />
     </div>
   )
-  
+
   // Skeleton del header
   const HeaderSkeleton = (
     <div className="flex justify-between items-center">
@@ -88,7 +95,7 @@ export function OfficeConfigurationContent() {
       <Skeleton className="h-10 w-36" />
     </div>
   )
-  
+
   // Contenido de la tabla
   const TableContent = (
     <div className="rounded-md border">
@@ -123,7 +130,7 @@ export function OfficeConfigurationContent() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu 
+                  <DropdownMenu
                     open={openDropdownId === office.id}
                     onOpenChange={(open) => {
                       setOpenDropdownId(open ? office.id : null);
@@ -174,34 +181,34 @@ export function OfficeConfigurationContent() {
   return (
     <div className="space-y-6">
       {/* Header con título y botón de crear */}
-      <SkeletonLoader 
-        skeleton={HeaderSkeleton} 
+      <SkeletonLoader
+        skeleton={HeaderSkeleton}
         isLoading={isLoading}
       >
         {HeaderContent}
       </SkeletonLoader>
-      
+
       {/* Tabla de oficinas */}
-      <SkeletonLoader 
-        skeleton={<TableSkeleton columns={tableColumns} rowCount={5} />} 
+      <SkeletonLoader
+        skeleton={<TableSkeleton columns={tableColumns} rowCount={5} />}
         isLoading={isLoading}
       >
         {TableContent}
       </SkeletonLoader>
 
       {/* Modales para editar y eliminar con el nuevo manejador */}
-      <EditOfficeModal 
-        office={currentOffice} 
-        open={openEditDialog} 
-        onOpenChange={(open) => handleModalOpenChange(open, setOpenEditDialog)} 
-        onOfficeUpdated={handleOfficeChange} 
+      <EditOfficeModal
+        office={currentOffice}
+        open={openEditDialog}
+        onOpenChange={(open) => handleModalOpenChange(open, setOpenEditDialog)}
+        onOfficeUpdated={handleOfficeChange}
       />
-      
-      <DeleteOfficeModal 
-        office={currentOffice} 
-        open={openDeleteDialog} 
+
+      <DeleteOfficeModal
+        office={currentOffice}
+        open={openDeleteDialog}
         onOpenChange={(open) => handleModalOpenChange(open, setOpenDeleteDialog)}
-        onOfficeDeleted={handleOfficeChange} 
+        onOfficeDeleted={handleOfficeChange}
       />
     </div>
   );

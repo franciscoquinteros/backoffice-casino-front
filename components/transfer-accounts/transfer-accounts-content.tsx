@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSession } from "next-auth/react"; // Importa useSession
 import { TransferAccount } from '@/types/transfer-account'; // Ajusta ruta si es necesario
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { TransferAccountsTable } from '@/components/transfer-accounts/transfer-accounts-table'; // Ajusta ruta
 import { CreateTransferAccountModal } from '@/components/transfer-accounts/create-transfer-account-modal'; // Ajusta ruta
 import { EditTransferAccountModal } from '@/components/transfer-accounts/edit-transfer-account-modal'; // Ajusta ruta
@@ -14,6 +15,7 @@ import { SkeletonLoader } from '@/components/skeleton-loader'; // Ajusta ruta
 import { Skeleton } from '@/components/ui/skeleton'; // Ajusta ruta
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'; // Ajusta ruta
 import { Card } from '../ui/card';
+import { useOffices, Office as OfficeOption } from "@/components/hooks/use-offices"; // Ajusta ruta
 
 // Interfaces AccountData y AccountResponse
 interface AccountData {
@@ -58,6 +60,27 @@ export function TransferAccountsContent() {
   const [editingAccount, setEditingAccount] = useState<TransferAccount | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<TransferAccount | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    offices: officeList, // Renombrado para claridad, asume que devuelve {id, name}[]
+    isLoading: isLoadingOffices,
+    error: officesError
+  } = useOffices();
+
+  const officeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (officeList && Array.isArray(officeList)) {
+      officeList.forEach(office => {
+        map.set(office.id.toString(), office.name); // Clave es ID (string), Valor es Nombre
+      });
+    }
+    return map;
+  }, [officeList]);
+
+  const getOfficeName = useCallback((officeId: string | number | undefined | null): string => {
+    if (officeId === null || officeId === undefined) return 'N/A';
+    return officeMap.get(officeId.toString()) || `ID: ${officeId}`; // Devuelve nombre o ID si no se encuentra
+  }, [officeMap]);
 
   const fetchAccounts = useCallback(async (showLoadingState = false) => {
     // Verifica sesión antes de llamar
@@ -277,12 +300,10 @@ export function TransferAccountsContent() {
         <h1 className="text-2xl font-semibold">Cuentas para transferencias</h1>
         {/* Muestra la oficina del usuario si está disponible en la sesión */}
         {session?.user?.officeId && (
-          <span className="text-lg font-normal text-muted-foreground">
-            (Oficina: {session.user.officeId})
-          </span>
-          // Alternativa con Badge de shadcn/ui (necesitarías importar Badge)
-          // import { Badge } from "@/components/ui/badge";
-          // <Badge variant="secondary">Oficina: {session.user.officeId}</Badge>
+          <Badge variant="outline">
+            {/* --- 5. Muestra nombre de oficina --- */}
+            Oficina: {isLoadingOffices ? '...' : getOfficeName(session.user.officeId)}
+          </Badge>
         )}
       </div>
       {/* Botones a la derecha */}
@@ -328,6 +349,7 @@ export function TransferAccountsContent() {
       accounts={accounts} // Pasa las cuentas filtradas por oficina (desde el backend)
       onEdit={setEditingAccount}
       onDelete={setDeletingAccount}
+      officeMap={officeMap}
     />
   );
   // --- FIN JSX TableContent ---

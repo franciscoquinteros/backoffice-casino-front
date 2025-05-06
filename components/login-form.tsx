@@ -1,140 +1,188 @@
-"use client"
+// Ejemplo: components/auth/LoginForm.tsx (o donde esté tu form)
+"use client";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
-import { useState, useRef } from "react"
-import { Loader2 } from "lucide-react"
-import { signIn } from "next-auth/react"
-import { toast } from "sonner"
+import { useState, useRef, FormEvent, useEffect } from 'react'; // Importa FormEvent
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from 'next/navigation'; // Para redirección
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Importa de shadcn
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"div">) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const emailRef = useRef<HTMLInputElement>(null)
-  const passwordRef = useRef<HTMLInputElement>(null)
+interface OfficeOption {
+  id: number | string;
+  name: string;
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+// Quita useOffices si ya no cargas el dropdown aquí
+// import { useOffices } from "@/components/hooks/use-offices";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-    if (!emailRef.current?.value || !passwordRef.current?.value) {
-      toast.error("Por favor, ingresa tu email y contraseña")
-      return
+// Asume que tienes un layout básico, ajusta estilos según necesidad
+export function LoginForm() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  // Estados para los campos del formulario
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [viewOfficeId, setViewOfficeId] = useState(''); // Input para el ID de oficina opcional
+  const [officeList, setOfficeList] = useState<OfficeOption[]>([]);
+  const [isLoadingOffices, setIsLoadingOffices] = useState(false);
+
+  // Lógica simple para determinar si el email PODRÍA ser de un superadmin
+  // Ajusta esto a tu caso real (ej: email exacto, dominio específico)
+  const isPotentiallySuperAdmin = email.toLowerCase() === 'admin@admin.com' || email.endsWith('@superadmin.com');
+
+  useEffect(() => {
+    const fetchOffices = async () => {
+      if (isPotentiallySuperAdmin && officeList.length === 0) { // Solo carga si es superadmin y la lista está vacía
+        setIsLoadingOffices(true);
+        try {
+          // Llama al endpoint PÚBLICO (sin token)
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/offices`);
+          if (!response.ok) { throw new Error('Failed to fetch offices'); }
+          const data: OfficeOption[] = await response.json();
+          // Asume que la API devuelve un array de {id, name}
+          setOfficeList(data || []);
+          console.log("Offices loaded for selector:", data);
+        } catch (error) {
+          console.error("Error fetching offices for selector:", error);
+          toast.error("No se pudieron cargar las oficinas para seleccionar.");
+          setOfficeList([]); // Asegura que esté vacío en error
+        } finally {
+          setIsLoadingOffices(false);
+        }
+      } else if (!isPotentiallySuperAdmin) {
+        // Si deja de ser superadmin, limpia la lista y la selección
+        setOfficeList([]);
+        setViewOfficeId('');
+      }
+    };
+
+    fetchOffices();
+    // Depende de isPotentiallySuperAdmin para reaccionar al cambio de email
+  }, [isPotentiallySuperAdmin]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Por favor, ingresa email y contraseña.");
+      return;
+    }
+    setIsLoading(true);
+
+    // Construye las credenciales a enviar a NextAuth
+    const credentials: Record<string, string> = {
+      email,
+      password,
+    };
+    // Añade viewOfficeId SOLO si el campo es visible y tiene valor
+    if (isPotentiallySuperAdmin && viewOfficeId.trim()) {
+      credentials.viewOfficeId = viewOfficeId.trim();
+      console.log("Attempting login as Superadmin viewing office:", credentials.viewOfficeId);
+    } else {
+      console.log("Attempting login with default office.");
     }
 
-    setIsLoading(true)
 
     try {
-      // Try the login
       const result = await signIn("credentials", {
-        email: emailRef.current.value,
-        password: passwordRef.current.value,
-        redirect: false,
-      })
+        ...credentials,
+        redirect: false, // Importante manejar la redirección manualmente
+      });
+
+      setIsLoading(false); // Quita el loading después de la respuesta
 
       if (result?.error) {
-        // If login fails, check if the account exists and is inactive
-        if (result.error === 'Configuration' || result.error === 'CredentialsSignin') {
-          try {
-            const checkResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/check-status?email=${encodeURIComponent(emailRef.current.value)}`, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json'
-              }
-            });
-            
-            if (checkResponse.ok) {
-              const checkData = await checkResponse.json();
-              
-              // Only show inactive message if the user actually exists and is inactive
-              if (checkData && checkData.status === 'inactive') {
-                toast.error("Tu cuenta está desactivada. Contacta al administrador.");
-                setIsLoading(false);
-                return;
-              }
-            }
-          } catch {
-            // Silently handle status check error
-          }
-          
-          // If we get here, it's just invalid credentials or user doesn't exist
-          toast.error("Credenciales inválidas");
-        } else if (result.error.includes('inactive_user') || result.error.includes('inactive')) {
-          toast.error("Tu cuenta está desactivada. Contacta al administrador.");
-        } else {
-          toast.error("Credenciales inválidas");
+        console.error("SignIn Error:", result.error);
+        // Mapea errores conocidos si es necesario
+        if (result.error === 'CredentialsSignin') {
+          toast.error("Credenciales inválidas.");
+        } else if (result.error.toLowerCase().includes('inactive')) {
+          toast.error("Tu cuenta está desactivada.");
+        } else if (result.error.toLowerCase().includes('office assignment')) {
+          toast.error("Error de configuración de oficina.");
         }
-        
-        setIsLoading(false);
-        return;
-      }
-
-      toast.success("Inicio de sesión exitoso");
-
-      // Redirección al chat
-      setTimeout(() => {
-        router.push("/dashboard/chat");
-        router.refresh();
-      }, 300);
-    } catch (error) {
-      if (error instanceof Error && 
-          (error.message.includes('inactive_user') || error.message.includes('inactive'))) {
-        toast.error("Tu cuenta está desactivada. Contacta al administrador.");
+        else {
+          toast.error("Error al iniciar sesión: " + result.error);
+        }
+      } else if (result?.ok && !result.error) {
+        // Éxito
+        toast.success("Inicio de sesión exitoso");
+        // Redirige al dashboard o donde necesites
+        router.push('/dashboard'); // Ajusta la ruta destino
+        router.refresh(); // Refresca para asegurar que la sesión se actualice bien en layout/header
       } else {
-        toast.error("Error al iniciar sesión");
+        // Caso inesperado
+        toast.error("Respuesta inesperada del servidor de autenticación.");
       }
-      
+    } catch (error: unknown) {
       setIsLoading(false);
+      console.error("Submit Error:", error);
+      toast.error(error instanceof Error ? error.message : "Error inesperado durante el inicio de sesión.");
     }
-  }
+  };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className="w-full max-w-sm mx-auto"> {/* Ejemplo de contenedor */}
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2">
-            <h1 className="text-xl font-bold">Cocos Admin</h1>
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email" type="email" placeholder="tu@email.com" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+            />
           </div>
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                required
-                ref={emailRef}
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Contraseña</Label>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                ref={passwordRef}
-              />
-            </div>
-            <Button disabled={isLoading} type="submit" className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando sesión...
-                </>
-              ) : (
-                "Iniciar sesión"
-              )}
-            </Button>
+          <div className="grid gap-2">
+            <Label htmlFor="password">Contraseña</Label>
+            <Input
+              id="password" type="password" required
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+            />
           </div>
+
+          {/* --- Selector Condicional para Super Admin --- */}
+          {isPotentiallySuperAdmin && (
+            <div className="grid gap-2">
+              <Label htmlFor="viewOfficeId">Ver Oficina (Solo SuperAdmin)</Label>
+              <Select
+                value={viewOfficeId} // El valor es el ID string
+                onValueChange={setViewOfficeId} // Actualiza el ID seleccionado
+                disabled={isLoadingOffices || isLoading}
+              >
+                <SelectTrigger id="viewOfficeId">
+                  <SelectValue placeholder={isLoadingOffices ? "Cargando oficinas..." : "Oficina por defecto"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Opción para usar la oficina por defecto */}
+                  {/* Mapea las oficinas cargadas */}
+                  {officeList.map(office => (
+                    <SelectItem key={office.id.toString()} value={office.id.toString()}>
+                      {office.name} ({office.id})
+                    </SelectItem>
+                  ))}
+                  {/* Muestra mensaje si la carga falló */}
+                  {!isLoadingOffices && officeList.length === 0 && (
+                    <SelectItem value="error" disabled>No se cargaron oficinas</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Selecciona la oficina que deseas visualizar al iniciar sesión.</p>
+            </div>
+          )}
+          {/* --- Fin Selector Condicional --- */}
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isLoading ? "Iniciando..." : "Iniciar Sesión"}
+          </Button>
         </div>
       </form>
     </div>
-  )
+  );
 }

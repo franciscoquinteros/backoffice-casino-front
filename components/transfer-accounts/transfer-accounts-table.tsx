@@ -25,12 +25,14 @@ interface TransferAccountsTableProps {
   accounts: TransferAccount[]
   onEdit: (account: TransferAccount) => void
   onDelete: (account: TransferAccount) => void
+  officeMap: Map<string, string>;
 }
 
 export function TransferAccountsTable({
   accounts,
   onEdit,
   onDelete,
+  officeMap,
 }: TransferAccountsTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
@@ -63,7 +65,7 @@ export function TransferAccountsTable({
           {accounts.map((account) => (
             <TableRow key={account.id}>
               <TableCell>{account.userName}</TableCell>
-              <TableCell>{account.office}</TableCell>
+              <TableCell>{officeMap.get(account.office?.toString() ?? '') || account.office || 'N/A'}</TableCell>
               <TableCell>{account.cbu}</TableCell>
               <TableCell>{account.alias}</TableCell>
               <TableCell>
@@ -79,7 +81,7 @@ export function TransferAccountsTable({
                 </Badge>
               </TableCell>
               <TableCell>
-                <DropdownMenu 
+                <DropdownMenu
                   open={openMenuId === account.id}
                   onOpenChange={(open) => setOpenMenuId(open ? account.id : null)}
                 >
@@ -95,7 +97,7 @@ export function TransferAccountsTable({
                       <span>Editar</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => handleAction('delete', account)}
                       className="text-red-600 focus:text-red-600 focus:bg-red-50"
                     >
