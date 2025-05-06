@@ -26,7 +26,6 @@ import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "next-auth/react";
-import { OfficeSelector } from "@/components/office-selector";
 
 export function OfficeConfigurationContent() {
   // Utilizamos el hook useOffices para obtener los datos
@@ -83,7 +82,6 @@ export function OfficeConfigurationContent() {
     <div className="flex justify-between items-center">
       <h1 className="text-2xl font-bold tracking-tight">Oficinas</h1>
 
-      {session?.user?.role === 'superadmin' && <OfficeSelector />}
       <CreateOfficeModal onOfficeCreated={handleOfficeChange} />
     </div>
   )
