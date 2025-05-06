@@ -63,9 +63,7 @@ export function TransferAccountsContent() {
 
   const {
     offices: officeList, // Renombrado para claridad, asume que devuelve {id, name}[]
-    isLoading: isLoadingOffices,
-    error: officesError
-  } = useOffices();
+    isLoading: isLoadingOffices } = useOffices();
 
   const officeMap = useMemo(() => {
     const map = new Map<string, string>();

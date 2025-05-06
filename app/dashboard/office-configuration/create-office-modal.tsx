@@ -176,7 +176,7 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
 
                             <FormField control={form.control} name="id" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center gap-1">ID Personalizado * <TooltipInfo text="ID único (ej: número o código corto) usado para integraciones." /></FormLabel>
+                                    <FormLabel className="flex items-center gap-1">ID Personalizado * <TooltipInfo text="ID &uacute;nico (ej: n&uacute;mero o c&oacute;digo corto) usado para integraciones." /></FormLabel>
                                     <FormControl><Input placeholder="Ej: 5 o BairesSur" {...field} disabled={isLoading} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
