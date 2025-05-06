@@ -9,8 +9,6 @@ import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
 import { Transaction, TransactionFilter, transactionService } from '@/components/transaction-service';
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
-import { SkeletonLoader } from '@/components/skeleton-loader'; // Importa SkeletonLoader
-import { toast } from 'sonner'; // Importa toast si lo necesitas para errores
 
 // --- Quita TransactionError si no la usas ---
 // interface TransactionError extends Error { message: string; }
@@ -78,7 +76,7 @@ export default function DepositsCompletedPage() {
         }
         // --- Dependencias CORREGIDAS: Solo session y status ---
         // Quita 'filters' porque el filtro se aplica DESPUÉS de recibir datos
-    }, [session, sessionStatus, setError]); // Añade setError como dependencia estable
+    }, [session, sessionStatus, setError, filters]); // Añade setError como dependencia estable
 
 
     // --- useEffect para Carga Inicial ---

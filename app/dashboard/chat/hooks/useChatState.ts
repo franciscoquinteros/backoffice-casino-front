@@ -316,7 +316,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
       socket.off('chatUnarchived', onChatUnarchived);
       socket.off('refreshChats', onRefreshChats);
     };
-  }, [socket, agentId, isConnected, userOffice]);
+  }, [socket, agentId, isConnected, userOffice, activeChats, archivedChats, assigningChat, selectedChat]);
 
   useEffect(() => {
     if (currentConversationId && socket.connected) {
@@ -325,7 +325,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
         agentId
       });
     }
-  }, [currentConversationId, agentId, socket]);
+  }, [currentConversationId, agentId, socket, ]);
 
   const selectChat = useCallback((userId: string) => {
     setSelectedChat(userId);

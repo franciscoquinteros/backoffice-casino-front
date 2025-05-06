@@ -15,7 +15,7 @@ import { SkeletonLoader } from '@/components/skeleton-loader'; // Ajusta ruta
 import { Skeleton } from '@/components/ui/skeleton'; // Ajusta ruta
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton'; // Ajusta ruta
 import { Card } from '../ui/card';
-import { useOffices, Office as OfficeOption } from "@/components/hooks/use-offices"; // Ajusta ruta
+import { useOffices } from "@/components/hooks/use-offices"; // Ajusta ruta
 
 // Interfaces AccountData y AccountResponse
 interface AccountData {

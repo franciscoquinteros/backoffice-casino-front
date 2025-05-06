@@ -56,7 +56,7 @@ export function OfficeConfigurationContent() {
       console.log("session", session);
       setOpenDropdownId(null);
     }
-  }, [openEditDialog, openDeleteDialog]);
+  }, [openEditDialog, openDeleteDialog, session]);
 
   // Manejador para cuando cambia el estado del modal
   const handleModalOpenChange = (open: boolean, setOpen: (open: boolean) => void) => {

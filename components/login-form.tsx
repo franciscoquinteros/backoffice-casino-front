@@ -1,8 +1,8 @@
 // Ejemplo: components/auth/LoginForm.tsx (o donde esté tu form)
 "use client";
 
-import { useState, useRef, FormEvent, useEffect } from 'react'; // Importa FormEvent
-import { useSession, signIn } from "next-auth/react";
+import { useState, FormEvent, useEffect } from 'react'; // Importa FormEvent
+import { signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation'; // Para redirección
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +63,7 @@ export function LoginForm() {
 
     fetchOffices();
     // Depende de isPotentiallySuperAdmin para reaccionar al cambio de email
-  }, [isPotentiallySuperAdmin]);
+  }, [isPotentiallySuperAdmin, officeList.length]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

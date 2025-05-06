@@ -60,7 +60,7 @@ export function CreateTransferAccountModal({
 }: CreateTransferAccountModalProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [triggerReset, setTriggerReset] = useState(false)
+  const [, setTriggerReset] = useState(false)
   const { data: session, status: sessionStatus } = useSession(); // <-- Obtiene sesión
   // Obtiene oficinas SÓLO si es superadmin (el hook debe manejar la lógica condicional o lo hacemos aquí)
   const isSuperAdmin = session?.user?.role === 'superadmin';

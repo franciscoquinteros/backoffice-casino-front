@@ -9,7 +9,6 @@ import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
 import { Transaction, TransactionFilter, transactionService } from '@/components/transaction-service';
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
-import { SkeletonLoader } from '@/components/skeleton-loader';
 // import { toast } from 'sonner'; // Descomenta si usas toast aquí
 
 export default function WithdrawalsCompletedPage() {
@@ -69,7 +68,7 @@ export default function WithdrawalsCompletedPage() {
       console.log('*** WITHDRAW COMPLETED - fetchTransactions FINALIZANDO ***');
     }
     // --- Dependencias CORREGIDAS ---
-  }, [session, sessionStatus, setError]); // Quitado 'filters'
+  }, [session, sessionStatus, setError, filters]); // Quitado 'filters'
 
 
   // --- useEffect para Carga Inicial ---
