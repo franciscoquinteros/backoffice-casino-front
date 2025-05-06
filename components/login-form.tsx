@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; // Importa de shadcn
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface OfficeOption {
@@ -16,12 +17,14 @@ interface OfficeOption {
   name: string;
 }
 
+interface LoginFormProps extends React.HTMLAttributes<HTMLDivElement> { } // Esto incluye 'className' y otras props de div
+
 // Quita useOffices si ya no cargas el dropdown aquí
 // import { useOffices } from "@/components/hooks/use-offices";
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Asume que tienes un layout básico, ajusta estilos según necesidad
-export function LoginForm() {
+export function LoginForm({ className, ...props }: LoginFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   // Estados para los campos del formulario
@@ -126,7 +129,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-sm mx-auto"> {/* Ejemplo de contenedor */}
+    <div className={cn("w-full max-w-sm mx-auto", className)} {...props}> {/* Aplica className y otras props */}
       <form onSubmit={handleSubmit}>
         <div className="grid gap-4">
           <div className="grid gap-2">
