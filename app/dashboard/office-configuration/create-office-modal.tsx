@@ -192,7 +192,7 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
                                 <FormItem>
                                     <FormLabel>Email Administrador *</FormLabel>
                                     <FormControl><Input type="email" placeholder="admin.oficina@email.com" {...field} disabled={isLoading} /></FormControl>
-                                    <FormDescription>Este será el usuario 'admin' inicial para esta oficina.</FormDescription>
+                                    <FormDescription>Este será el usuario &apos;admin&apos; inicial para esta oficina.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )} />
