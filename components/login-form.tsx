@@ -17,14 +17,13 @@ interface OfficeOption {
   name: string;
 }
 
-interface LoginFormProps extends React.HTMLAttributes<HTMLDivElement> { } // Esto incluye 'className' y otras props de div
 
 // Quita useOffices si ya no cargas el dropdown aquí
 // import { useOffices } from "@/components/hooks/use-offices";
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Asume que tienes un layout básico, ajusta estilos según necesidad
-export function LoginForm({ className, ...props }: LoginFormProps) {
+export function LoginForm({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   // Estados para los campos del formulario
