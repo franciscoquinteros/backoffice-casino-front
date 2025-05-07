@@ -28,6 +28,11 @@ interface Transaction {
   wallet_address?: string;
   cbu?: string;
   idCliente?: string | number;
+  payer_identification?: {
+    type: string;
+    number: string;
+  };
+  external_reference?: string;
 }
 
 export function WebMonitoringContent() {
@@ -38,6 +43,7 @@ export function WebMonitoringContent() {
 
   const tableColumns: ColumnConfig[] = [
     { width: 'w-[100px]', cell: { type: 'text', widthClass: 'w-20' } },
+    { cell: { type: 'text', widthClass: 'w-24' } },
     { cell: { type: 'text', widthClass: 'w-24' } },
     { cell: { type: 'text', widthClass: 'w-full' } },
     { cell: { type: 'text', widthClass: 'w-24' } },
@@ -195,6 +201,7 @@ export function WebMonitoringContent() {
           <TableRow>
             <TableHead>ID de Pago</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Nombre</TableHead>
             <TableHead>Descripción</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead>Estado</TableHead>
@@ -212,6 +219,13 @@ export function WebMonitoringContent() {
                 {transaction.type === 'deposit' ? 'Depósito' :
                   transaction.type === 'withdraw' ? 'Retiro' :
                     transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
+              </TableCell>
+              <TableCell>
+                {transaction.type === 'withdraw' && transaction.payer_identification?.number
+                  ? transaction.payer_identification.number
+                  : transaction.type === 'deposit' && transaction.external_reference
+                    ? transaction.external_reference
+                    : 'No disponible'}
               </TableCell>
               <TableCell>{transaction.description}</TableCell>
               <TableCell>

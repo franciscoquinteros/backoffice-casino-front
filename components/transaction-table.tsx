@@ -153,6 +153,18 @@ export function TransactionTable({
     return `$${amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const formatId = (id: string | number) => {
+    const idString = id.toString();
+    if (idString.length <= 8) return idString;
+
+    // Dividir el ID en grupos de 8 dígitos
+    const chunks = [];
+    for (let i = 0; i < idString.length; i += 8) {
+      chunks.push(idString.slice(i, i + 8));
+    }
+    return chunks.join('\n');
+  };
+
   const formatMethod = (method?: string) => {
     if (!method) return 'No disponible';
 
@@ -229,7 +241,7 @@ export function TransactionTable({
           <TableHeader>
             <TableRow>
               <TableHead
-                className="cursor-pointer"
+                className="cursor-pointer w-[80px]"
                 onClick={() => handleSort('id')}
               >
                 <div className="flex items-center">
@@ -246,6 +258,7 @@ export function TransactionTable({
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
+              <TableHead>Nombre</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead
                 className="cursor-pointer"
@@ -266,15 +279,6 @@ export function TransactionTable({
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSort('payment_method_id')}
-              >
-                <div className="flex items-center">
-                  Método
-                  <ArrowUpDown className="ml-1 h-4 w-4" />
-                </div>
-              </TableHead>
               <TableHead>Email/Cuenta</TableHead>
               {showApproveButton && <TableHead>Acción</TableHead>}
             </TableRow>
@@ -282,8 +286,15 @@ export function TransactionTable({
           <TableBody>
             {sortedTransactions.map((transaction, index) => (
               <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
-                <TableCell className="font-medium">{transaction.id}</TableCell>
+                <TableCell className="font-medium w-[80px] whitespace-pre-line">{formatId(transaction.id)}</TableCell>
                 <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
+                <TableCell>
+                  {transaction.type === 'withdraw' && transaction.payer_identification?.number
+                    ? transaction.payer_identification.number
+                    : transaction.type === 'deposit' && transaction.external_reference
+                      ? transaction.external_reference
+                      : 'No disponible'}
+                </TableCell>
                 <TableCell>{transaction.description}</TableCell>
                 <TableCell className="font-medium">
                   {formatAmount(transaction.amount)}
@@ -292,7 +303,6 @@ export function TransactionTable({
                   {renderStatusBadge(transaction.status)}
                 </TableCell>
                 <TableCell>{formatDate(transaction.date_created)}</TableCell>
-                <TableCell>{formatMethod(transaction.payment_method_id)}</TableCell>
                 <TableCell>
                   {transaction.payer_email ||
                     transaction.wallet_address ||
@@ -304,21 +314,20 @@ export function TransactionTable({
                     {transaction.status === 'Pending' ? (
                       <div className="flex space-x-2">
                         <Button
-                          onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }} // Llama a handleApprove local
+                          onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }}
                           disabled={processingId === transaction.id || isRefreshing}
                           size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs" // Ajusta padding/texto
+                          className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
                         >
-                          {/* Muestra loader si se está procesando ESTE ticket */}
                           {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span> {/* Ajusta margen si es necesario */}
+                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
                         </Button>
                         <Button
-                          onClick={(e) => { e.stopPropagation(); handleReject(transaction); }} // Llama a handleReject local
+                          onClick={(e) => { e.stopPropagation(); handleReject(transaction); }}
                           disabled={processingId === transaction.id || isRefreshing}
                           size="sm"
                           variant="destructive"
-                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs" // Ajusta padding/texto
+                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
                         >
                           {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                           <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Rechazar</span>

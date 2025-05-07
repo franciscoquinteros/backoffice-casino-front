@@ -33,15 +33,15 @@ interface CreateUserModalProps {
 export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProps) {
     const [open, setOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const { data: session, status: sessionStatus } = useSession();
     const [formData, setFormData] = useState({
         username: "",
         email: "",
         role: "",
-        office: "",
+        office: session?.user?.officeId || "",
         status: "active",
         password: "",
     })
-    const { data: session, status: sessionStatus } = useSession();
     // Utilizamos el hook para obtener las oficinas
     const { activeOffices, isLoading: isLoadingOffices, error: officesError } = useOffices()
 
@@ -198,33 +198,12 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
                             <Label htmlFor="office" className="text-right">
                                 Oficina
                             </Label>
-                            <Select
-                                value={formData.office}
-                                onValueChange={(value) => handleChange("office", value)}
-                                disabled={isLoadingOffices}
-                            >
-                                <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder={isLoadingOffices ? "Cargando oficinas..." : "Seleccionar oficina"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {officesError ? (
-                                        <SelectItem value="error" disabled>{officesError}</SelectItem>
-                                    ) : isLoadingOffices ? (
-                                        <SelectItem value="loading" disabled>Cargando oficinas...</SelectItem>
-                                    ) : activeOffices.length > 0 ? (
-                                        activeOffices.map(office => (
-                                            <SelectItem key={office.value} value={office.value}>
-                                                {office.label}
-                                            </SelectItem>
-                                        ))
-                                    ) : (
-                                        <SelectItem value="no-offices" disabled>No hay oficinas disponibles</SelectItem>
-                                    )}
-                                    {userType === 'external' && (
-                                        <SelectItem value="remote">Remoto</SelectItem>
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <Input
+                                id="office"
+                                className="col-span-3"
+                                value={session?.user?.officeId || ""}
+                                disabled
+                            />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="status" className="text-right">
