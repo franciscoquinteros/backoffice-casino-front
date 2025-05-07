@@ -42,8 +42,8 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
         status: "active",
         password: "",
     })
-    // Utilizamos el hook para obtener las oficinas
-    const { activeOffices, isLoading: isLoadingOffices, error: officesError } = useOffices()
+    // Ya no necesitamos el hook de oficinas
+    const { isLoading: isLoadingOffices } = useOffices()
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))

@@ -165,17 +165,6 @@ export function TransactionTable({
     return chunks.join('\n');
   };
 
-  const formatMethod = (method?: string) => {
-    if (!method) return 'No disponible';
-
-    switch (method) {
-      case 'bank_transfer': return 'Transferencia bancaria';
-      case 'mercado_pago': return 'Mercado Pago';
-      case 'cvu': return 'CVU';
-      default: return method;
-    }
-  };
-
   // Renderizar el badge de estado apropiado
   const renderStatusBadge = (status: string) => {
     if (status === 'Pending') {
