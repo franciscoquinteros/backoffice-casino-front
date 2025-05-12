@@ -4,7 +4,7 @@ export interface TransferAccount {
   office: string;
   cbu: string;
   alias: string;
-  wallet: 'mercadopago' | 'paypal';
+  wallet: 'mercadopago';
   operator: string;
   agent: string;
   createdAt: Date;

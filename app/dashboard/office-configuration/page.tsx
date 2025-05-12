@@ -10,13 +10,7 @@ function OfficeConfigurationSkeleton() {
   // Configuración de columnas para la tabla de oficinas
   const tableColumns: ColumnConfig[] = [
     { cell: { type: 'text' } },                        // Nombre
-    { cell: { type: 'text', widthClass: 'w-1/2' } },   // Whatsapp
-    { cell: { type: 'text', widthClass: 'w-1/2' } },   // Telegram
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Bono 1ra carga
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Bono perpetuo
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Carga Mínima
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Retiro Mínimo
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Mínimo Espera Retiro
+    { cell: { type: 'text', widthClass: 'w-1/2' } },   // Nombre de usuario
     { cell: { type: 'badge', widthClass: 'w-20' } },   // Estado
     { width: 'w-[70px]', cell: { type: 'action', align: 'center' }, header: { show: false } } // Acciones
   ]

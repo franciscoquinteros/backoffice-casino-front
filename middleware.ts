@@ -81,8 +81,8 @@ export async function middleware(request: NextRequest) {
   if (path.startsWith('/dashboard')) {
     const userRole = session?.user?.role
 
-    if (userRole === 'superadmin') {
-      // El superadmin tiene acceso a todas las rutas, no necesita redirección
+    if (userRole === 'superadmin' || userRole === 'admin') {
+      // El superadmin y admin tienen acceso a todas las rutas, no necesitan redirección
       return NextResponse.next()
     }
 

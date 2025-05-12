@@ -9,13 +9,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
-import {
     Filter,
     RefreshCw,
     Search
@@ -29,8 +22,6 @@ interface TransactionFiltersProps {
 
 export function TransactionFilters({ onChange, onReset }: TransactionFiltersProps) {
     const [filters, setFilters] = useState<TransactionFilter>({
-        office: '',
-        method: '',
         minAmount: undefined,
         maxAmount: undefined,
         search: '',
@@ -49,8 +40,6 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
     // Resetea los filtros y notifica al componente padre
     const handleReset = () => {
         const emptyFilters = {
-            office: '',
-            method: '',
             minAmount: undefined,
             maxAmount: undefined,
             search: '',
@@ -92,7 +81,7 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
 
                 <div className="flex flex-col space-y-4">
                     {/* Fila principal de filtros siempre visible */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Buscar</label>
                             <div className="relative">
@@ -104,43 +93,6 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
                                     onChange={(e) => handleFilterChange('search', e.target.value)}
                                 />
                             </div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Oficina</label>
-                            <Select
-                                value={filters.office || ''}
-                                onValueChange={(value) => handleFilterChange('office', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Todas las oficinas" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
-                                    <SelectItem value="Buenos Aires">Buenos Aires</SelectItem>
-                                    <SelectItem value="Córdoba">Córdoba</SelectItem>
-                                    <SelectItem value="Rosario">Rosario</SelectItem>
-                                    <SelectItem value="Mendoza">Mendoza</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Método de pago</label>
-                            <Select
-                                value={filters.method || ''}
-                                onValueChange={(value) => handleFilterChange('method', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Todos los métodos" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todos</SelectItem>
-                                    <SelectItem value="bank_transfer">Transferencia bancaria</SelectItem>
-                                    <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
-                                    <SelectItem value="cvu">CVU</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <div className="flex space-x-2">

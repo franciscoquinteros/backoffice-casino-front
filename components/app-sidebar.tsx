@@ -19,7 +19,7 @@ import {
   SidebarContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/hooks/useAuth" // Ajusta la ruta según donde tengas useAuth
+import { useAuth, User } from "@/hooks/useAuth"
 
 // Definir el tipo para los elementos de navegación
 interface NavItem {
@@ -40,11 +40,10 @@ const superAdminItems: NavItem[] = [
     title: "Oficinas",
     url: "/dashboard/office-configuration",
     icon: LampDesk,
-    isActive: true,
   },
   {
     title: "Usuarios",
-    url: "/dashboard/users", // URL explícita que apunta a la página principal de usuarios
+    url: "/dashboard/users",
     icon: Users,
     items: [
       {
@@ -74,7 +73,6 @@ const adminItems: NavItem[] = [
     title: "Usuarios",
     url: "/dashboard/users",
     icon: Users,
-    isActive: true,
     items: [
       {
         title: "Usuarios Internos",
@@ -103,7 +101,6 @@ const managerItems: NavItem[] = [
     title: "Usuarios",
     url: "/dashboard/users",
     icon: Users,
-    isActive: true,
     items: [
       {
         title: "Usuarios Internos",
@@ -124,20 +121,9 @@ const managerItems: NavItem[] = [
 
 const operatorItems: NavItem[] = [
   {
-    title: "Usuarios",
-    url: "/dashboard/users",
+    title: "Usuarios Externos",
+    url: "/dashboard/external-users",
     icon: Users,
-    isActive: true,
-    items: [
-      {
-        title: "Usuarios Internos",
-        url: "/dashboard/users",
-      },
-      {
-        title: "Usuarios Externos",
-        url: "/dashboard/external-users",
-      }
-    ]
   },
 ];
 
@@ -165,6 +151,10 @@ const projectsItems: NavItem[] = [
         url: "/dashboard/transactions/deposit-pending",
       },
       {
+        title: "Depósitos Directos",
+        url: "/dashboard/transactions/deposit-direct",
+      },
+      {
         title: "Depósitos Completados",
         url: "/dashboard/transactions/deposit-completed",
       },
@@ -180,7 +170,6 @@ const projectsItems: NavItem[] = [
   },
 ];
 
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isSuperAdmin, isAdmin, isManager } = useAuth();
 
@@ -190,7 +179,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }), [user?.name, user?.email]);
 
   const filteredItems = useMemo(() => {
-    // Super Admin (Joaquin) - Acceso a todo, con Oficinas primero
+    // Super Admin - Acceso a todo
     if (isSuperAdmin) {
       return {
         navMain: superAdminItems,
@@ -199,7 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
     }
 
-    // Admin (dueño de oficina) - Acceso a todo excepto configuración de oficinas
+    // Admin - Acceso a todo excepto configuración de oficinas
     if (isAdmin) {
       return {
         navMain: adminItems,
@@ -208,7 +197,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
     }
 
-    // Encargado (gestión completa sin reportes financieros)
+    // Encargado - Todo menos reportes
     if (isManager) {
       return {
         navMain: managerItems,
@@ -217,13 +206,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
     }
 
-    // Operador (chat, tickets, depósitos)
+    // Operador - Acceso limitado
     return {
       navMain: operatorItems,
       tickets: ticketsItems,
-      projects: projectsItems,
+      projects: projectsItems.filter(item => {
+        if (item.title === "Depósitos y Retiros") {
+          return {
+            ...item,
+            items: item.items?.filter(subItem =>
+              subItem.title.includes('Depósitos')
+            )
+          };
+        }
+        return false;
+      }),
     };
   }, [isSuperAdmin, isAdmin, isManager]);
+
+  // Filtrar los items de proyectos basado en el estado de withdrawal del usuario
+  const filteredProjectsItems = useMemo(() => {
+    // Si es admin o superadmin, mostrar todo
+    if (isAdmin || isSuperAdmin) return projectsItems;
+
+    // Si es encargado, mostrar todo
+    if (isManager) return projectsItems;
+
+    // Si es operador, solo mostrar depósitos
+    const baseItems = [...projectsItems];
+    const transactionsItem = baseItems.find(item => item.title === "Depósitos y Retiros");
+
+    if (transactionsItem && transactionsItem.items) {
+      transactionsItem.items = transactionsItem.items.filter(item =>
+        item.title.includes('Depósitos')
+      );
+    }
+
+    return baseItems;
+  }, [isAdmin, isSuperAdmin, isManager]);
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -234,8 +254,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {filteredItems.tickets.length > 0 && (
           <NavMain items={filteredItems.tickets} blockTitle="Tickets" />
         )}
-        {filteredItems.projects.length > 0 && (
-          <NavMain items={filteredItems.projects} blockTitle="Monitoreos" />
+        {filteredProjectsItems.length > 0 && (
+          <NavMain items={filteredProjectsItems} blockTitle="Monitoreos" />
         )}
       </SidebarContent>
       <SidebarFooter>

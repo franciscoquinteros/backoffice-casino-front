@@ -40,7 +40,7 @@ const formSchema = z.object({
   office: z.string().min(1, 'La oficina es requerida'),
   cbu: z.string().min(1, 'El CBU es requerido'),
   alias: z.string().min(1, 'El alias es requerido'),
-  wallet: z.enum(['mercadopago', 'paypal']),
+  wallet: z.literal('mercadopago'),
   operator: z.string().min(1, 'El operador es requerido'),
   agent: z.string().min(1, 'El agente es requerido'),
   isActive: z.boolean(),
@@ -93,12 +93,12 @@ export function EditTransferAccountModal({
       mp_public_key: account?.mp_public_key || '',
       mp_access_token: account?.mp_access_token || '',
       receiver_id: account?.receiver_id || '',
-      
     },
   })
 
   useEffect(() => {
     if (account) {
+      // Reset form with account data
       form.reset({
         userName: account.userName,
         office: account.office,
@@ -112,9 +112,26 @@ export function EditTransferAccountModal({
         mp_client_secret: account.mp_client_secret || '',
         mp_public_key: account.mp_public_key || '',
         mp_access_token: account.mp_access_token || '',
-      })
+        receiver_id: account.receiver_id || '',
+      });
+
+      // Set initial visibility states based on verification status
+      setShowClientId(isFieldVerified('mp_client_id'));
+      setShowClientSecret(isFieldVerified('mp_client_secret'));
+      setShowPublicKey(isFieldVerified('mp_public_key'));
+      setShowAccessToken(isFieldVerified('mp_access_token'));
     }
-  }, [account, form])
+  }, [account, form]); // Remove isFieldVerified from dependencies
+
+  // Separate useEffect for handling verification status changes
+  useEffect(() => {
+    if (account) {
+      setShowClientId(isFieldVerified('mp_client_id'));
+      setShowClientSecret(isFieldVerified('mp_client_secret'));
+      setShowPublicKey(isFieldVerified('mp_public_key'));
+      setShowAccessToken(isFieldVerified('mp_access_token'));
+    }
+  }, [isFieldVerified, account]);
 
   const watchWallet = form.watch('wallet')
 
@@ -187,15 +204,19 @@ export function EditTransferAccountModal({
         switch (verifyingField) {
           case 'mp_client_id':
             setShowClientId(true)
+            form.setValue('mp_client_id', account?.mp_client_id || '')
             break
           case 'mp_client_secret':
             setShowClientSecret(true)
+            form.setValue('mp_client_secret', account?.mp_client_secret || '')
             break
           case 'mp_public_key':
             setShowPublicKey(true)
+            form.setValue('mp_public_key', account?.mp_public_key || '')
             break
           case 'mp_access_token':
             setShowAccessToken(true)
+            form.setValue('mp_access_token', account?.mp_access_token || '')
             break
         }
       }
@@ -307,7 +328,6 @@ export function EditTransferAccountModal({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="mercadopago">Mercado Pago</SelectItem>
-                        <SelectItem value="paypal">PayPal</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -514,8 +534,6 @@ export function EditTransferAccountModal({
                   </FormItem>
                 )}
               />
-
-
 
               <FormField
                 control={form.control}

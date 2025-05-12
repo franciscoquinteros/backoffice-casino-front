@@ -22,14 +22,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const formSchema = z.object({
     id: z.string().min(1, 'El ID es requerido'),
     name: z.string().min(1, 'El nombre es requerido'),
-    // Agrega los nuevos campos que aparecen en el formulario
-    whatsapp: z.string().optional(),
-    telegram: z.string().optional(),
-    firstDepositBonus: z.string().optional(),
-    perpetualBonus: z.string().optional(),
-    minDeposit: z.string().optional(),
-    minWithdrawal: z.string().optional(),
-    minWithdrawalWait: z.string().optional(),
     status: z.enum(['active', 'inactive']),
     // Campos para el administrador
     agentAssigned: z.string().email('Debe ser un email válido').min(1, 'Email del administrador requerido'),
@@ -50,13 +42,6 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
         defaultValues: {
             id: "",
             name: "",
-            whatsapp: "",
-            telegram: "",
-            firstDepositBonus: "",
-            perpetualBonus: "",
-            minDeposit: "",
-            minWithdrawal: "",
-            minWithdrawalWait: "",
             status: "active",
             agentAssigned: "",
             adminPassword: "",
@@ -69,13 +54,6 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
             form.reset({
                 id: "",
                 name: "",
-                whatsapp: "",
-                telegram: "",
-                firstDepositBonus: "",
-                perpetualBonus: "",
-                minDeposit: "",
-                minWithdrawal: "",
-                minWithdrawalWait: "",
                 status: "active",
                 agentAssigned: "",
                 adminPassword: "",
@@ -97,13 +75,6 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
             const officePayload = {
                 id: data.id,
                 name: data.name,
-                whatsapp: data.whatsapp || null,
-                telegram: data.telegram || null,
-                firstDepositBonus: data.firstDepositBonus || null,
-                perpetualBonus: data.perpetualBonus || null,
-                minDeposit: data.minDeposit || null,
-                minWithdrawal: data.minWithdrawal || null,
-                minWithdrawalWait: data.minWithdrawalWait || null,
                 status: data.status,
                 agentAssigned: data.agentAssigned,
             };
@@ -177,7 +148,7 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
                             <FormField control={form.control} name="id" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center gap-1">ID Personalizado * <TooltipInfo text="ID &uacute;nico (ej: n&uacute;mero o c&oacute;digo corto) usado para integraciones." /></FormLabel>
-                                    <FormControl><Input placeholder="Ej: 5 o BairesSur" {...field} disabled={isLoading} /></FormControl>
+                                    <FormControl><Input placeholder="Brindado por la plataforma" {...field} disabled={isLoading} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -200,58 +171,6 @@ export function CreateOfficeModal({ onOfficeCreated }: CreateOfficeModalProps) {
                                 <FormItem>
                                     <FormLabel>Contraseña Administrador *</FormLabel>
                                     <FormControl><Input type="password" placeholder="Mínimo 6 caracteres" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-
-                            <FormField control={form.control} name="whatsapp" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>WhatsApp (Opcional)</FormLabel>
-                                    <FormControl><Input placeholder="Número de contacto" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="telegram" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Telegram (Opcional)</FormLabel>
-                                    <FormControl><Input placeholder="Usuario o número" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-
-                            <FormField control={form.control} name="firstDepositBonus" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Bono 1er Depósito (%) (Opcional)</FormLabel>
-                                    <FormControl><Input type="text" placeholder="Ej: 100" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="perpetualBonus" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Bono Perpetuo (%) (Opcional)</FormLabel>
-                                    <FormControl><Input type="text" placeholder="Ej: 10" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-
-                            <FormField control={form.control} name="minDeposit" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Depósito Mínimo (Opcional)</FormLabel>
-                                    <FormControl><Input type="text" placeholder="Ej: 1000" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="minWithdrawal" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Retiro Mínimo (Opcional)</FormLabel>
-                                    <FormControl><Input type="text" placeholder="Ej: 2000" {...field} disabled={isLoading} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="minWithdrawalWait" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Espera Retiro (Minutos) (Opcional)</FormLabel>
-                                    <FormControl><Input type="text" placeholder="Ej: 30" {...field} disabled={isLoading} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />

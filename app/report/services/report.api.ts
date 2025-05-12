@@ -74,6 +74,46 @@ export interface DashboardSummary {
     };
 }
 
+export interface TransactionSummary {
+    totalDeposits: {
+        value: number;
+        trend: string;
+    };
+    totalWithdrawals: {
+        value: number;
+        trend: string;
+    };
+    pendingDeposits: {
+        value: number;
+        trend: string;
+    };
+    pendingWithdrawals: {
+        value: number;
+        trend: string;
+    };
+}
+
+export interface TransactionByStatus {
+    name: string;
+    value: number;
+}
+
+export interface TransactionTrendData {
+    mes: string;
+    cantidad: number;
+}
+
+export interface TransactionTrend {
+    deposits: TransactionTrendData[];
+    withdraws: TransactionTrendData[];
+}
+
+export interface TransactionByAgent {
+    name: string;
+    id: string;
+    value: number;
+}
+
 // Clase para manejar las llamadas a la API
 class ReportApi {
     private axiosInstance = axios.create({

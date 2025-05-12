@@ -4,9 +4,9 @@
 import React, { useState } from 'react';
 import { useSession } from 'next-auth/react'; // Para autenticación
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, TooltipProps } from 'recharts';
-import { Clock, Users, MessageSquare, Ticket, AlertCircle } from 'lucide-react';
+import { Clock, Users, MessageSquare, Ticket, AlertCircle, ArrowRightLeft } from 'lucide-react';
 // Asegúrate que la ruta a este archivo sea correcta
-import { StatusDistribution, TicketsByAgent, TicketsTrend, MessageVolume, /* MessageDistribution, */ ResponseTimeByAgent, LoginActivity, UserRole, NewUsersByMonth, DashboardSummary, ConversationStatusDistribution } from './services/report.api';
+import { StatusDistribution, TicketsByAgent, TicketsTrend, MessageVolume, /* MessageDistribution, */ ResponseTimeByAgent, LoginActivity, UserRole, NewUsersByMonth, DashboardSummary, ConversationStatusDistribution, TransactionSummary, TransactionByStatus, TransactionTrend, TransactionByAgent } from './services/report.api';
 import { useTheme } from 'next-themes';
 import useSWR from 'swr'; // Para data fetching
 import { Skeleton } from "@/components/ui/skeleton"; // Ajusta ruta
@@ -36,7 +36,8 @@ interface ChartCardProps {
 // Tipo genérico para datos de gráficos
 type ChartData = StatusDistribution[] | TicketsByAgent[] | TicketsTrend[] |
     MessageVolume[] | /*MessageDistribution[] |*/ ResponseTimeByAgent[] |
-    LoginActivity[] | UserRole[] | NewUsersByMonth[] | ConversationStatusDistribution[];
+    LoginActivity[] | UserRole[] | NewUsersByMonth[] | ConversationStatusDistribution[] |
+    TransactionTrend | TransactionByAgent[] | TransactionByStatus[];
 
 // --- Componente Principal ---
 const ReportsDashboard = () => {
@@ -62,7 +63,7 @@ const ReportsDashboard = () => {
         });
         if (!response.ok) {
             let errorMsg = `Error fetching report data (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch {} { }
+            try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { } { }
             throw new Error(errorMsg);
         }
         return response.json();
@@ -87,6 +88,13 @@ const ReportsDashboard = () => {
     const userRolesKey = shouldFetchUserData ? ['/reports/user-roles', accessToken] : null;
     const newUsersKey = shouldFetchUserData ? ['/reports/new-users-by-month', accessToken] : null;
 
+    // Nuevos hooks SWR para transacciones
+    const shouldFetchTransactionData = activeTab === 'transactions' && accessToken;
+    const transactionSummaryKey = shouldFetchTransactionData ? ['/reports/transaction-summary', accessToken] : null;
+    const transactionStatusKey = shouldFetchTransactionData ? ['/reports/transactions-by-status', accessToken] : null;
+    const transactionTrendKey = shouldFetchTransactionData ? ['/reports/transaction-trend', accessToken] : null;
+    const transactionAgentKey = shouldFetchTransactionData ? ['/reports/transactions-by-agent', accessToken] : null;
+
     // SWR Hooks usando las claves condicionales
     const { data: summaryData, error: summaryError, isLoading: isLoadingSummary } = useSWR<DashboardSummary>(summaryKey, fetcher, { revalidateOnFocus: false, revalidateIfStale: false });
     const { data: ticketStatusData, error: ticketStatusError, isLoading: isLoadingTicketStatus } = useSWR<StatusDistribution[]>(ticketStatusKey, fetcher, { revalidateOnFocus: false });
@@ -98,6 +106,12 @@ const ReportsDashboard = () => {
     const { data: loginActivityData, error: loginActivityError, isLoading: isLoadingLoginActivity } = useSWR<LoginActivity[]>(loginActivityKey, fetcher, { revalidateOnFocus: false });
     const { data: userRolesData, error: userRolesError, isLoading: isLoadingUserRoles } = useSWR<UserRole[]>(userRolesKey, fetcher, { revalidateOnFocus: false });
     const { data: newUsersData, error: newUsersError, isLoading: isLoadingNewUsers } = useSWR<NewUsersByMonth[]>(newUsersKey, fetcher, { revalidateOnFocus: false });
+
+    // Nuevos SWR hooks para transacciones
+    const { data: transactionSummaryData, error: transactionSummaryError, isLoading: isLoadingTransactionSummary } = useSWR<TransactionSummary>(transactionSummaryKey, fetcher, { revalidateOnFocus: false });
+    const { data: transactionStatusData, error: transactionStatusError, isLoading: isLoadingTransactionStatus } = useSWR<TransactionByStatus[]>(transactionStatusKey, fetcher, { revalidateOnFocus: false });
+    const { data: transactionTrendData, error: transactionTrendError, isLoading: isLoadingTransactionTrend } = useSWR<TransactionTrend>(transactionTrendKey, fetcher, { revalidateOnFocus: false });
+    const { data: transactionAgentData, error: transactionAgentError, isLoading: isLoadingTransactionAgent } = useSWR<TransactionByAgent[]>(transactionAgentKey, fetcher, { revalidateOnFocus: false });
 
     // --- Tooltip Personalizado ---
     const customTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
@@ -228,6 +242,7 @@ const ReportsDashboard = () => {
                 <Tab active={activeTab === 'tickets'} onClick={() => setActiveTab('tickets')}>Tickets</Tab>
                 <Tab active={activeTab === 'chats'} onClick={() => setActiveTab('chats')}>Chats</Tab>
                 <Tab active={activeTab === 'users'} onClick={() => setActiveTab('users')}>Usuarios</Tab>
+                <Tab active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')}>Depósitos y Retiros</Tab>
             </div>
 
             {/* Contenido de Tabs */}
@@ -374,6 +389,194 @@ const ReportsDashboard = () => {
                                     </LineChart>
                                 </ResponsiveContainer>
                             ))}
+                        </ChartCard>
+                    </>
+                )}
+
+                {/* --- Tab Depósitos y Retiros --- */}
+                {activeTab === 'transactions' && (
+                    <>
+                        <ChartCard title="Estado de Transacciones">
+                            {renderSafeChart(transactionStatusData, transactionStatusError, isLoadingTransactionStatus, (data) => (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={data} cx="50%" cy="50%" labelLine={false}
+                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                            outerRadius="80%" fill="#8884d8" dataKey="value" nameKey="name">
+                                            {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                        </Pie>
+                                        <Tooltip content={customTooltip} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ))}
+                        </ChartCard>
+
+                        <ChartCard title="Tendencia de Transacciones">
+                            {renderSafeChart(transactionTrendData, transactionTrendError, isLoadingTransactionTrend, (data) => {
+                                // Transformar los datos al formato esperado por el gráfico
+                                const transformedData = data.deposits.map(deposit => {
+                                    const withdraw = data.withdraws.find(w => w.mes === deposit.mes);
+                                    return {
+                                        mes: deposit.mes,
+                                        depositos: deposit.cantidad,
+                                        retiros: withdraw?.cantidad || 0
+                                    };
+                                });
+
+                                // Tooltip personalizado para el gráfico de transacciones
+                                const transactionTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+                                    if (active && payload && payload.length && payload[0]?.value !== undefined) {
+                                        const total = transformedData.reduce((sum, item) => sum + item.depositos + item.retiros, 0);
+                                        const percentage = ((payload[0].value / total) * 100).toFixed(1);
+
+                                        return (
+                                            <div className="bg-background/90 dark:bg-popover/90 backdrop-blur-sm p-3 border border-border rounded shadow-lg text-sm">
+                                                <p className="font-semibold mb-2">{label}</p>
+                                                {payload.map((entry, index) => (
+                                                    <div key={`item-${index}`} className="flex items-center justify-between gap-4">
+                                                        <div className="flex items-center">
+                                                            <div className="w-2 h-2 mr-2 rounded-full"
+                                                                style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}
+                                                            />
+                                                            <span className="text-muted-foreground">{entry.name}:</span>
+                                                        </div>
+                                                        <span className="font-medium">{entry.value} transacciones</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                };
+
+                                return (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={transformedData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis
+                                                dataKey="mes"
+                                                tick={{ fontSize: 12 }}
+                                                tickMargin={10}
+                                            />
+                                            <YAxis
+                                                tick={{ fontSize: 12 }}
+                                                tickMargin={10}
+                                                label={{
+                                                    value: 'Cantidad de Transacciones',
+                                                    angle: -90,
+                                                    position: 'insideLeft',
+                                                    style: { fontSize: 12 }
+                                                }}
+                                            />
+                                            <Tooltip content={transactionTooltip} />
+                                            <Legend
+                                                verticalAlign="top"
+                                                height={36}
+                                                wrapperStyle={{ paddingBottom: '10px' }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="depositos"
+                                                name="Depósitos"
+                                                stroke={COLORS[0]}
+                                                strokeWidth={2}
+                                                dot={{ r: 4 }}
+                                                activeDot={{ r: 6 }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="retiros"
+                                                name="Retiros"
+                                                stroke={COLORS[1]}
+                                                strokeWidth={2}
+                                                dot={{ r: 4 }}
+                                                activeDot={{ r: 6 }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                );
+                            })}
+                        </ChartCard>
+
+                        <ChartCard title="Transacciones por Agente">
+                            {renderSafeChart(transactionAgentData, transactionAgentError, isLoadingTransactionAgent, (data) => {
+                                // Ordenar datos por cantidad de transacciones
+                                const sortedData = [...data].sort((a, b) => b.value - a.value);
+
+                                // Tooltip personalizado para el gráfico de agentes
+                                const agentTooltip = ({ active, payload }: any) => {
+                                    if (active && payload && payload.length && payload[0]?.value !== undefined) {
+                                        const data = payload[0].payload;
+                                        const total = sortedData.reduce((sum: number, item: TransactionByAgent) => sum + item.value, 0);
+                                        const percentage = ((data.value / total) * 100).toFixed(1);
+
+                                        return (
+                                            <div className="bg-background/90 dark:bg-popover/90 backdrop-blur-sm p-3 border border-border rounded shadow-lg text-sm">
+                                                <p className="font-semibold mb-1">
+                                                    {data.name === 'Sin agente' ? 'Sin agente' : `Agente ${data.name}`}
+                                                </p>
+                                                <p className="text-muted-foreground">
+                                                    {data.value} transacciones ({percentage}%)
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                };
+
+                                return (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={sortedData}
+                                            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                                            layout="vertical"
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis
+                                                type="number"
+                                                tick={{ fontSize: 12 }}
+                                                tickMargin={10}
+                                                label={{
+                                                    value: 'Cantidad de Transacciones',
+                                                    position: 'insideBottom',
+                                                    offset: -5,
+                                                    style: { fontSize: 12 }
+                                                }}
+                                            />
+                                            <YAxis
+                                                dataKey="name"
+                                                type="category"
+                                                tick={{ fontSize: 12 }}
+                                                tickMargin={10}
+                                                width={120}
+                                                tickFormatter={(value) => {
+                                                    if (value === 'Sin agente') return 'Sin agente';
+                                                    return `Agente ${value}`;
+                                                }}
+                                            />
+                                            <Tooltip content={agentTooltip} />
+                                            <Legend
+                                                verticalAlign="top"
+                                                height={36}
+                                                wrapperStyle={{ paddingBottom: '10px' }}
+                                            />
+                                            <Bar
+                                                dataKey="value"
+                                                name="Transacciones"
+                                                fill={COLORS[0]}
+                                                radius={[0, 4, 4, 0]}
+                                            >
+                                                {sortedData.map((entry, index) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={entry.name === 'Sin agente' ? COLORS[5] : COLORS[index % COLORS.length]}
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                );
+                            })}
                         </ChartCard>
                     </>
                 )}

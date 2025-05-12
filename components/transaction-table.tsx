@@ -188,6 +188,13 @@ export function TransactionTable({
           <span>Rechazado</span>
         </Badge>
       );
+    } else if (status === 'Error') {
+      return (
+        <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+          <XCircle className="h-3 w-3" />
+          <span>Error</span>
+        </Badge>
+      );
     } else {
       return (
         <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">

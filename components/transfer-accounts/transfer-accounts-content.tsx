@@ -36,8 +36,8 @@ interface AccountData {
 interface AccountResponse {
   id: number;
   name: string;
-  office?: string; // Haz opcional o asegúrate que siempre venga
-  agent: string; // Asumiendo que 'agent' contiene el ID/Nombre de la oficina en la respuesta
+  office?: string;
+  agent: string;
   cbu: string;
   alias: string;
   wallet: 'mercadopago' | 'paypal';
@@ -48,6 +48,7 @@ interface AccountResponse {
   mp_client_secret?: string;
   mp_public_key?: string;
   mp_access_token?: string;
+  receiver_id?: string;
 }
 // Fin Interfaces
 
@@ -136,21 +137,32 @@ export function TransferAccountsContent() {
         throw new Error("Formato de respuesta inesperado del servidor.");
       }
 
-      // Mapeo (sin cambios, pero asegúrate que los nombres de campo sean correctos)
-      const transformedAccounts: TransferAccount[] = data.accounts.map((account: AccountResponse) => ({
-        id: account.id.toString(),
-        userName: account.name,
-        office: account.agent, // <-- Sigue revisando si es 'agent' u 'office' en la RTA
-        // ... resto del mapeo ...
-        cbu: account.cbu,
-        alias: account.alias,
-        wallet: account.wallet,
-        operator: account.operator,
-        agent: account.agent,
-        createdAt: new Date(account.created_at),
-        isActive: account.status === 'active',
-        // ... campos mp ...
-      }));
+      // Debug log para ver la respuesta del backend
+      console.log('Response from backend:', data.accounts);
+
+      // Mapeo de la respuesta del backend
+      const transformedAccounts: TransferAccount[] = data.accounts.map((account: AccountResponse) => {
+        // Debug log para cada cuenta
+        console.log('Processing account:', account);
+
+        return {
+          id: account.id.toString(),
+          userName: account.name,
+          office: account.agent,
+          cbu: account.cbu,
+          alias: account.alias,
+          wallet: account.wallet,
+          operator: account.operator,
+          agent: account.agent,
+          createdAt: new Date(account.created_at),
+          isActive: account.status === 'active',
+          mp_client_id: account.mp_client_id || '',
+          mp_client_secret: account.mp_client_secret || '',
+          mp_public_key: account.mp_public_key || '',
+          mp_access_token: account.mp_access_token || '',
+          receiver_id: account.receiver_id || '',
+        };
+      });
 
       setAccounts(transformedAccounts);
       console.log("Accounts fetched successfully:", transformedAccounts.length);

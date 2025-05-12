@@ -158,7 +158,7 @@ export function LoginForm({ className, ...props }: React.HTMLAttributes<HTMLDivE
                 disabled={isLoadingOffices || isLoading}
               >
                 <SelectTrigger id="viewOfficeId">
-                  <SelectValue placeholder={isLoadingOffices ? "Cargando oficinas..." : "Oficina por defecto"} />
+                  <SelectValue placeholder={isLoadingOffices ? "Cargando oficinas..." : "Elegir oficina"} />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Opción para usar la oficina por defecto */}

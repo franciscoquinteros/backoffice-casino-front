@@ -43,8 +43,6 @@ export function OfficeConfigurationContent() {
   const tableColumns: ColumnConfig[] = [
     { cell: { type: 'text' } },                        // Nombre
     { cell: { type: 'text', widthClass: 'w-1/2' } },   // Nombre de usuario
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Carga Mínima
-    { cell: { type: 'text', widthClass: 'w-2/3' } },   // Retiro Mínimo
     { cell: { type: 'badge', widthClass: 'w-20' } },   // Estado
     { width: 'w-[70px]', cell: { type: 'action', align: 'center' }, header: { show: false } } // Acciones
   ]
@@ -102,8 +100,6 @@ export function OfficeConfigurationContent() {
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>Nombre de usuario</TableHead>
-            <TableHead>Carga Mínima</TableHead>
-            <TableHead>Retiro Mínimo</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead className="w-[70px]">Acciones</TableHead>
           </TableRow>
@@ -111,7 +107,7 @@ export function OfficeConfigurationContent() {
         <TableBody>
           {error ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-red-500">
+              <TableCell colSpan={4} className="h-24 text-center text-red-500">
                 Error: {error}
               </TableCell>
             </TableRow>
@@ -120,8 +116,6 @@ export function OfficeConfigurationContent() {
               <TableRow key={office.id}>
                 <TableCell className="font-medium">{office.name}</TableCell>
                 <TableCell>{office.agentAssigned}</TableCell>
-                <TableCell>{office.minDeposit}</TableCell>
-                <TableCell>{office.minWithdrawal}</TableCell>
                 <TableCell>
                   <Badge variant={office.status === "active" ? "default" : "destructive"}>
                     {office.status === "active" ? "Activo" : "Inactivo"}
@@ -166,7 +160,7 @@ export function OfficeConfigurationContent() {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={4} className="h-24 text-center">
                 No hay oficinas disponibles
               </TableCell>
             </TableRow>

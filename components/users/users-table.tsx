@@ -61,7 +61,7 @@ function getStatusDisplay(status: string) {
 // Función para formatear los roles
 function formatRole(role: string): string {
   if (!role) return '';
-  
+
   const roleMap: Record<string, string> = {
     'superadmin': 'Super Administrador',
     'admin': 'Administrador',
@@ -72,7 +72,7 @@ function formatRole(role: string): string {
     'encargado': 'Encargado',
     'operador': 'Operador'
   };
-  
+
   return roleMap[role.toLowerCase()] || role.charAt(0).toUpperCase() + role.slice(1);
 }
 
@@ -84,7 +84,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  
+
   // Usamos el hook de oficinas para obtener la función de mapeo de ID a nombre
   const { getOfficeName } = useOffices()
 
@@ -119,14 +119,14 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
     try {
       const userData: Partial<User> = {
         status: updatedUser.isActive ? UserStatus.ACTIVE : UserStatus.INACTIVE,
-        receivesWithdrawals: updatedUser.receivesWithdrawals,
+        withdrawal: updatedUser.withdrawal,
         role: updatedUser.role,
         office: updatedUser.office
       }
 
       // Enviamos los datos al servidor
       await onUpdateUser(selectedUser.id, userData)
-      
+
       // Si tenemos una función para refrescar los usuarios, la llamamos
       if (onRefreshUsers) {
         await onRefreshUsers()
@@ -266,7 +266,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
                     </span>
                   </TableCell>
                   <TableCell>
-                    {user.receivesWithdrawals ? 'Recibe' : 'No recibe'}
+                    {user.withdrawal === 'enabled' ? 'Habilitado' : 'Deshabilitado'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu open={openDropdownId === user.id} onOpenChange={(open) => {

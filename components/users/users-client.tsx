@@ -71,32 +71,52 @@ export function UsersClient({ userType }: { userType: 'internal' | 'external' })
   // --- Función para cargar usuarios (con Auth) ---
   const fetchUsers = useCallback(async () => {
     if (sessionStatus !== "authenticated" || !session?.accessToken || !session?.user?.officeId) {
-      if (sessionStatus === "authenticated") { setError("Datos de sesión incompletos."); }
-      setIsLoading(false); return;
+      if (sessionStatus === "authenticated") {
+        setError("No tienes los permisos necesarios para acceder a esta sección.");
+      }
+      setIsLoading(false);
+      return;
     }
     const accessToken = session.accessToken;
     const userOffice = session.user.officeId;
 
-    setIsLoading(true); setError(null);
+    setIsLoading(true);
+    setError(null);
 
     try {
       const endpoint = userType === 'internal' ? 'users' : 'external-users';
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/${endpoint}`;
-      console.log(`Workspaceing ${userType} users for office ${userOffice} from: ${url}`);
+      console.log(`Fetching ${userType} users for office ${userOffice} from: ${url}`);
 
       const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        let errorMsg = `Error al obtener ${userType} usuarios`;
-        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
+        let errorMsg = `Error al obtener ${userType === 'internal' ? 'usuarios internos' : 'usuarios externos'}`;
+
+        if (response.status === 404) {
+          errorMsg = `No se encontró la sección de ${userType === 'internal' ? 'usuarios internos' : 'usuarios externos'}. Por favor, contacta al administrador.`;
+        } else if (response.status === 403) {
+          errorMsg = "No tienes permisos para acceder a esta sección.";
+        } else if (response.status === 401) {
+          errorMsg = "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.";
+        } else {
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorMsg;
+          } catch { }
+        }
         throw new Error(errorMsg);
       }
+
       const data = await response.json();
       const fetchedUsers: User[] = Array.isArray(data) ? data : (data?.users || []);
 
-      console.log(`Workspaceed ${fetchedUsers.length} ${userType} users for office ${userOffice}`);
+      console.log(`Fetched ${fetchedUsers.length} ${userType} users for office ${userOffice}`);
       setUsers(fetchedUsers);
 
       // Aplica filtros inmediatamente después de recibir datos
@@ -107,11 +127,11 @@ export function UsersClient({ userType }: { userType: 'internal' | 'external' })
       console.error(`Client error fetching ${userType} users:`, error);
       const message = error instanceof Error ? error.message : 'Error desconocido al cargar usuarios.';
       setError(message);
-      setUsers([]); setFilteredUsers([]);
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setIsLoading(false);
     }
-    // Dependencias corregidas
   }, [session, sessionStatus, userType, filters, setError]);
 
 
@@ -230,7 +250,6 @@ export function UsersClient({ userType }: { userType: 'internal' | 'external' })
   }
 
   return (
-    // Usa un div contenedor con padding si es necesario
     <div className="container mx-auto py-6">
       {/* Encabezado */}
       <SkeletonLoader skeleton={<HeaderSkeleton />} isLoading={isLoading && users.length === 0}>
@@ -239,11 +258,12 @@ export function UsersClient({ userType }: { userType: 'internal' | 'external' })
 
       {/* Filtros */}
       <SkeletonLoader skeleton={<FiltersSkeleton />} isLoading={isLoading && users.length === 0}>
-        {/* Renderiza filtros siempre que no esté en el estado de carga inicial sin datos */}
         {!(isLoading && users.length === 0) &&
-          <UsersFilters onFilterChange={handleFilterChange} users={users} /* Pasa las props que necesite UsersFilters */ onReset={function (): void {
-            throw new Error("Function not implemented.");
-          }} /* Pasa las props que necesite UsersFilters */ />
+          <UsersFilters
+            onFilterChange={handleFilterChange}
+            users={users}
+            onReset={handleResetFilters}
+          />
         }
       </SkeletonLoader>
 
@@ -252,16 +272,37 @@ export function UsersClient({ userType }: { userType: 'internal' | 'external' })
         skeleton={<Card><TableSkeleton columns={tableColumns} rowCount={8} /></Card>}
         isLoading={isLoading && users.length === 0}
       >
-        {error && !isLoading ? (
-          <Card className="p-8 text-center my-4"><p className="text-red-500">{error}</p></Card>
+        {error ? (
+          <Card className="p-8 text-center my-4">
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-red-500 text-lg">{error}</p>
+              <Button
+                variant="outline"
+                onClick={() => fetchUsers()}
+                className="mt-2"
+              >
+                Intentar nuevamente
+              </Button>
+            </div>
+          </Card>
         ) : !error && users.length > 0 && filteredUsers.length === 0 && !isLoading ? (
-          <Card className="p-8 text-center my-4 border rounded-md"> <p className="text-lg text-muted-foreground mb-4">No se encontraron usuarios con los filtros actuales.</p> <Button variant="outline" onClick={handleResetFilters}>Limpiar Filtros</Button> </Card>
+          <Card className="p-8 text-center my-4 border rounded-md">
+            <p className="text-lg text-muted-foreground mb-4">No se encontraron usuarios con los filtros actuales.</p>
+            <Button variant="outline" onClick={handleResetFilters}>Limpiar Filtros</Button>
+          </Card>
         ) : !error && users.length === 0 && !isLoading ? (
-          <div className="flex flex-col justify-center items-center h-64 border rounded-md"> <p className="text-lg text-muted-foreground mb-4">No hay usuarios para mostrar en esta oficina</p> <p className="text-sm text-muted-foreground">Puedes crear uno nuevo.</p> </div>
+          <div className="flex flex-col justify-center items-center h-64 border rounded-md">
+            <p className="text-lg text-muted-foreground mb-4">No hay usuarios para mostrar en esta oficina</p>
+            <p className="text-sm text-muted-foreground">Puedes crear uno nuevo.</p>
+          </div>
         ) : !error ? (
-          <UsersTable users={filteredUsers} onUpdateUser={updateUser} onRefreshUsers={fetchUsers} userType={userType} />
-        ) : null
-        }
+          <UsersTable
+            users={filteredUsers}
+            onUpdateUser={updateUser}
+            onRefreshUsers={fetchUsers}
+            userType={userType}
+          />
+        ) : null}
       </SkeletonLoader>
     </div>
   );

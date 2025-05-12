@@ -78,8 +78,13 @@ export function UsersFilters({ onFilterChange, onReset, users }: UsersFiltersPro
             <Label htmlFor="user-search">Buscar</Label>
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input id="user-search" placeholder="Nombre, Email..." value={internalSearch}
-                onChange={(e) => handleInputChange(e, 'username')} />
+              <Input
+                id="user-search"
+                placeholder="Buscar por nombre, email o usuario..."
+                value={internalSearch}
+                onChange={(e) => handleInputChange(e, 'username')}
+                className="pl-8"
+              />
             </div>
           </div>
           {/* Rol */}

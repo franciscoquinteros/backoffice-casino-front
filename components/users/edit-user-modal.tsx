@@ -48,7 +48,7 @@ interface EditUserModalProps {
 
 interface UserFormData {
   isActive: boolean
-  receivesWithdrawals: boolean
+  withdrawal: 'enabled' | 'disabled'
   role: string
   office: string
 }
@@ -57,12 +57,12 @@ export function EditUserModal({ user, isOpen, onClose, onSave, isLoading = false
   // Inicializar el estado con valores por defecto
   const [formData, setFormData] = useState<UserFormData>(() => ({
     isActive: user?.status === UserStatus.ACTIVE,
-    receivesWithdrawals: user?.receivesWithdrawals || false,
+    withdrawal: user?.withdrawal || 'disabled',
     role: user?.role || "",
     office: user?.office ? user.office.toString() : "",
   }))
   const [isSaving, setIsSaving] = useState(false)
-  
+
   // Utilizamos el hook para obtener las oficinas
   const { activeOffices, isLoading: isLoadingOffices } = useOffices()
 
@@ -71,7 +71,7 @@ export function EditUserModal({ user, isOpen, onClose, onSave, isLoading = false
     if (isOpen && user) {
       setFormData({
         isActive: user.status === UserStatus.ACTIVE,
-        receivesWithdrawals: user.receivesWithdrawals,
+        withdrawal: user.withdrawal,
         role: user.role,
         office: user.office ? user.office.toString() : "",
       })
@@ -91,16 +91,16 @@ export function EditUserModal({ user, isOpen, onClose, onSave, isLoading = false
       // Creamos un objeto con las propiedades que acepte onSave
       const dataToSubmit: Partial<User> & { isActive?: boolean } = {
         isActive: formData.isActive,
-        receivesWithdrawals: formData.receivesWithdrawals,
+        withdrawal: formData.withdrawal,
         role: formData.role
       };
-      
+
       // Añadimos la oficina con la conversión apropiada
       if (formData.office) {
         // Siempre enviamos office como string, como lo espera el backend
         dataToSubmit.office = formData.office;
       }
-      
+
       await onSave(dataToSubmit)
       // No cerramos el modal aquí, dejamos que el componente padre lo haga después de actualizar
     } catch (error) {
@@ -163,13 +163,13 @@ export function EditUserModal({ user, isOpen, onClose, onSave, isLoading = false
               <Label className="text-right">Retiros</Label>
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={formData.receivesWithdrawals}
-                  onCheckedChange={(checked) => 
-                    setFormData({ ...formData, receivesWithdrawals: checked })
+                  checked={formData.withdrawal === 'enabled'}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, withdrawal: checked ? 'enabled' : 'disabled' })
                   }
                   disabled={isSaving}
                 />
-                <span>{formData.receivesWithdrawals ? 'Habilitado' : 'Deshabilitado'}</span>
+                <span>{formData.withdrawal === 'enabled' ? 'Habilitado' : 'Deshabilitado'}</span>
               </div>
             </div>
 

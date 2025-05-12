@@ -24,7 +24,7 @@ export default async function ExternalUsersPage() { // El nombre está bien
     // const externalUsers = await fetchExternalUsers() || [];
 
     return (
-        <RoleGuard allowedRoles={['admin', 'encargado', 'superadmin']}>
+        <RoleGuard allowedRoles={['admin', 'encargado', 'superadmin', 'operador']}>
             {/* El div wrapper opcional para padding */}
             <div className="p-6">
                 {/* --- 4. ELIMINA Suspense (UsersClient maneja su carga) --- */}

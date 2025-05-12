@@ -26,8 +26,6 @@ export interface Transaction {
 }
 
 export interface TransactionFilter {
-  office?: string;
-  method?: string;
   minAmount?: number;
   maxAmount?: number;
   search?: string;
@@ -127,6 +125,42 @@ class TransactionService {
     }
   }
 
+  // Método para aplicar filtros adicionales
+  applyFilters(transactions: Transaction[], filters?: TransactionFilter): Transaction[] {
+    if (!filters) return transactions;
+
+    let filtered = [...transactions];
+
+    if (filters.minAmount !== undefined) {
+      filtered = filtered.filter(tx => tx.amount >= filters.minAmount!);
+    }
+
+    if (filters.maxAmount !== undefined) {
+      filtered = filtered.filter(tx => tx.amount <= filters.maxAmount!);
+    }
+
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(tx =>
+        (tx.id.toString().toLowerCase().includes(searchLower)) ||
+        (tx.payer_email && tx.payer_email.toLowerCase().includes(searchLower)) ||
+        (tx.idCliente && tx.idCliente.toString().toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter(tx => new Date(tx.date_created) >= fromDate);
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      filtered = filtered.filter(tx => new Date(tx.date_created) <= toDate);
+    }
+
+    return filtered;
+  }
+
   // Filtrar transacciones por tipo y estado
   filterTransactions(
     transactions: Transaction[],
@@ -142,6 +176,13 @@ class TransactionService {
         tx.type === type &&
         (tx.status === 'Aceptado' || tx.status === 'approved' || tx.status === 'Rechazado')
       );
+    } else if (type === 'deposit' && status === 'Pending') {
+      // Para depósitos pendientes, filtrar por descripción específica
+      filtered = transactions.filter(tx =>
+        tx.type === type &&
+        tx.status === status &&
+        tx.description.startsWith('Depósito reportado por usuarios, pendiente de validación')
+      );
     } else {
       // Para otras páginas, filtrar exactamente por el estado solicitado
       filtered = transactions.filter(tx =>
@@ -152,41 +193,7 @@ class TransactionService {
 
     // Aplicar filtros adicionales si se proporcionan
     if (filters) {
-      if (filters.office && filters.office !== 'all') {
-        filtered = filtered.filter(tx => tx.office === filters.office);
-      }
-
-      if (filters.method && filters.method !== 'all') {
-        filtered = filtered.filter(tx => tx.payment_method_id === filters.method);
-      }
-
-      // Corregir los errores de TypeScript comprobando explícitamente si es undefined
-      if (filters.minAmount !== undefined) {
-        filtered = filtered.filter(tx => tx.amount >= filters.minAmount!);
-      }
-
-      if (filters.maxAmount !== undefined) {
-        filtered = filtered.filter(tx => tx.amount <= filters.maxAmount!);
-      }
-
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        filtered = filtered.filter(tx =>
-          (tx.id.toString().toLowerCase().includes(searchLower)) ||
-          (tx.payer_email && tx.payer_email.toLowerCase().includes(searchLower)) ||
-          (tx.idCliente && tx.idCliente.toString().toLowerCase().includes(searchLower))
-        );
-      }
-
-      if (filters.dateFrom) {
-        const fromDate = new Date(filters.dateFrom);
-        filtered = filtered.filter(tx => new Date(tx.date_created) >= fromDate);
-      }
-
-      if (filters.dateTo) {
-        const toDate = new Date(filters.dateTo);
-        filtered = filtered.filter(tx => new Date(tx.date_created) <= toDate);
-      }
+      filtered = this.applyFilters(filtered, filters);
     }
 
     return filtered;

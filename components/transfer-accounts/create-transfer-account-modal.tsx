@@ -40,7 +40,7 @@ const formSchema = z.object({
   office: z.string().min(1, 'La oficina es requerida'),
   cbu: z.string().min(1, 'El CBU es requerido'),
   alias: z.string().min(1, 'El alias es requerido'),
-  wallet: z.enum(['mercadopago', 'paypal']),
+  wallet: z.literal('mercadopago'),
   operator: z.string().optional(),
   agent: z.string().min(1, 'El agente es requerido'),
   status: z.enum(['active', 'inactive']),
@@ -284,7 +284,6 @@ export function CreateTransferAccountModal({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="mercadopago">Mercado Pago</SelectItem>
-                      <SelectItem value="paypal">PayPal</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

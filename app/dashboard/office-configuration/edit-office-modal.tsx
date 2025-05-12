@@ -31,13 +31,6 @@ interface EditOfficeModalProps {
 
 interface OfficeFormData {
     name: string;
-    whatsapp: string;
-    telegram: string;
-    firstDepositBonus: string;
-    perpetualBonus: string;
-    minDeposit: string;
-    minWithdrawal: string;
-    minWithdrawalWait: string;
     status: string;
 }
 
@@ -47,13 +40,6 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
     const form = useForm({
         defaultValues: {
             name: "",
-            whatsapp: "",
-            telegram: "",
-            firstDepositBonus: "",
-            perpetualBonus: "",
-            minDeposit: "",
-            minWithdrawal: "",
-            minWithdrawalWait: "",
             status: "",
         },
     })
@@ -62,13 +48,6 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
         if (office) {
             form.reset({
                 name: office.name || "",
-                whatsapp: office.whatsapp || "",
-                telegram: office.telegram || "",
-                firstDepositBonus: office.firstDepositBonus || "",
-                perpetualBonus: office.perpetualBonus || "",
-                minDeposit: office.minDeposit || "",
-                minWithdrawal: office.minWithdrawal || "",
-                minWithdrawalWait: office.minWithdrawalWait || "",
                 status: office.status || "active",
             })
         }
@@ -76,7 +55,7 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
 
     const handleSubmit = async (data: OfficeFormData) => {
         if (!office) return;
-        
+
         if (!data.name) {
             toast.error("El nombre de la oficina es obligatorio")
             return
@@ -118,7 +97,7 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
         if (!newOpen && isLoading) {
             return;
         }
-        
+
         // Si estamos cerrando el modal, asegurarse de que se limpie correctamente
         if (!newOpen && !isLoading) {
             // Pequeño retraso para asegurar que la animación termine correctamente
@@ -168,90 +147,6 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
                                                 <option value="active">Activo</option>
                                                 <option value="inactive">Inactivo</option>
                                             </select>
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="whatsapp"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>WhatsApp</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="telegram"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Telegram</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="firstDepositBonus"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Bono Primera Carga</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="perpetualBonus"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Bono Perpetuo</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="minDeposit"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Carga Mínima</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="minWithdrawal"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Retiro Mínimo</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="minWithdrawalWait"
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                        <FormLabel>Tiempo de Espera Mínimo</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
                                         </FormControl>
                                     </FormItem>
                                 )}

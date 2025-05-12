@@ -6,7 +6,6 @@ export interface User {
   role: string
   office: string | number
   status: string
-  receivesWithdrawals: boolean
-  withdrawal?: string
+  withdrawal: 'enabled' | 'disabled'
   createdAt: Date
 } 

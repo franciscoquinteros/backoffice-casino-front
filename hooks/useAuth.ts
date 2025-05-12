@@ -3,6 +3,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 
+export interface User {
+  id: string;
+  role: string | null;
+  email: string;
+  name: string | null;
+  officeId: string;
+  withdrawal?: 'enabled' | 'disabled';
+}
+
 export function useAuth(requireAuth = true) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -22,18 +31,18 @@ export function useAuth(requireAuth = true) {
     try {
       // Mostrar un indicador de carga
       toast.loading('Cerrando sesión...');
-      
+
       // Llamar a signOut con redirect: false para manejar la redirección manualmente
-      await signOut({ 
+      await signOut({
         redirect: false
       });
-      
+
       // Limpiar cualquier estado local si es necesario
       localStorage.removeItem('user-preferences');
-      
+
       // Mostrar toast de éxito
       toast.success('Sesión cerrada correctamente');
-      
+
       // Redirigir al login - usamos router.push que es más confiable
       router.push('/auth/login');
     } catch (error) {
@@ -46,9 +55,9 @@ export function useAuth(requireAuth = true) {
 
   // Verificar si el usuario es SuperAdmin (Joaquin)
   const isSuperAdmin = session?.user?.email === 'joaquin@example.com' || session?.user?.role === 'superadmin';
-  
+
   return {
-    user: session?.user,
+    user: session?.user as User,
     role: session?.user?.role,
     isSuperAdmin,
     isAdmin: session?.user?.role === 'admin',
