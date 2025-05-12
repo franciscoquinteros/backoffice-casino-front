@@ -134,7 +134,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
           try {
             const errorData = JSON.parse(errorText);
             console.error('Error details:', errorData);
-          } catch (e) {
+          } catch {
             // Si no se puede parsear como JSON, ya tenemos el texto del error
           }
         }
@@ -144,7 +144,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     };
 
     fetchOperators();
-  }, [session?.accessToken]);
+  }, [session?.accessToken, session?.user]);
 
   // Efecto para cargar los datos iniciales con un retraso simulado
   useEffect(() => {
