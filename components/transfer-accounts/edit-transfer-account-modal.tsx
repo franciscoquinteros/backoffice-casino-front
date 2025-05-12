@@ -121,9 +121,8 @@ export function EditTransferAccountModal({
       setShowPublicKey(isFieldVerified('mp_public_key'));
       setShowAccessToken(isFieldVerified('mp_access_token'));
     }
-  }, [account, form]); // Remove isFieldVerified from dependencies
+  }, [account, form]);
 
-  // Separate useEffect for handling verification status changes
   useEffect(() => {
     if (account) {
       setShowClientId(isFieldVerified('mp_client_id'));

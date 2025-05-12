@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useSession } from 'next-auth/react'; // Para autenticación
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, TooltipProps } from 'recharts';
-import { Clock, Users, MessageSquare, Ticket, AlertCircle, ArrowRightLeft } from 'lucide-react';
+import { Clock, Users, MessageSquare, Ticket, AlertCircle } from 'lucide-react';
 // Asegúrate que la ruta a este archivo sea correcta
 import { StatusDistribution, TicketsByAgent, TicketsTrend, MessageVolume, /* MessageDistribution, */ ResponseTimeByAgent, LoginActivity, UserRole, NewUsersByMonth, DashboardSummary, ConversationStatusDistribution, TransactionSummary, TransactionByStatus, TransactionTrend, TransactionByAgent } from './services/report.api';
 import { useTheme } from 'next-themes';

@@ -19,7 +19,7 @@ import {
   SidebarContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { useAuth, User } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 
 // Definir el tipo para los elementos de navegación
 interface NavItem {
