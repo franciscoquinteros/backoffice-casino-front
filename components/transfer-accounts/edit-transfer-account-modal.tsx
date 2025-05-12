@@ -130,7 +130,7 @@ export function EditTransferAccountModal({
       setShowPublicKey(isFieldVerified('mp_public_key'));
       setShowAccessToken(isFieldVerified('mp_access_token'));
     }
-  }, [isFieldVerified, account]);
+  }, [account, isFieldVerified]);
 
   const watchWallet = form.watch('wallet')
 

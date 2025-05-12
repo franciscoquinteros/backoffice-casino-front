@@ -108,7 +108,6 @@ const ReportsDashboard = () => {
     const { data: newUsersData, error: newUsersError, isLoading: isLoadingNewUsers } = useSWR<NewUsersByMonth[]>(newUsersKey, fetcher, { revalidateOnFocus: false });
 
     // Nuevos SWR hooks para transacciones
-    const { data: transactionSummaryData, error: transactionSummaryError, isLoading: isLoadingTransactionSummary } = useSWR<TransactionSummary>(transactionSummaryKey, fetcher, { revalidateOnFocus: false });
     const { data: transactionStatusData, error: transactionStatusError, isLoading: isLoadingTransactionStatus } = useSWR<TransactionByStatus[]>(transactionStatusKey, fetcher, { revalidateOnFocus: false });
     const { data: transactionTrendData, error: transactionTrendError, isLoading: isLoadingTransactionTrend } = useSWR<TransactionTrend>(transactionTrendKey, fetcher, { revalidateOnFocus: false });
     const { data: transactionAgentData, error: transactionAgentError, isLoading: isLoadingTransactionAgent } = useSWR<TransactionByAgent[]>(transactionAgentKey, fetcher, { revalidateOnFocus: false });
@@ -504,7 +503,7 @@ const ReportsDashboard = () => {
                                 const sortedData = [...data].sort((a, b) => b.value - a.value);
 
                                 // Tooltip personalizado para el gráfico de agentes
-                                const agentTooltip = ({ active, payload }: any) => {
+                                const agentTooltip = ({ active, payload }: TooltipProps<number, string>) => {
                                     if (active && payload && payload.length && payload[0]?.value !== undefined) {
                                         const data = payload[0].payload;
                                         const total = sortedData.reduce((sum: number, item: TransactionByAgent) => sum + item.value, 0);
