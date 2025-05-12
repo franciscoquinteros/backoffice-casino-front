@@ -148,7 +148,8 @@ export function TransferAccountsContent() {
         return {
           id: account.id.toString(),
           userName: account.name,
-          office: account.agent,
+          office: account.office || '', // Usar account.office en lugar de account.agent
+          officeId: account.office || '', // Asegurar que officeId tenga el mismo valor que office
           cbu: account.cbu,
           alias: account.alias,
           wallet: account.wallet,
@@ -204,38 +205,34 @@ export function TransferAccountsContent() {
         wallet: updatedAccount.wallet,
         operator: updatedAccount.operator,
         status: updatedAccount.isActive ? 'active' : 'inactive',
+        office: updatedAccount.office, // Añadir el campo office
         // Incluir campos MP solo si tienen valor
         mp_client_id: updatedAccount.mp_client_id || undefined,
         mp_client_secret: updatedAccount.mp_client_secret || undefined,
         mp_public_key: updatedAccount.mp_public_key || undefined,
         mp_access_token: updatedAccount.mp_access_token || undefined,
-        // NO incluyas 'office' o 'agent' aquí si no se pueden modificar desde la UI de edición
-        // o si el backend espera un campo específico que no está en TransferAccount.
-        // Si necesitas enviarlo y 'office' en TransferAccount es correcto:
-        // office: updatedAccount.office,
-        // agent: updatedAccount.agent, // O este, dependiendo de tu backend PUT /accounts/:id
       };
 
-      // --- CORRECCIÓN ERROR TS7053 ---
       // Limpia las propiedades que son 'undefined' antes de enviar
       Object.keys(accountData).forEach(key => {
-        // Aserción de tipo para decirle a TS que 'key' es una clave válida
         const k = key as keyof AccountData;
         if (accountData[k] === undefined) {
           delete accountData[k];
         }
       });
-      // --- FIN CORRECCIÓN ---
 
       console.log(`Updating account ${updatedAccount.id} with data:`, accountData);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts/${updatedAccount.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}` // Auth Header
-        },
-        body: JSON.stringify(accountData),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/accounts/${updatedAccount.id}?officeId=${encodeURIComponent(updatedAccount.office)}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(accountData),
+        }
+      );
 
       if (!response.ok) {
         let errorMsg = 'Error al actualizar la cuenta';

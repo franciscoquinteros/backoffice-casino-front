@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { TransferAccount } from '@/types/transfer-account'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { PasswordVerificationModal } from '@/components/password-verification-modal'
@@ -96,9 +96,27 @@ export function EditTransferAccountModal({
     },
   })
 
+  // Memoize the verification states
+  const verificationStates = useMemo(() => ({
+    clientId: isFieldVerified('mp_client_id'),
+    clientSecret: isFieldVerified('mp_client_secret'),
+    publicKey: isFieldVerified('mp_public_key'),
+    accessToken: isFieldVerified('mp_access_token')
+  }), [isFieldVerified]);
+
+  // Update visibility states only when account or verification states change
   useEffect(() => {
     if (account) {
-      // Reset form with account data
+      setShowClientId(verificationStates.clientId);
+      setShowClientSecret(verificationStates.clientSecret);
+      setShowPublicKey(verificationStates.publicKey);
+      setShowAccessToken(verificationStates.accessToken);
+    }
+  }, [account, verificationStates]);
+
+  // Reset form when account changes
+  useEffect(() => {
+    if (account) {
       form.reset({
         userName: account.userName,
         office: account.office,
@@ -114,23 +132,49 @@ export function EditTransferAccountModal({
         mp_access_token: account.mp_access_token || '',
         receiver_id: account.receiver_id || '',
       });
-
-      // Set initial visibility states based on verification status
-      setShowClientId(isFieldVerified('mp_client_id'));
-      setShowClientSecret(isFieldVerified('mp_client_secret'));
-      setShowPublicKey(isFieldVerified('mp_public_key'));
-      setShowAccessToken(isFieldVerified('mp_access_token'));
     }
-  }, [account, form, isFieldVerified]);
+  }, [account, form]);
 
-  useEffect(() => {
-    if (account) {
-      setShowClientId(isFieldVerified('mp_client_id'));
-      setShowClientSecret(isFieldVerified('mp_client_secret'));
-      setShowPublicKey(isFieldVerified('mp_public_key'));
-      setShowAccessToken(isFieldVerified('mp_access_token'));
+  // Memoize the toggle handlers
+  const handleToggleClientId = useCallback(() => {
+    if (showClientId) {
+      setShowClientId(false)
+    } else if (verificationStates.clientId) {
+      setShowClientId(true)
+    } else {
+      startVerification('mp_client_id')
     }
-  }, [account, isFieldVerified]);
+  }, [showClientId, verificationStates.clientId, startVerification]);
+
+  const handleToggleClientSecret = useCallback(() => {
+    if (showClientSecret) {
+      setShowClientSecret(false)
+    } else if (verificationStates.clientSecret) {
+      setShowClientSecret(true)
+    } else {
+      startVerification('mp_client_secret')
+    }
+  }, [showClientSecret, verificationStates.clientSecret, startVerification]);
+
+  const handleTogglePublicKey = useCallback(() => {
+    if (showPublicKey) {
+      setShowPublicKey(false)
+    } else if (verificationStates.publicKey) {
+      setShowPublicKey(true)
+    } else {
+      startVerification('mp_public_key')
+    }
+  }, [showPublicKey, verificationStates.publicKey, startVerification]);
+
+  const handleToggleAccessToken = useCallback(() => {
+    if (showAccessToken) {
+      setShowAccessToken(false)
+    } else if (verificationStates.accessToken) {
+      setShowAccessToken(true)
+    } else {
+      startVerification('mp_access_token')
+    }
+  }, [showAccessToken, verificationStates.accessToken, startVerification]);
 
   const watchWallet = form.watch('wallet')
 
@@ -142,6 +186,7 @@ export function EditTransferAccountModal({
       await onConfirm({
         ...account,
         ...values,
+        officeId: account.officeId,
       })
       onClose()
     } catch (error) {
@@ -149,47 +194,6 @@ export function EditTransferAccountModal({
       toast.error(`Error al guardar la cuenta: ${error instanceof Error ? error.message : 'Intenta nuevamente'}`)
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  // Manejadores para mostrar/ocultar campos sensibles con verificación
-  const handleToggleClientId = () => {
-    if (showClientId) {
-      setShowClientId(false)
-    } else if (isFieldVerified('mp_client_id')) {
-      setShowClientId(true)
-    } else {
-      startVerification('mp_client_id')
-    }
-  }
-
-  const handleToggleClientSecret = () => {
-    if (showClientSecret) {
-      setShowClientSecret(false)
-    } else if (isFieldVerified('mp_client_secret')) {
-      setShowClientSecret(true)
-    } else {
-      startVerification('mp_client_secret')
-    }
-  }
-
-  const handleTogglePublicKey = () => {
-    if (showPublicKey) {
-      setShowPublicKey(false)
-    } else if (isFieldVerified('mp_public_key')) {
-      setShowPublicKey(true)
-    } else {
-      startVerification('mp_public_key')
-    }
-  }
-
-  const handleToggleAccessToken = () => {
-    if (showAccessToken) {
-      setShowAccessToken(false)
-    } else if (isFieldVerified('mp_access_token')) {
-      setShowAccessToken(true)
-    } else {
-      startVerification('mp_access_token')
     }
   }
 

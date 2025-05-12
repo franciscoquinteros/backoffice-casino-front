@@ -2,6 +2,7 @@ export interface TransferAccount {
   id: string;
   userName: string;
   office: string;
+  officeId: string;
   cbu: string;
   alias: string;
   wallet: 'mercadopago';

@@ -104,12 +104,23 @@ function useTicketInfo(ticketId: number) {
   const [ticketInfo, setTicketInfo] = useState<TicketInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const { data: session } = useSession();
 
   const fetchTicketInfo = useCallback(async () => {
+    if (!session?.accessToken) {
+      setError(new Error('No authentication token available'));
+      return null;
+    }
+
     try {
       setIsLoading(true);
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}`);
+      const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -126,7 +137,7 @@ function useTicketInfo(ticketId: number) {
     } finally {
       setIsLoading(false);
     }
-  }, [ticketId]);
+  }, [ticketId, session?.accessToken]);
 
   useEffect(() => {
     fetchTicketInfo();

@@ -17,6 +17,7 @@ import { SkeletonLoader } from "@/components/skeleton-loader"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TicketsTable } from "./tickets-table"
 import { Ticket } from "../hooks/tickets"
+import { useSession } from "next-auth/react"
 
 // Sharing the same type definition between components
 export interface TicketUser {
@@ -47,10 +48,20 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     status: "all",
     user: "",
     dateRange: "all",
-    operator: "all"  // Aseguramos que tenga un valor inicial válido
+    operator: "all"
   })
-  // Estado para controlar la carga inicial
   const [isLoading, setIsLoading] = useState(true)
+  const { data: session } = useSession();
+
+  // Log session data to debug
+  useEffect(() => {
+    console.log('Current session:', {
+      status: session?.user?.officeId ? 'Has officeId' : 'No officeId',
+      officeId: session?.user?.officeId,
+      role: session?.user?.role,
+      hasToken: !!session?.accessToken
+    });
+  }, [session]);
 
   // Configuración de columnas para la tabla de tickets (para el skeleton)
   const tableColumns: ColumnConfig[] = [
@@ -67,13 +78,65 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
   // Obtener los operadores al cargar el componente
   useEffect(() => {
     const fetchOperators = async () => {
+      if (!session?.accessToken) {
+        console.error('No authentication token available');
+        return;
+      }
+
+      // Debug JWT token
+      console.log('Raw token:', session.accessToken);
       try {
-        const response = await fetch('/api/zendesk/operators-with-ticket-counts');
+        const tokenParts = session.accessToken.split('.');
+        console.log('Token parts length:', tokenParts.length);
+
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('JWT Payload:', {
+            officeId: payload.officeId,
+            role: payload.role,
+            sub: payload.sub,
+            exp: new Date(payload.exp * 1000).toISOString()
+          });
+        } else {
+          console.error('Invalid JWT format - expected 3 parts');
+        }
+      } catch (e) {
+        console.error('Error parsing JWT:', e);
+        // Mostrar el token completo para debug
+        console.log('Session data:', {
+          token: session.accessToken,
+          user: session.user,
+          officeId: session.user?.officeId
+        });
+      }
+
+      try {
+        console.log('Making request to:', `${process.env.NEXT_PUBLIC_BACKEND_URL}/zendesk/operators-with-ticket-counts`);
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/zendesk/operators-with-ticket-counts`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.accessToken}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
         if (response.ok) {
           const data = await response.json();
           setOperators(data);
         } else {
-          console.error('Error fetching operators:', await response.text());
+          const errorText = await response.text();
+          console.error('Error fetching operators:', errorText);
+          try {
+            const errorData = JSON.parse(errorText);
+            console.error('Error details:', errorData);
+          } catch (e) {
+            // Si no se puede parsear como JSON, ya tenemos el texto del error
+          }
         }
       } catch (error) {
         console.error('Error fetching operators:', error);
@@ -81,7 +144,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     };
 
     fetchOperators();
-  }, []);
+  }, [session?.accessToken]);
 
   // Efecto para cargar los datos iniciales con un retraso simulado
   useEffect(() => {
