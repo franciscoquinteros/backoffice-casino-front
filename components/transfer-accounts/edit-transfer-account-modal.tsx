@@ -121,7 +121,7 @@ export function EditTransferAccountModal({
       setShowPublicKey(isFieldVerified('mp_public_key'));
       setShowAccessToken(isFieldVerified('mp_access_token'));
     }
-  }, [account, form]);
+  }, [account, form, isFieldVerified]);
 
   useEffect(() => {
     if (account) {

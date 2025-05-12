@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'; // Para autenticación
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, TooltipProps } from 'recharts';
 import { Clock, Users, MessageSquare, Ticket, AlertCircle } from 'lucide-react';
 // Asegúrate que la ruta a este archivo sea correcta
-import { StatusDistribution, TicketsByAgent, TicketsTrend, MessageVolume, /* MessageDistribution, */ ResponseTimeByAgent, LoginActivity, UserRole, NewUsersByMonth, DashboardSummary, ConversationStatusDistribution, TransactionSummary, TransactionByStatus, TransactionTrend, TransactionByAgent } from './services/report.api';
+import { StatusDistribution, TicketsByAgent, TicketsTrend, MessageVolume, /* MessageDistribution, */ ResponseTimeByAgent, LoginActivity, UserRole, NewUsersByMonth, DashboardSummary, ConversationStatusDistribution, TransactionByStatus, TransactionTrend, TransactionByAgent } from './services/report.api';
 import { useTheme } from 'next-themes';
 import useSWR from 'swr'; // Para data fetching
 import { Skeleton } from "@/components/ui/skeleton"; // Ajusta ruta
@@ -90,7 +90,6 @@ const ReportsDashboard = () => {
 
     // Nuevos hooks SWR para transacciones
     const shouldFetchTransactionData = activeTab === 'transactions' && accessToken;
-    const transactionSummaryKey = shouldFetchTransactionData ? ['/reports/transaction-summary', accessToken] : null;
     const transactionStatusKey = shouldFetchTransactionData ? ['/reports/transactions-by-status', accessToken] : null;
     const transactionTrendKey = shouldFetchTransactionData ? ['/reports/transaction-trend', accessToken] : null;
     const transactionAgentKey = shouldFetchTransactionData ? ['/reports/transactions-by-agent', accessToken] : null;
@@ -439,7 +438,7 @@ const ReportsDashboard = () => {
                                                             />
                                                             <span className="text-muted-foreground">{entry.name}:</span>
                                                         </div>
-                                                        <span className="font-medium">{entry.value} transacciones</span>
+                                                        <span className="font-medium">{entry.value} transacciones ({percentage}%)</span>
                                                     </div>
                                                 ))}
                                             </div>
