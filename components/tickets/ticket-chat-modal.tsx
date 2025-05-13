@@ -244,7 +244,7 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
     } finally {
       setIsLoading(false);
     }
-  }, [ticketId, fetchTicketInfo]);
+  }, [ticketId, fetchTicketInfo, session?.accessToken]);
 
   return {
     comments,

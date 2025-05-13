@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from 'date-fns';
@@ -15,7 +14,6 @@ interface TicketsTableProps {
 }
 
 export function TicketsTable({ tickets, onTicketUpdated }: TicketsTableProps) {
-  const router = useRouter();
   const { data: session } = useSession();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 

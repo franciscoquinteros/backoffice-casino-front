@@ -168,7 +168,7 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
         fetchTickets();
       }
     }
-  }, [session?.accessToken, initialTickets]);
+  }, [session?.accessToken, initialTickets, fetchTickets, tickets.length]);
 
   // Aplicar filtros cuando cambian los tickets o los filtros
   useEffect(() => {
