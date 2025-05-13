@@ -31,7 +31,7 @@ export default function DepositsDirectPage() {
             const directDeposits = officeTransactions.filter((tx: Transaction) =>
                 tx.type === 'deposit' &&
                 tx.status === 'Pending' &&
-                (tx.description === 'Pagos recibidos por IPN - Pendientes de validación' ||
+                (tx.description === 'Pago recibido vía IPN - Pendiente de validación' ||
                     tx.description === 'Bank Transfer')
             );
 
