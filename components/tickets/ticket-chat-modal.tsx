@@ -114,8 +114,9 @@ function useTicketInfo(ticketId: number) {
 
     try {
       setIsLoading(true);
+      // En lugar de hacer una petición al backend, usamos la información que ya tenemos
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}`, {
+      const response = await fetch(`${baseUrl}/zendesk/tickets/all`, {
         headers: {
           'Authorization': `Bearer ${session.accessToken}`,
           'Accept': 'application/json'
@@ -126,9 +127,15 @@ function useTicketInfo(ticketId: number) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      setTicketInfo(data);
-      return data;
+      const tickets = await response.json();
+      const ticket = tickets.find((t: TicketInfo) => t.id === ticketId);
+
+      if (!ticket) {
+        throw new Error(`Ticket ${ticketId} not found`);
+      }
+
+      setTicketInfo(ticket);
+      return ticket;
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Error desconocido');
       setError(err);
@@ -151,6 +158,7 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const commentsRef = useRef<Comment[]>([]);
+  const { data: session } = useSession();
 
   // Actualizamos la referencia cuando cambian los comentarios
   useEffect(() => {
@@ -159,14 +167,22 @@ function useComments(ticketId: number, fetchTicketInfo: () => Promise<TicketInfo
 
   const fetchComments = useCallback(async () => {
     try {
-      // No establecer isLoading a true si ya hay comentarios para evitar parpadeos
+      if (!session?.accessToken) {
+        throw new Error('No authentication token available');
+      }
+
       if (commentsRef.current.length === 0) {
         setIsLoading(true);
       }
       setError(null);
 
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}/comments`);
+      const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}/comments`, {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -251,7 +267,7 @@ function useMessageSending(
   const [error, setError] = useState<string | null>(null);
 
   const sendMessage = async (messageText: string) => {
-    if (!messageText.trim() || isSending) return;
+    if (!messageText.trim() || isSending || !session?.accessToken) return;
 
     // Generar un ID único para este mensaje
     const clientId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -288,7 +304,9 @@ function useMessageSending(
       const response = await fetch(`${baseUrl}/zendesk/tickets/${ticketId}/comments`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           comment: messageText,
@@ -575,6 +593,8 @@ export function TicketChatModal({ isOpen, onClose, user, ticketId, agentId, onTi
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Accept': 'application/json'
         }
       });
 

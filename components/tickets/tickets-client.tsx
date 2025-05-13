@@ -33,13 +33,11 @@ export interface InternalAssignee {
   email: string
 }
 
-
-
 interface TicketsClientProps {
-  initialTickets: Ticket[]
+  initialTickets?: Ticket[] // Hacemos esto opcional
 }
 
-export function TicketsClient({ initialTickets }: TicketsClientProps) {
+export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [operators, setOperators] = useState<{ id: number, username: string, email: string, ticketCount: number }[]>([])
@@ -51,6 +49,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     operator: "all"
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { data: session } = useSession();
 
   // Log session data to debug
@@ -75,39 +74,56 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     { cell: { type: 'text', widthClass: 'w-32' } },                       // Actualizado
   ]
 
+  // Función para obtener tickets desde la API
+  const fetchTickets = async () => {
+    if (!session?.accessToken) {
+      console.error('No authentication token available');
+      setError('No se pudo autenticar. Por favor, inicie sesión nuevamente.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Fetching tickets from API...');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/zendesk/tickets/all`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.accessToken}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      console.log('Tickets API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error fetching tickets:', errorText);
+        setError(`Error al cargar tickets: ${response.status} ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log(`Successfully fetched ${data.length} tickets`);
+      setTickets(data);
+      setFilteredTickets(data);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      setError('Error al cargar los tickets. Por favor, intente nuevamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Obtener los operadores al cargar el componente
   useEffect(() => {
     const fetchOperators = async () => {
       if (!session?.accessToken) {
         console.error('No authentication token available');
         return;
-      }
-
-      // Debug JWT token
-      console.log('Raw token:', session.accessToken);
-      try {
-        const tokenParts = session.accessToken.split('.');
-        console.log('Token parts length:', tokenParts.length);
-
-        if (tokenParts.length === 3) {
-          const payload = JSON.parse(atob(tokenParts[1]));
-          console.log('JWT Payload:', {
-            officeId: payload.officeId,
-            role: payload.role,
-            sub: payload.sub,
-            exp: new Date(payload.exp * 1000).toISOString()
-          });
-        } else {
-          console.error('Invalid JWT format - expected 3 parts');
-        }
-      } catch (e) {
-        console.error('Error parsing JWT:', e);
-        // Mostrar el token completo para debug
-        console.log('Session data:', {
-          token: session.accessToken,
-          user: session.user,
-          officeId: session.user?.officeId
-        });
       }
 
       try {
@@ -122,8 +138,7 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
           }
         );
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        console.log('Operators response status:', response.status);
 
         if (response.ok) {
           const data = await response.json();
@@ -131,12 +146,6 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
         } else {
           const errorText = await response.text();
           console.error('Error fetching operators:', errorText);
-          try {
-            const errorData = JSON.parse(errorText);
-            console.error('Error details:', errorData);
-          } catch {
-            // Si no se puede parsear como JSON, ya tenemos el texto del error
-          }
         }
       } catch (error) {
         console.error('Error fetching operators:', error);
@@ -146,17 +155,22 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     fetchOperators();
   }, [session?.accessToken, session?.user]);
 
-  // Efecto para cargar los datos iniciales con un retraso simulado
+  // Obtener tickets al cargar el componente o cuando cambie la sesión
   useEffect(() => {
-    if (Array.isArray(initialTickets)) {
-      setTimeout(() => {
-        setTickets(initialTickets)
-        setFilteredTickets(initialTickets)
-        setIsLoading(false)
-      }, 800) // Añadimos un pequeño retraso para mostrar el skeleton
+    if (session?.accessToken) {
+      // Si initialTickets tiene datos y es la primera carga, usarlos como estado inicial
+      if (initialTickets && initialTickets.length > 0 && tickets.length === 0) {
+        setTickets(initialTickets);
+        setFilteredTickets(initialTickets);
+        setIsLoading(false);
+      } else {
+        // De lo contrario, obtener tickets de la API
+        fetchTickets();
+      }
     }
-  }, [initialTickets])
+  }, [session?.accessToken, initialTickets]);
 
+  // Aplicar filtros cuando cambian los tickets o los filtros
   useEffect(() => {
     const filtered = tickets.filter(ticket => {
       // Safely handle potentially null values
@@ -233,6 +247,12 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     })
   }
 
+  // Función para recargar los tickets
+  const refreshTickets = () => {
+    setIsLoading(true);
+    fetchTickets();
+  };
+
   const statusOptions = [
     { value: "all", label: "Todos los estados" },
     { value: "open", label: "Abierto" },
@@ -255,15 +275,25 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Filtros</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearFilters}
-            className="h-8 gap-1"
-          >
-            <X className="h-4 w-4" />
-            Limpiar
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshTickets}
+              className="h-8 gap-1"
+            >
+              Actualizar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              className="h-8 gap-1"
+            >
+              <X className="h-4 w-4" />
+              Limpiar
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -384,6 +414,15 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
     </Card>
   )
 
+  // Mostrar mensaje de error si existe
+  const ErrorMessage = error && (
+    <Card className="mb-4 p-4 bg-red-50 border-red-200">
+      <div className="text-red-600">
+        {error}
+      </div>
+    </Card>
+  );
+
   const TableContent = (
     <Card>
       <TicketsTable tickets={filteredTickets} />
@@ -392,6 +431,8 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
 
   return (
     <>
+      {ErrorMessage}
+
       {/* Filtros con skeleton */}
       <SkeletonLoader
         skeleton={FiltersSkeleton}
@@ -413,4 +454,4 @@ export function TicketsClient({ initialTickets }: TicketsClientProps) {
       </SkeletonLoader>
     </>
   )
-} 
+}

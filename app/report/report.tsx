@@ -66,7 +66,10 @@ const ReportsDashboard = () => {
             try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { } { }
             throw new Error(errorMsg);
         }
-        return response.json();
+        const data = await response.json();
+        // Si la respuesta tiene una propiedad data, devolver esa propiedad
+        // Esto hace que el fetcher sea compatible con ambas estructuras de respuesta
+        return data.data || data;
     };
 
     // --- Hooks SWR (dependen del token) ---
@@ -149,7 +152,15 @@ const ReportsDashboard = () => {
                 </div>
             );
         }
-        if (!data || (Array.isArray(data) && data.length === 0)) { // Muestra mensaje vacío
+        if (!data) { // Muestra mensaje vacío si no hay datos
+            return (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    {emptyMessage}
+                </div>
+            );
+        }
+        // Verifica si es un array y está vacío
+        if (Array.isArray(data) && data.length === 0) {
             return (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                     {emptyMessage}
