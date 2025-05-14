@@ -1,6 +1,9 @@
 // app/components/transaction-service.ts
 "use client";
 
+import { useSession } from "next-auth/react"
+import { fetchWithAuth } from "@/lib/fetch"
+
 export interface PayerIdentification {
   type: string;
   number: string;
@@ -181,7 +184,7 @@ class TransactionService {
       filtered = transactions.filter(tx =>
         tx.type === type &&
         tx.status === status &&
-        tx.description.startsWith('Depósito reportado por usuarios, pendiente de validación')
+        tx.description.startsWith('Depósito reportado por usuario, pendiente de validación')
       );
     } else {
       // Para otras páginas, filtrar exactamente por el estado solicitado
@@ -327,3 +330,48 @@ class TransactionService {
 
 // Singleton para acceder al servicio desde cualquier componente
 export const transactionService = new TransactionService();
+
+export function useTransactionService() {
+  const { data: session } = useSession();
+
+  const fetchTransactions = async (endpoint: string) => {
+    try {
+      const response = await fetchWithAuth(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${session?.accessToken}`
+        }
+      });
+      // ... existing code ...
+    } catch (error) {
+      // ... existing code ...
+    }
+  };
+
+  const approveTransaction = async (endpoint: string) => {
+    try {
+      const response = await fetchWithAuth(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.accessToken}`
+        }
+      });
+      // ... existing code ...
+    } catch (error) {
+      // ... existing code ...
+    }
+  };
+
+  const rejectTransaction = async (endpoint: string) => {
+    try {
+      const response = await fetchWithAuth(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.accessToken}`
+        }
+      });
+      // ... existing code ...
+    } catch (error) {
+      // ... existing code ...
+    }
+  };
+}
