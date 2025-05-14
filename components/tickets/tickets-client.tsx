@@ -142,7 +142,8 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Error fetching operators: ${response.status} ${response.statusText}`);
+          console.error('Error fetching operators:', errorText);
+          throw new Error(`Error fetching operators: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
         const data = await response.json();
