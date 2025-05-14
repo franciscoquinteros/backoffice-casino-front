@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -75,7 +75,7 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
   ]
 
   // Función para obtener tickets desde la API
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     if (!session?.accessToken) {
       console.error('No authentication token available');
       setError('No se pudo autenticar. Por favor, inicie sesión nuevamente.');
@@ -84,6 +84,9 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
     }
 
     try {
+      setIsLoading(true);
+      setError(null);
+
       console.log('Fetching tickets from API...');
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/zendesk/tickets/all`,
@@ -100,23 +103,20 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error fetching tickets:', errorText);
-        setError(`Error al cargar tickets: ${response.status} ${response.statusText}`);
-        setIsLoading(false);
-        return;
+        throw new Error(`Error al cargar tickets: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       console.log(`Successfully fetched ${data.length} tickets`);
       setTickets(data);
       setFilteredTickets(data);
-      setError(null);
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      setError('Error al cargar los tickets. Por favor, intente nuevamente.');
+      setError(error instanceof Error ? error.message : 'Error al cargar los tickets. Por favor, intente nuevamente.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.accessToken]);
 
   // Obtener los operadores al cargar el componente
   useEffect(() => {
@@ -140,15 +140,16 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
 
         console.log('Operators response status:', response.status);
 
-        if (response.ok) {
-          const data = await response.json();
-          setOperators(data);
-        } else {
+        if (!response.ok) {
           const errorText = await response.text();
-          console.error('Error fetching operators:', errorText);
+          throw new Error(`Error fetching operators: ${response.status} ${response.statusText}`);
         }
+
+        const data = await response.json();
+        setOperators(data);
       } catch (error) {
         console.error('Error fetching operators:', error);
+        // No establecemos error global para los operadores ya que no es crítico
       }
     };
 

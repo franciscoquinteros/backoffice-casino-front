@@ -334,44 +334,32 @@ export const transactionService = new TransactionService();
 export function useTransactionService() {
   const { data: session } = useSession();
 
-  const fetchTransactions = async (endpoint: string) => {
-    try {
-      const response = await fetchWithAuth(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`
-        }
-      });
-      // ... existing code ...
-    } catch (error) {
-      // ... existing code ...
+  const fetchTransactions = async (officeId: string) => {
+    if (!session?.accessToken) {
+      throw new Error('No authentication token available');
     }
+    return transactionService.getTransactionsForOffice(officeId, session.accessToken);
   };
 
-  const approveTransaction = async (endpoint: string) => {
-    try {
-      const response = await fetchWithAuth(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`
-        }
-      });
-      // ... existing code ...
-    } catch (error) {
-      // ... existing code ...
+  const approveTransaction = async (transaction: Transaction) => {
+    if (!session?.accessToken) {
+      throw new Error('No authentication token available');
     }
+    return transactionService.approveTransaction(transaction, session.accessToken);
   };
 
-  const rejectTransaction = async (endpoint: string) => {
-    try {
-      const response = await fetchWithAuth(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`
-        }
-      });
-      // ... existing code ...
-    } catch (error) {
-      // ... existing code ...
+  const rejectTransaction = async (transaction: Transaction) => {
+    if (!session?.accessToken) {
+      throw new Error('No authentication token available');
     }
+    return transactionService.rejectTransaction(transaction, session.accessToken);
+  };
+
+  return {
+    fetchTransactions,
+    approveTransaction,
+    rejectTransaction,
+    applyFilters: transactionService.applyFilters.bind(transactionService),
+    filterTransactions: transactionService.filterTransactions.bind(transactionService)
   };
 }
