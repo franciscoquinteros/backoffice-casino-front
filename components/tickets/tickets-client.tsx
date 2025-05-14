@@ -103,7 +103,7 @@ export function TicketsClient({ initialTickets = [] }: TicketsClientProps) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error fetching tickets:', errorText);
-        throw new Error(`Error al cargar tickets: ${response.status} ${response.statusText}`);
+        throw new Error(`Error al cargar tickets: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();

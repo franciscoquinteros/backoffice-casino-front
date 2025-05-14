@@ -2,7 +2,6 @@
 "use client";
 
 import { useSession } from "next-auth/react"
-import { fetchWithAuth } from "@/lib/fetch"
 
 export interface PayerIdentification {
   type: string;
