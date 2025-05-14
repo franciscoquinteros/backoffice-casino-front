@@ -13,6 +13,7 @@ import {
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { toast } from "sonner"; // Para notificaciones
 
+
 // Definimos una interfaz para errores (sin cambios)
 interface TransactionError extends Error {
     message: string;
