@@ -13,6 +13,7 @@ declare module "next-auth" {
     name: string | null;
     officeId: string;     // <-- Añadido: La oficina del usuario (del backend)
     accessToken: string;  // <-- Añadido: El token JWT del backend
+    refreshToken: string; // <-- Añadido: El refresh token del backend
   }
 
   /**
@@ -26,8 +27,9 @@ declare module "next-auth" {
       name: string | null;
       officeId: string;     // <-- Añadido: Exponer la oficina al cliente
     };
-    accessToken?: string; // <-- Añadido: Exponer el token del backend al cliente
-                          // Lo ponemos como opcional (?) por si acaso, aunque debería estar
+    accessToken?: string;   // <-- Añadido: Exponer el token del backend al cliente
+    refreshToken?: string;  // <-- Añadido: Exponer el refresh token (opcional)
+    error?: "RefreshAccessTokenError" | null; // <-- Añadido: Para manejar errores de refresh
   }
 }
 
@@ -43,7 +45,8 @@ declare module "next-auth/jwt" {
     name: string | null;
     officeId: string;     // <-- Añadido: Persistir la oficina en el token
     accessToken: string;  // <-- Añadido: Persistir el token del backend
-    // Podrías añadir aquí también la expiración del accessToken si necesitas gestionarla
-    // accessTokenExpires?: number;
+    refreshToken: string; // <-- Añadido: Persistir el refresh token
+    accessTokenExpires: number; // <-- Añadido: Timestamp en milisegundos cuando expira el token
+    error?: "RefreshAccessTokenError"; // <-- Añadido: Para manejar errores de refresh
   }
 }

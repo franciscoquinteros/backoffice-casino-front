@@ -25,6 +25,7 @@ export interface Transaction {
   idCliente?: string | number;
   reference_transaction?: string;
   office?: string; // Campo opcional para la oficina
+  account_name?: string; // Nombre de la cuenta asociada
 }
 
 export interface TransactionFilter {
@@ -33,6 +34,7 @@ export interface TransactionFilter {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  reference?: string;
 }
 
 export interface TransactionUpdateInfo {
@@ -143,11 +145,30 @@ class TransactionService {
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(tx =>
-        (tx.id.toString().toLowerCase().includes(searchLower)) ||
-        (tx.payer_email && tx.payer_email.toLowerCase().includes(searchLower)) ||
-        (tx.idCliente && tx.idCliente.toString().toLowerCase().includes(searchLower))
-      );
+      filtered = filtered.filter(tx => {
+        const reference = tx.type === 'withdraw' && tx.payer_identification?.number
+          ? tx.payer_identification.number
+          : tx.type === 'deposit' && tx.external_reference
+            ? tx.external_reference
+            : '';
+
+        return (tx.id.toString().toLowerCase().includes(searchLower)) ||
+          (tx.payer_email && tx.payer_email.toLowerCase().includes(searchLower)) ||
+          (tx.idCliente && tx.idCliente.toString().toLowerCase().includes(searchLower)) ||
+          reference.toLowerCase().includes(searchLower);
+      });
+    }
+
+    if (filters.reference) {
+      const referenceLower = filters.reference.toLowerCase();
+      filtered = filtered.filter(tx => {
+        const reference = tx.type === 'withdraw' && tx.payer_identification?.number
+          ? tx.payer_identification.number
+          : tx.type === 'deposit' && tx.external_reference
+            ? tx.external_reference
+            : '';
+        return reference.toLowerCase().includes(referenceLower);
+      });
     }
 
     if (filters.dateFrom) {

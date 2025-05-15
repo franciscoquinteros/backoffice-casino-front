@@ -153,10 +153,11 @@ export default function DepositsCompletedPage() {
                         // Pasa isRefreshing a la tabla para feedback visual opcional
                         <TransactionTable
                             transactions={filteredTransactions}
-                            showApproveButton={false} // No hay botones aquí
-                            onTransactionApproved={() => { }} // Pasa funciones vacías si son obligatorias
+                            showApproveButton={false}
+                            onTransactionApproved={() => { }}
                             onTransactionRejected={() => { }}
-                            isRefreshing={isRefreshing} // Indica si hay recarga en fondo
+                            isRefreshing={isRefreshing}
+                            hideIdColumn={true} // Ocultar la columna ID
                         />
                     )}
                 </div>

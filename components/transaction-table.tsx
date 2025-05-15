@@ -30,6 +30,7 @@ interface TransactionTableProps {
   onTransactionApproved?: (updatedTransaction: Transaction) => void;
   onTransactionRejected?: (transaction: Transaction) => void;
   isRefreshing?: boolean;
+  hideIdColumn?: boolean;
 }
 
 export function TransactionTable({
@@ -37,7 +38,8 @@ export function TransactionTable({
   showApproveButton = false,
   onTransactionApproved,
   onTransactionRejected,
-  isRefreshing = false
+  isRefreshing = false,
+  hideIdColumn = false
 }: TransactionTableProps) {
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -236,15 +238,17 @@ export function TransactionTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead
-                className="cursor-pointer w-[80px]"
-                onClick={() => handleSort('id')}
-              >
-                <div className="flex items-center">
-                  ID
-                  <ArrowUpDown className="ml-1 h-4 w-4" />
-                </div>
-              </TableHead>
+              {!hideIdColumn && (
+                <TableHead
+                  className="cursor-pointer w-[80px]"
+                  onClick={() => handleSort('id')}
+                >
+                  <div className="flex items-center">
+                    ID
+                    <ArrowUpDown className="ml-1 h-4 w-4" />
+                  </div>
+                </TableHead>
+              )}
               <TableHead
                 className="cursor-pointer"
                 onClick={() => handleSort('idCliente')}
@@ -254,7 +258,7 @@ export function TransactionTable({
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead>Nombre</TableHead>
+              <TableHead>Referencia</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead
                 className="cursor-pointer"
@@ -275,14 +279,19 @@ export function TransactionTable({
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead>Email/Cuenta</TableHead>
-              {showApproveButton && <TableHead>Acción</TableHead>}
+              <TableHead>CBU/Cuenta</TableHead>
+              <TableHead>Nombre Cuenta</TableHead>
+              {showApproveButton && <TableHead>Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedTransactions.map((transaction, index) => (
               <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
-                <TableCell className="font-medium w-[80px] whitespace-pre-line">{formatId(transaction.id)}</TableCell>
+                {!hideIdColumn && (
+                  <TableCell className="font-medium w-[80px] whitespace-pre-line">
+                    {formatId(transaction.id)}
+                  </TableCell>
+                )}
                 <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
                 <TableCell>
                   {transaction.type === 'withdraw' && transaction.payer_identification?.number
@@ -304,6 +313,9 @@ export function TransactionTable({
                     transaction.wallet_address ||
                     transaction.cbu ||
                     'No disponible'}
+                </TableCell>
+                <TableCell>
+                  {transaction.account_name || 'No disponible'}
                 </TableCell>
                 {showApproveButton && (
                   <TableCell>

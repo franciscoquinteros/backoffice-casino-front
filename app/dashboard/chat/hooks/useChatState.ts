@@ -174,12 +174,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     function onChatArchived(data: { conversationId: string; chat?: { userId: string; agentId: string; conversationId: string } }) {
       console.log('Chat archivado:', data);
-      
+
       if (data.chat && data.chat.userId) {
         const userId = data.chat.userId;
         const agentId = data.chat.agentId || null;
         const conversationId = data.chat.conversationId;
-        
+
         setActiveChats(prev => prev.filter(chat => chat.chat_user_id !== userId));
         setArchivedChats(prev => [
           ...prev,
@@ -191,20 +191,20 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
             officeId: userOffice
           }
         ]);
-        
+
         if (selectedChat === userId) {
           setSelectedChat(null);
           toast.info(`El chat con Usuario ${userId} ha sido archivado`);
         }
-        
+
         return;
       }
-      
+
       const chatToArchive = activeChats.find(chat => chat.conversationId === data.conversationId);
-      
+
       if (chatToArchive) {
         const userId = chatToArchive.chat_user_id;
-        
+
         setActiveChats(prev => prev.filter(chat => chat.chat_user_id !== userId));
         setArchivedChats(prev => [
           ...prev,
@@ -214,7 +214,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
             officeId: userOffice
           }
         ]);
-        
+
         if (selectedChat === userId) {
           setSelectedChat(null);
           toast.info(`El chat con Usuario ${userId} ha sido archivado`);
@@ -224,12 +224,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     function onChatUnarchived(data: { conversationId: string; chat?: { userId: string; agentId: string; conversationId: string } }) {
       console.log('Chat desarchivado:', data);
-      
+
       if (data.chat && data.chat.userId) {
         const userId = data.chat.userId;
         const agentId = data.chat.agentId || null;
         const conversationId = data.chat.conversationId;
-        
+
         setArchivedChats(prev => prev.filter(chat => chat.chat_user_id !== userId));
         setActiveChats(prev => [
           ...prev,
@@ -241,20 +241,20 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
             officeId: userOffice
           }
         ]);
-        
+
         if (selectedChat === userId) {
           setSelectedChat(null);
           toast.info(`El chat con Usuario ${userId} ha sido desarchivado`);
         }
-        
+
         return;
       }
-      
+
       const chatToUnarchive = archivedChats.find(chat => chat.conversationId === data.conversationId);
-      
+
       if (chatToUnarchive) {
         const userId = chatToUnarchive.chat_user_id;
-        
+
         setArchivedChats(prev => prev.filter(chat => chat.chat_user_id !== userId));
         setActiveChats(prev => [
           ...prev,
@@ -264,7 +264,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
             officeId: userOffice
           }
         ]);
-        
+
         if (selectedChat === userId) {
           setSelectedChat(null);
           toast.info(`El chat con Usuario ${userId} ha sido desarchivado`);
@@ -316,7 +316,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
       socket.off('chatUnarchived', onChatUnarchived);
       socket.off('refreshChats', onRefreshChats);
     };
-  }, [socket, agentId, isConnected, userOffice, activeChats, archivedChats, assigningChat, selectedChat]);
+  }, [socket, agentId, isConnected, userOffice, assigningChat, selectedChat]);
 
   useEffect(() => {
     if (currentConversationId && socket.connected) {
@@ -325,7 +325,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
         agentId
       });
     }
-  }, [currentConversationId, agentId, socket, ]);
+  }, [currentConversationId, agentId, socket,]);
 
   const selectChat = useCallback((userId: string) => {
     setSelectedChat(userId);
@@ -346,9 +346,9 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
       });
     } else {
       const isArchived = selectedTab === 'archived';
-      
-      socket.emit('getConversationId', { 
-        userId, 
+
+      socket.emit('getConversationId', {
+        userId,
         isArchived,
         officeId: userOffice
       }, (response: { success: boolean; conversationId?: string; error?: string }) => {
@@ -492,10 +492,10 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     const loadingToast = toast.loading('Archivando chat...');
 
-    socket.emit('archiveChat', { 
-      userId, 
-      agentId, 
-      conversationId 
+    socket.emit('archiveChat', {
+      userId,
+      agentId,
+      conversationId
     }, (response: { success: boolean; error?: string }) => {
       toast.dismiss(loadingToast);
 
@@ -526,10 +526,10 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     const loadingToast = toast.loading('Desarchivando chat...');
 
-    socket.emit('unarchiveChat', { 
-      userId, 
-      agentId, 
-      conversationId 
+    socket.emit('unarchiveChat', {
+      userId,
+      agentId,
+      conversationId
     }, (response: { success: boolean; error?: string }) => {
       toast.dismiss(loadingToast);
 

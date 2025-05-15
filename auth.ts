@@ -67,13 +67,14 @@ const authOptions: NextAuthConfig = {
           console.log("[NextAuth Authorize] 4. Backend response data:", JSON.stringify(data, null, 2));
 
           // Validar respuesta del backend
-          if (!response.ok || !data?.user || !data?.accessToken || !data.user.officeId) {
+          if (!response.ok || !data?.user || !data?.accessToken || !data.refreshToken || !data.user.officeId) {
             const backendErrorMsg = data?.message || `Backend returned status ${response.status}`;
             console.warn("[NextAuth Authorize] Backend login failed:", backendErrorMsg);
             // Lanza error para que signIn reciba el mensaje
             throw new Error(backendErrorMsg);
           }
-
+          console.log("--------------------------------------------------------------");
+          console.log(data)
           // Construir y retornar el objeto User para NextAuth
           const userForNextAuth: User = {
             id: data.user.id.toString(),
@@ -82,6 +83,7 @@ const authOptions: NextAuthConfig = {
             role: data.user.role ?? null,
             officeId: data.user.officeId,   // <-- El officeId devuelto por el backend
             accessToken: data.accessToken, // <-- El token del backend
+            refreshToken: data.refreshToken, // <-- El refresh token del backend
           };
           console.log("[NextAuth Authorize] 5. Returning user object to NextAuth:", userForNextAuth);
           return userForNextAuth;
@@ -103,7 +105,7 @@ const authOptions: NextAuthConfig = {
   },
   session: {
     strategy: "jwt",        // Esencial para usar callbacks jwt/session
-    maxAge: 24 * 60 * 60,   // 24 horas (opcional)
+    maxAge: 30 * 24 * 60 * 60,   // 30 días (para el refresh token)
   },
   // cookies: { ... } // Tu configuración de cookies
   callbacks: {
@@ -125,6 +127,38 @@ const authOptions: NextAuthConfig = {
         token.role = user.role || null;
         token.officeId = user.officeId || ""; // Convert undefined to empty string
         token.accessToken = user.accessToken || ""; // Convert undefined to empty string
+        token.refreshToken = user.refreshToken || ""; // Almacena el refresh token
+        token.accessTokenExpires = Date.now() + 55 * 60 * 1000; // Expira en 55 minutos (para renovar antes de 60)
+      }
+
+      // Si el token de acceso está próximo a expirar, refresca
+      const shouldRefreshTime = Math.round((token.accessTokenExpires as number) - Date.now());
+      if (shouldRefreshTime <= 0 && token.refreshToken) {
+        console.log("[NextAuth JWT Callback] Token expired, refreshing...");
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: token.refreshToken }),
+          });
+
+          const refreshedTokens = await response.json();
+
+          if (!response.ok) {
+            throw refreshedTokens;
+          }
+
+          console.log("[NextAuth JWT Callback] Token refreshed successfully");
+
+          return {
+            ...token,
+            accessToken: refreshedTokens.accessToken,
+            accessTokenExpires: Date.now() + 55 * 60 * 1000,
+          };
+        } catch (error) {
+          console.error("[NextAuth JWT Callback] Error refreshing token:", error);
+          return { ...token, error: "RefreshAccessTokenError" as const };
+        }
       }
 
       return token;
@@ -143,6 +177,8 @@ const authOptions: NextAuthConfig = {
         session.user.role = token.role || null;
         session.user.officeId = token.officeId || ""; // Use empty string instead of undefined
         session.accessToken = token.accessToken || ""; // Use empty string instead of undefined
+        session.refreshToken = token.refreshToken || ""; // Agrega el refresh token a la sesión
+        session.error = token.error || null;
       } else {
         console.warn("[NextAuth Session Callback] Warning: Token object was unexpectedly empty.");
       }

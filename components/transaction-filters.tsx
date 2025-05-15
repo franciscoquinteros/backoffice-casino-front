@@ -26,7 +26,8 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
         maxAmount: undefined,
         search: '',
         dateFrom: '',
-        dateTo: ''
+        dateTo: '',
+        reference: ''
     });
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -44,7 +45,8 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
             maxAmount: undefined,
             search: '',
             dateFrom: '',
-            dateTo: ''
+            dateTo: '',
+            reference: ''
         };
         setFilters(emptyFilters);
         onReset();
@@ -81,7 +83,7 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
 
                 <div className="flex flex-col space-y-4">
                     {/* Fila principal de filtros siempre visible */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Buscar</label>
                             <div className="relative">
@@ -91,6 +93,19 @@ export function TransactionFilters({ onChange, onReset }: TransactionFiltersProp
                                     className="pl-8"
                                     value={filters.search || ''}
                                     onChange={(e) => handleFilterChange('search', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Referencia</label>
+                            <div className="relative">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Buscar por referencia..."
+                                    className="pl-8"
+                                    value={filters.reference || ''}
+                                    onChange={(e) => handleFilterChange('reference', e.target.value)}
                                 />
                             </div>
                         </div>
