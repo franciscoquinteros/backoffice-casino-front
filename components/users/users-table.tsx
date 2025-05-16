@@ -25,6 +25,7 @@ import { ChangePasswordModal } from "./change-password-modal"
 import { DeleteUserModal } from "./delete-user-modal"
 import { toast } from "sonner"
 import { useOffices } from "@/components/hooks/use-offices"
+import { useSession, getSession } from "next-auth/react"
 
 enum UserStatus {
   ACTIVE = 'active',
@@ -84,6 +85,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const { data: session } = useSession()
 
   // Usamos el hook de oficinas para obtener la función de mapeo de ID a nombre
   const { getOfficeName } = useOffices()
@@ -152,6 +154,9 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
 
     setIsLoading(true)
     try {
+      // Get fresh session with getSession()
+      const freshSession = await getSession();
+
       // Usar el endpoint correcto según el tipo de usuario
       const endpoint = userType === 'external' ? 'external-users' : 'users'
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/${endpoint}/${selectedUser.id}/password`
@@ -159,7 +164,8 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${freshSession?.accessToken}`
         },
         body: JSON.stringify({ password })
       })
@@ -186,18 +192,52 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
   const handleConfirmDelete = async () => {
     if (!selectedUser) return
 
+    // Add extensive debug logs right at the beginning
+    console.log("========== DELETE USER DEBUG ==========");
+    console.log("1. Function started with user:", selectedUser);
+    console.log("2. Current session from useSession:", session);
+
+    // Try to get a fresh session
+    const freshSession = await getSession();
+    console.log("3. Fresh session from getSession():", freshSession);
+
     setIsLoading(true)
     try {
+      console.log("4. Session data during delete:", {
+        isAuthenticated: !!freshSession,
+        hasToken: !!freshSession?.accessToken,
+        userRole: freshSession?.user?.role,
+        tokenLength: freshSession?.accessToken?.length,
+        token: freshSession?.accessToken // Actually log the token for debugging
+      });
+
       // Usar el endpoint correcto según el tipo de usuario
       const endpoint = userType === 'external' ? 'external-users' : 'users'
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/${endpoint}/${selectedUser.id}`
+      console.log("5. DELETE request URL:", url);
+
+      // Use a regular fetch with manual Authorization header
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${freshSession?.accessToken}`
+      };
+      console.log("6. Request headers:", headers);
 
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+        headers
+      });
+
+      // Debug response
+      console.log("7. Delete response status:", response.status);
+      console.log("8. Response headers:", [...response.headers.entries()]);
+
+      try {
+        const responseText = await response.text();
+        console.log("9. Response body:", responseText);
+      } catch (e) {
+        console.log("9. Could not read response body:", e);
+      }
 
       if (!response.ok) {
         throw new Error(`Error al eliminar usuario: ${response.statusText}`)
