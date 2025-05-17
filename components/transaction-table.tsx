@@ -19,7 +19,9 @@ import {
   Clock,
   XCircle,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
@@ -44,14 +46,14 @@ export function TransactionTable({
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
     title: '',
     message: ''
   });
-
 
   // Función para cerrar el modal
   const closeErrorModal = () => {
@@ -62,8 +64,6 @@ export function TransactionTable({
       message: ''
     });
   };
-
-
 
   // Ordenar transacciones
   const sortedTransactions = [...transactions].sort((a, b) => {
@@ -93,6 +93,12 @@ export function TransactionTable({
       ? aString.localeCompare(bString)
       : bString.localeCompare(aString);
   });
+
+  // Paginación
+  const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex);
 
   // Cambia el campo de ordenamiento o la dirección
   const handleSort = (field: keyof Transaction) => {
@@ -143,6 +149,71 @@ export function TransactionTable({
     } else {
       console.warn("onTransactionRejected prop is missing from TransactionTable");
     }
+  };
+
+  // Función para exportar transacciones a CSV
+  const handleExport = () => {
+    // Crear encabezados para el CSV (ajustar según las columnas de tu tabla)
+    const headers = [
+      'ID',
+      'Cliente',
+      'Referencia',
+      'Descripción',
+      'Monto',
+      'Estado',
+      'Fecha',
+      'CBU/Cuenta',
+      'Nombre Cuenta'
+    ];
+
+    // Crear filas de datos
+    const rows = sortedTransactions.map(transaction => {
+      // Formatear referencia según el tipo
+      const reference = transaction.type === 'withdraw' && transaction.payer_identification?.number
+        ? transaction.payer_identification.number
+        : transaction.type === 'deposit' && transaction.external_reference
+          ? transaction.external_reference
+          : '';
+
+      // Formatear cuenta o CBU
+      const account = transaction.payer_email ||
+        transaction.wallet_address ||
+        transaction.cbu ||
+        '';
+
+      return [
+        transaction.id,
+        transaction.idCliente || '',
+        reference,
+        transaction.description || '',
+        transaction.amount,
+        transaction.status,
+        transaction.date_created ? new Date(transaction.date_created).toLocaleString('es-AR') : '',
+        account,
+        transaction.account_name || ''
+      ];
+    });
+
+    // Combinar encabezados y filas
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Crear un Blob y generar URL
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // Crear enlace y descargar
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transacciones_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+
+    // Limpiar
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Formateadores de datos
@@ -229,7 +300,13 @@ export function TransactionTable({
             </div>
           )}
           <div className={isRefreshing ? "ml-auto" : "w-full flex justify-end"}>
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={handleExport}
+              disabled={isRefreshing}
+            >
               <Download className="h-4 w-4" />
               <span>Exportar</span>
             </Button>
@@ -285,7 +362,7 @@ export function TransactionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTransactions.map((transaction, index) => (
+            {paginatedTransactions.map((transaction, index) => (
               <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
                 {!hideIdColumn && (
                   <TableCell className="font-medium w-[80px] whitespace-pre-line">
@@ -350,6 +427,54 @@ export function TransactionTable({
             ))}
           </TableBody>
         </Table>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Mostrando <span className="font-medium">{startIndex + 1}</span> a <span className="font-medium">
+                {Math.min(endIndex, sortedTransactions.length)}
+              </span> de <span className="font-medium">{sortedTransactions.length}</span> resultados
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm">
+                Página {currentPage} de {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <select
+                className="h-8 rounded border border-input bg-background px-3 text-sm"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1); // Resetea a página 1 cuando cambia items por página
+                }}
+              >
+                {[10, 25, 50, 100].map(value => (
+                  <option key={value} value={value}>
+                    {value} / página
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </Card>
 
       <SimpleErrorModal
@@ -359,6 +484,5 @@ export function TransactionTable({
         onClose={closeErrorModal}
       />
     </>
-
   );
 }
