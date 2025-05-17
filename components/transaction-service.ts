@@ -26,6 +26,16 @@ export interface Transaction {
   reference_transaction?: string;
   office?: string; // Campo opcional para la oficina
   account_name?: string; // Nombre de la cuenta asociada
+
+  // Nuevos campos que pueden venir del backend después de cambios
+  client_id?: string | number; // Alternativa a idCliente
+  reference_id?: string; // Alternativa a external_reference
+  reference?: string; // Otra alternativa para referencia
+  transaction_reference?: string; // Otra posible referencia
+  account_number?: string; // Número de cuenta alternativo
+  account?: string; // Información de cuenta genérica
+  account_holder?: string; // Alternativa a account_name
+  // Cualquier otro campo que pueda venir en el formato nuevo
 }
 
 export interface TransactionFilter {

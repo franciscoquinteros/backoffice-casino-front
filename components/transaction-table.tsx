@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -48,12 +48,52 @@ export function TransactionTable({
   const [processingId, setProcessingId] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [normalizedTransactions, setNormalizedTransactions] = useState<Transaction[]>([]);
 
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
     title: '',
     message: ''
   });
+
+  // Normalizar los datos de transacciones cuando cambian
+  useEffect(() => {
+    console.log("Datos recibidos del backend:", transactions);
+    // Esta función normaliza los datos para manejar cambios en la estructura del backend
+    const normalize = (transactions: Transaction[]): Transaction[] => {
+      return transactions.map(tx => {
+        // Copia la transacción original
+        const normalized = { ...tx };
+
+        // Asegúrate de que los campos críticos existan
+        if (normalized.idCliente === undefined && normalized.client_id !== undefined) {
+          normalized.idCliente = normalized.client_id;
+        }
+
+        // Agregar ID de oficina como posible ID de cliente si no hay otro
+        if (normalized.idCliente === undefined && normalized.client_id === undefined && normalized.office) {
+          normalized.idCliente = normalized.office;
+        }
+
+        // Si el campo date_created viene en un formato distinto, normalizarlo
+        if (typeof normalized.date_created === 'object' && normalized.date_created !== null) {
+          normalized.date_created = new Date(normalized.date_created).toISOString();
+        }
+
+        // Ya no necesitamos normalizar external_reference aquí porque
+        // ahora solo usamos ese campo exacto
+
+        // Normalizar la información de la cuenta
+        if (!normalized.account_name && normalized.account_holder) {
+          normalized.account_name = normalized.account_holder;
+        }
+
+        return normalized;
+      });
+    };
+
+    setNormalizedTransactions(normalize(transactions));
+  }, [transactions]);
 
   // Función para cerrar el modal
   const closeErrorModal = () => {
@@ -66,7 +106,7 @@ export function TransactionTable({
   };
 
   // Ordenar transacciones
-  const sortedTransactions = [...transactions].sort((a, b) => {
+  const sortedTransactions = [...normalizedTransactions].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
 
@@ -168,29 +208,22 @@ export function TransactionTable({
 
     // Crear filas de datos
     const rows = sortedTransactions.map(transaction => {
-      // Formatear referencia según el tipo
-      const reference = transaction.type === 'withdraw' && transaction.payer_identification?.number
-        ? transaction.payer_identification.number
-        : transaction.type === 'deposit' && transaction.external_reference
-          ? transaction.external_reference
-          : '';
+      // Usar la función getTransactionReference para la columna Referencia
+      const reference = getTransactionReference(transaction);
 
-      // Formatear cuenta o CBU
-      const account = transaction.payer_email ||
-        transaction.wallet_address ||
-        transaction.cbu ||
-        '';
+      // Obtener información de cuenta de manera flexible
+      const account = getTransactionAccount(transaction);
 
       return [
         transaction.id,
-        transaction.idCliente || '',
+        transaction.idCliente || transaction.client_id || '',
         reference,
         transaction.description || '',
         transaction.amount,
         transaction.status,
-        transaction.date_created ? new Date(transaction.date_created).toLocaleString('es-AR') : '',
+        transaction.date_created ? formatDate(transaction.date_created) : 'No disponible',
         account,
-        transaction.account_name || ''
+        transaction.account_name || transaction.account_holder || ''
       ];
     });
 
@@ -218,15 +251,37 @@ export function TransactionTable({
 
   // Formateadores de datos
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'No disponible';
-    return new Date(dateString).toLocaleString('es-AR');
+    if (!dateString) {
+      console.log('formatDate: dateString es null o undefined');
+      return 'No disponible';
+    }
+    try {
+      const date = new Date(dateString);
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        console.log('formatDate: Fecha inválida:', dateString);
+        return 'No disponible';
+      }
+      return date.toLocaleString('es-AR');
+    } catch (e) {
+      console.error("Error formateando fecha:", e, "Valor recibido:", dateString);
+      return 'No disponible';
+    }
   };
 
   const formatAmount = (amount: number) => {
-    return `$${amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (amount === undefined || amount === null) return '$0.00';
+    try {
+      return `$${amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } catch (e) {
+      console.error("Error formateando monto:", e);
+      return '$0.00';
+    }
   };
 
   const formatId = (id: string | number) => {
+    if (!id) return 'No disponible';
+
     const idString = id.toString();
     if (idString.length <= 8) return idString;
 
@@ -238,8 +293,68 @@ export function TransactionTable({
     return chunks.join('\n');
   };
 
+  // Funciones para obtener datos de manera flexible
+  const getTransactionReference = (transaction: Transaction): string => {
+    // Intentar múltiples posibles campos donde podría estar la referencia
+    return transaction.external_reference ||
+      transaction.reference_id ||
+      transaction.reference ||
+      transaction.transaction_reference ||
+      transaction.reference_transaction ||
+      'No disponible';
+  };
+
+  const getTransactionAccount = (transaction: Transaction): string => {
+    // Intentar múltiples posibles campos donde puede estar la información de cuenta
+    return transaction.payer_email ||
+      transaction.wallet_address ||
+      transaction.cbu ||
+      transaction.account_number ||
+      transaction.account ||
+      'No disponible';
+  };
+
+  // Función para obtener la fecha de transacción
+  const getTransactionDate = (transaction: Transaction): string => {
+    // Usar solo el campo date_created que sabemos que existe en el tipo Transaction
+    // Accedemos a cualquier otro campo usando notación de índice para evitar errores de tipo
+    const dateValue = transaction.date_created ||
+      (transaction as any)['createdAt'] ||
+      (transaction as any)['created_at'] ||
+      (transaction as any)['updatedAt'] ||
+      (transaction as any)['updated_at'] ||
+      null;
+
+    console.log('getTransactionDate para transacción ID:', transaction.id, 'Fecha encontrada:', dateValue);
+
+    // Verificar si la fecha es válida antes de formatearla
+    if (dateValue) {
+      try {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('es-AR');
+        } else {
+          console.log('Fecha inválida para transacción ID:', transaction.id, 'Valor:', dateValue);
+          return 'Fecha inválida';
+        }
+      } catch (e) {
+        console.error('Error al procesar fecha para transacción ID:', transaction.id, 'Error:', e);
+        return 'Error de formato';
+      }
+    }
+
+    return 'No disponible';
+  };
+
   // Renderizar el badge de estado apropiado
   const renderStatusBadge = (status: string) => {
+    if (!status) return (
+      <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        <span>Desconocido</span>
+      </Badge>
+    );
+
     if (status === 'Pending') {
       return (
         <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
@@ -369,30 +484,28 @@ export function TransactionTable({
                     {formatId(transaction.id)}
                   </TableCell>
                 )}
-                <TableCell>{transaction.idCliente || 'No disponible'}</TableCell>
                 <TableCell>
-                  {transaction.type === 'withdraw' && transaction.payer_identification?.number
-                    ? transaction.payer_identification.number
-                    : transaction.type === 'deposit' && transaction.external_reference
-                      ? transaction.external_reference
-                      : 'No disponible'}
+                  {transaction.idCliente || transaction.client_id ||
+                    (transaction.office ? `Oficina: ${transaction.office}` : 'No disponible')}
                 </TableCell>
-                <TableCell>{transaction.description}</TableCell>
+                <TableCell>
+                  {getTransactionReference(transaction)}
+                </TableCell>
+                <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
                 <TableCell className="font-medium">
                   {formatAmount(transaction.amount)}
                 </TableCell>
                 <TableCell>
                   {renderStatusBadge(transaction.status)}
                 </TableCell>
-                <TableCell>{formatDate(transaction.date_created)}</TableCell>
                 <TableCell>
-                  {transaction.payer_email ||
-                    transaction.wallet_address ||
-                    transaction.cbu ||
-                    'No disponible'}
+                  {getTransactionDate(transaction)}
                 </TableCell>
                 <TableCell>
-                  {transaction.account_name || 'No disponible'}
+                  {getTransactionAccount(transaction)}
+                </TableCell>
+                <TableCell>
+                  {transaction.account_name || transaction.account_holder || 'No disponible'}
                 </TableCell>
                 {showApproveButton && (
                   <TableCell>
