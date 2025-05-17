@@ -316,13 +316,21 @@ export function TransactionTable({
 
   // Función para obtener la fecha de transacción
   const getTransactionDate = (transaction: Transaction): string => {
-    // Usar solo el campo date_created que sabemos que existe en el tipo Transaction
-    // Accedemos a cualquier otro campo usando notación de índice para evitar errores de tipo
+    // Usar un tipo de índice en lugar de 'any'
+    type TransactionWithDates = Transaction & {
+      createdAt?: string;
+      created_at?: string;
+      updatedAt?: string;
+      updated_at?: string;
+    };
+
+    const txWithDates = transaction as TransactionWithDates;
+
     const dateValue = transaction.date_created ||
-      (transaction as any)['createdAt'] ||
-      (transaction as any)['created_at'] ||
-      (transaction as any)['updatedAt'] ||
-      (transaction as any)['updated_at'] ||
+      txWithDates.createdAt ||
+      txWithDates.created_at ||
+      txWithDates.updatedAt ||
+      txWithDates.updated_at ||
       null;
 
     console.log('getTransactionDate para transacción ID:', transaction.id, 'Fecha encontrada:', dateValue);
