@@ -88,6 +88,9 @@ export function TransactionTable({
           normalized.account_name = normalized.account_holder;
         }
 
+        // Log específico para payer_email
+        console.log(`normalize: transacción ID=${normalized.id}, payer_email=${normalized.payer_email}`);
+
         return normalized;
       });
     };
@@ -192,61 +195,95 @@ export function TransactionTable({
   };
 
   // Función para exportar transacciones a CSV
-  const handleExport = () => {
-    // Crear encabezados para el CSV (ajustar según las columnas de tu tabla)
-    const headers = [
-      'ID',
-      'Cliente',
-      'Referencia',
-      'Descripción',
-      'Monto',
-      'Estado',
-      'Fecha',
-      'CBU/Cuenta',
-      'Nombre Cuenta'
-    ];
+  const handleExport = async () => {
+    try {
+      // Usamos setTimeout y Promise para evitar bloquear el hilo principal
+      await new Promise(resolve => setTimeout(resolve, 0));
 
-    // Crear filas de datos
-    const rows = sortedTransactions.map(transaction => {
-      // Usar la función getTransactionReference para la columna Referencia
-      const reference = getTransactionReference(transaction);
-
-      // Obtener información de cuenta de manera flexible
-      const account = getTransactionAccount(transaction);
-
-      return [
-        transaction.id,
-        transaction.idCliente || transaction.client_id || '',
-        reference,
-        transaction.description || '',
-        transaction.amount,
-        transaction.status,
-        transaction.date_created ? formatDate(transaction.date_created) : 'No disponible',
-        account,
-        transaction.account_name || transaction.account_holder || ''
+      // Crear encabezados para el CSV
+      const headers = [
+        'ID',
+        'Cliente',
+        'Referencia',
+        'Descripción',
+        'Monto',
+        'Estado',
+        'Fecha',
+        'CBU/Cuenta',
+        'Nombre Cuenta'
       ];
-    });
 
-    // Combinar encabezados y filas
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+      // Procesamiento por lotes para evitar bloqueos en grandes conjuntos de datos
+      const batchSize = 100;
+      let rows: Array<Array<string | number | undefined>> = [];
 
-    // Crear un Blob y generar URL
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+      // Procesar en pequeños lotes
+      for (let i = 0; i < paginatedTransactions.length; i += batchSize) {
+        const batch = paginatedTransactions.slice(i, i + batchSize);
 
-    // Crear enlace y descargar
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `transacciones_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
+        // Permitir que el navegador respire entre lotes
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
 
-    // Limpiar
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+        const batchRows = batch.map(transaction => {
+          const reference = getTransactionReference(transaction);
+          const account = getTransactionAccount(transaction);
+
+          return [
+            transaction.id,
+            transaction.idCliente || transaction.client_id || '',
+            reference,
+            transaction.description || '',
+            transaction.amount,
+            transaction.status,
+            transaction.date_created ? formatDate(transaction.date_created) : 'No disponible',
+            account,
+            transaction.account_name || transaction.account_holder || ''
+          ];
+        });
+
+        rows = [...rows, ...batchRows];
+      }
+
+      // Combinar encabezados y filas
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row =>
+          row.map((cell: string | number | undefined) =>
+            `"${String(cell || '').replace(/"/g, '""')}"`
+          ).join(',')
+        )
+      ].join('\n');
+
+      // Otra pequeña pausa antes de crear el blob
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Crear un Blob y generar URL
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      // Crear enlace y descargar
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `transacciones_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpiar, pero con un pequeño retraso para asegurar que se complete la descarga
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+
+    } catch (error) {
+      console.error("Error al exportar transacciones:", error);
+      setErrorModal({
+        isOpen: true,
+        title: 'Error al exportar',
+        message: 'Ocurrió un error al exportar los datos. Por favor, inténtelo de nuevo.'
+      });
+    }
   };
 
   // Formateadores de datos
@@ -305,7 +342,17 @@ export function TransactionTable({
   };
 
   const getTransactionAccount = (transaction: Transaction): string => {
+    // Log para depurar valores disponibles
+    console.log(`getTransactionAccount para ID ${transaction.id}: `, {
+      payer_email: transaction.payer_email,
+      wallet_address: transaction.wallet_address,
+      cbu: transaction.cbu,
+      account_number: transaction.account_number,
+      account: transaction.account
+    });
+
     // Intentar múltiples posibles campos donde puede estar la información de cuenta
+    // IMPORTANTE: La prioridad es mostrar el email (payer_email) si está disponible
     return transaction.payer_email ||
       transaction.wallet_address ||
       transaction.cbu ||
@@ -510,7 +557,13 @@ export function TransactionTable({
                   {getTransactionDate(transaction)}
                 </TableCell>
                 <TableCell>
-                  {getTransactionAccount(transaction)}
+                  {transaction.payer_email ?
+                    // Si hay payer_email, mostrarlo directamente con prioridad
+                    transaction.payer_email
+                    :
+                    // Si no hay payer_email, usar la función getTransactionAccount
+                    getTransactionAccount(transaction)
+                  }
                 </TableCell>
                 <TableCell>
                   {transaction.account_name || transaction.account_holder || 'No disponible'}
