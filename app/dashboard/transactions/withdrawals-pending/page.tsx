@@ -142,10 +142,11 @@ export default function WithdrawPendingPage() {
           ) : (
             <TransactionTable
               transactions={filteredTransactions}
-              showApproveButton={true} // Los retiros pendientes necesitan botones
+              showApproveButton={true}
               onTransactionApproved={handleTransactionApproved}
               onTransactionRejected={handleTransactionRejected}
               isRefreshing={isLoading && allOfficeTransactions.length > 0}
+              hideIdColumn={true}
             />
           )}
         </div>

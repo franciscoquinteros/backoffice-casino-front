@@ -157,10 +157,11 @@ export default function DepositsDirectPage() {
                     ) : (
                         <TransactionTable
                             transactions={filteredTransactions}
-                            showApproveButton={false}
+                            showApproveButton={true}
                             onTransactionApproved={handleTransactionApproved}
                             onTransactionRejected={handleTransactionRejected}
                             isRefreshing={isLoading && transactions.length > 0}
+                            hideIdColumn={true}
                         />
                     )}
                 </div>

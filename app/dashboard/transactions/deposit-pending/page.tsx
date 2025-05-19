@@ -245,13 +245,12 @@ export default function DepositsPendingPage() {
                         </Card>
                     ) : (
                         <TransactionTable
-                            // Pasa las transacciones filtradas localmente
                             transactions={filteredTransactions}
                             showApproveButton={true}
                             onTransactionApproved={handleTransactionApproved}
                             onTransactionRejected={handleTransactionRejected}
-                            // Indicador visual para recargas en segundo plano
                             isRefreshing={isLoading && transactions.length > 0}
+                            hideIdColumn={true}
                         />
                     )}
                 </div>

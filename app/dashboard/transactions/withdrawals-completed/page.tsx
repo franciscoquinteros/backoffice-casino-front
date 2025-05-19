@@ -145,9 +145,10 @@ export default function WithdrawalsCompletedPage() {
             <TransactionTable
               transactions={filteredTransactions}
               showApproveButton={false}
-              onTransactionApproved={() => { }} // Pasa dummy
-              onTransactionRejected={() => { }} // Pasa dummy
-              isRefreshing={isRefreshing} // Pasa estado de refresco
+              onTransactionApproved={() => { }}
+              onTransactionRejected={() => { }}
+              isRefreshing={isRefreshing}
+              hideIdColumn={true}
             />
           )}
         </div>
