@@ -65,16 +65,51 @@ export default function UsersList({ filters }: UsersListProps) {
             let aValue = a[key];
             let bValue = b[key];
 
+            // Si ambos valores son undefined o null, considerarlos iguales
+            if ((aValue === undefined || aValue === null) &&
+                (bValue === undefined || bValue === null)) return 0;
+
+            // Si solo aValue es undefined o null, considerarlo menor
+            if (aValue === undefined || aValue === null) return direction === 'asc' ? -1 : 1;
+
+            // Si solo bValue es undefined o null, considerarlo menor
+            if (bValue === undefined || bValue === null) return direction === 'asc' ? 1 : -1;
+
             // Manejar fechas
             if ((key === 'createdAt' || key === 'lastLoginDate') && aValue && bValue) {
-                aValue = new Date(aValue).getTime();
-                bValue = new Date(bValue).getTime();
+                // Verificar que los valores sean compatibles con Date
+                const isValidDateValue = (val: unknown): val is string | number | Date =>
+                    typeof val === 'string' || typeof val === 'number' || val instanceof Date;
+
+                // Solo procesar si ambos valores son compatibles con Date
+                if (isValidDateValue(aValue) && isValidDateValue(bValue)) {
+                    const aTime = new Date(aValue).getTime();
+                    const bTime = new Date(bValue).getTime();
+                    return direction === 'asc' ? aTime - bTime : bTime - aTime;
+                }
             }
 
-            // Comparación
-            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-            return 0;
+            // Manejar objetos complejos
+            if (typeof aValue === 'object' && aValue !== null && typeof bValue === 'object' && bValue !== null) {
+                // Si son objetos, usamos JSON.stringify para comparar
+                const aStr = JSON.stringify(aValue);
+                const bStr = JSON.stringify(bValue);
+                return direction === 'asc'
+                    ? aStr.localeCompare(bStr)
+                    : bStr.localeCompare(aStr);
+            }
+
+            // Para tipos simples (string, number, boolean)
+            if (typeof aValue === typeof bValue) {
+                if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+                return 0;
+            }
+
+            // Si los tipos son diferentes, convertir a string para comparar
+            const aStr = String(aValue);
+            const bStr = String(bValue);
+            return direction === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
         });
     }, [filteredUsers, sortConfig]);
 
