@@ -65,7 +65,17 @@ export default function AccountsList({ filters }: AccountsListProps) {
             bValue = Number(bValue);
         }
 
-        // Comparación
+        // Si ambos valores son undefined, considerarlos iguales
+        if (aValue === undefined && bValue === undefined) return 0;
+
+        // Si solo aValue es undefined, considerarlo menor
+        if (aValue === undefined) return direction === 'asc' ? -1 : 1;
+
+        // Si solo bValue es undefined, considerarlo menor
+        if (bValue === undefined) return direction === 'asc' ? 1 : -1;
+
+        // Ahora sabemos que ambos valores están definidos
+        // Comparación segura
         if (aValue < bValue) return direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return direction === 'asc' ? 1 : -1;
         return 0;
