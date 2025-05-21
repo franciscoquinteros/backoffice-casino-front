@@ -76,7 +76,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             // Manejar fechas
             if (key === 'date_created' && aValue && bValue) {
                 // Verificar que los valores sean compatibles con Date
-                const isValidDateValue = (val: any): val is string | number | Date =>
+                const isValidDateValue = (val: unknown): val is string | number | Date =>
                     typeof val === 'string' || typeof val === 'number' || val instanceof Date;
 
                 // Solo procesar si ambos valores son compatibles con Date
