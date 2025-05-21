@@ -16,7 +16,23 @@ export interface Transaction {
     walletAddress?: string;
     office?: string;
     accountName?: string;
-    [key: string]: any; // Para otros campos
+    // Propiedades opcionales específicas
+    date_created?: string;
+    account_name?: string;
+    external_reference?: string;
+    reference_transaction?: string;
+    payment_method_id?: string;
+    payer_id?: string;
+    payer_email?: string;
+    payer_identification?: string;
+    receiver_id?: string;
+    account_holder?: string;
+    client_id?: string;
+    idCliente?: string | number;
+    relatedUserTransactionId?: string;
+    assignedTo?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface TransactionFilters {

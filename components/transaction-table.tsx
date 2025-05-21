@@ -24,16 +24,13 @@ import {
   ChevronRight,
   Check,
   X,
-  UserIcon,
-  MoreHorizontal
+  UserIcon
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -61,13 +58,9 @@ export function TransactionTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [normalizedTransactions, setNormalizedTransactions] = useState<Transaction[]>([]);
-  const [showEmailColumn, setShowEmailColumn] = useState(true);
-  const [expandedInfoId, setExpandedInfoId] = useState<string | null>(null);
   const [modalTransaction, setModalTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [isUsersLoading, setIsUsersLoading] = useState(false);
-  const [isAssigning, setIsAssigning] = useState(false);
+  const [users, setUsers] = useState<{ id: string; username?: string; email?: string }[]>([]);
   const [accountNameCache, setAccountNameCache] = useState<Record<string, string>>({});
   const [loadingAccountNames, setLoadingAccountNames] = useState<Record<string, boolean>>({});
   const [failedAccountNameFetches, setFailedAccountNameFetches] = useState<Set<string | number>>(new Set());
@@ -85,7 +78,6 @@ export function TransactionTable({
     const normalize = (transactions: Transaction[]): Transaction[] => {
       return transactions.map(tx => {
         // Log detallado de cada transacción
-
 
         // Crear una copia para no modificar el original
         const normalized = { ...tx };
@@ -112,9 +104,8 @@ export function TransactionTable({
 
         // Caso especial para las transacciones "Bank Transfer" - asegurar que siempre tienen account_name
         if (normalized.description === 'Bank Transfer') {
-          // Guardar account_name original para debug
-          const originalAccountName = normalized.account_name;
-          const originalAccountNameProp = (normalized as any).accountName;
+          // Verificar múltiples fuentes posibles para el nombre de cuenta
+          const originalAccountNameProp = (normalized as { accountName?: string }).accountName;
 
           // Verificar múltiples fuentes posibles para el nombre de cuenta
           if (!normalized.account_name) {
@@ -138,8 +129,9 @@ export function TransactionTable({
           // Para transacciones no Bank Transfer (como IPN)
           if (!normalized.account_name) {
             // Si no tiene account_name, intentar obtenerlo de otras propiedades
-            if ((normalized as any).accountName) {
-              normalized.account_name = (normalized as any).accountName;
+            const normalizedWithAccountName = normalized as { accountName?: string };
+            if (normalizedWithAccountName.accountName) {
+              normalized.account_name = normalizedWithAccountName.accountName;
             } else if (normalized.account_holder) {
               normalized.account_name = normalized.account_holder;
             } else {
@@ -459,7 +451,6 @@ export function TransactionTable({
     if (!session?.accessToken || !session?.user?.officeId) return;
 
     try {
-      setIsUsersLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
         headers: {
           'Authorization': `Bearer ${session.accessToken}`
@@ -475,8 +466,6 @@ export function TransactionTable({
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
       toast.error('No se pudieron cargar los usuarios');
-    } finally {
-      setIsUsersLoading(false);
     }
   }, [session?.accessToken, session?.user?.officeId]);
 
@@ -493,7 +482,6 @@ export function TransactionTable({
     }
 
     try {
-      setIsAssigning(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${transactionId}/assign/${userId}`, {
         method: 'PUT',
         headers: {
@@ -516,8 +504,6 @@ export function TransactionTable({
     } catch (error) {
       console.error('Error al asignar usuario:', error);
       toast.error('No se pudo asignar el usuario');
-    } finally {
-      setIsAssigning(false);
     }
   };
 
@@ -630,8 +616,6 @@ export function TransactionTable({
       try {
         const data = await response.json();
 
-
-
         // Verificar todas las posibles ubicaciones donde puede estar el account_name
         let accountName = null;
         if (data) {
@@ -726,11 +710,9 @@ export function TransactionTable({
 
       return () => clearTimeout(timer);
     }
-  }, [normalizedTransactions, accountNameCache, loadingAccountNames, failedAccountNameFetches]);
+  }, [normalizedTransactions, accountNameCache, loadingAccountNames, failedAccountNameFetches, fetchAccountNameFromBackend]);
 
   const getAccountNameDisplay = useCallback((transaction: Transaction) => {
-
-
     // Si ya tiene un account_name, usarlo directamente
     if (transaction.account_name &&
       transaction.account_name !== 'No disponible') {
@@ -742,12 +724,10 @@ export function TransactionTable({
       if (accountNameCache[transaction.id]) {
         return accountNameCache[transaction.id];
       }
-
-      // Resto de verificaciones...
     }
 
     return transaction.account_holder || 'No disponible';
-  }, [accountNameCache, loadingAccountNames, fetchAccountNameFromBackend, failedAccountNameFetches]);
+  }, [accountNameCache]);
 
   // Renderizado condicional para tabla vacía
   if (transactions.length === 0) {

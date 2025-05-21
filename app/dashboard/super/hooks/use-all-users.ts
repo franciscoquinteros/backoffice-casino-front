@@ -16,7 +16,14 @@ export interface User {
     phoneNumber?: string;
     description?: string;
     withdrawal?: string;
-    [key: string]: any; // Para otros campos
+    // Propiedades opcionales específicas
+    firstName?: string;
+    lastName?: string;
+    profileImage?: string;
+    isActive?: boolean;
+    officeId?: string;
+    permissions?: string[];
+    updatedAt?: Date | string;
 }
 
 export interface UserFilters {

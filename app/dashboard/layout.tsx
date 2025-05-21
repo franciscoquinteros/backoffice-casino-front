@@ -16,7 +16,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode
 }) {
-    const { isLoading, isAuthenticated, isSuperAdmin } = useAuth(true)
+    const { isLoading, isAuthenticated } = useAuth(true)
     const pathname = usePathname();
 
     // Si estamos en la ruta de superadmin, no aplicar este layout

@@ -16,7 +16,14 @@ export interface Account {
     status: string;
     createdAt?: Date | string;
     accumulatedAmount?: number;
-    [key: string]: any; // Para otros campos
+    accountName?: string;
+    mp_access_token?: string;
+    mp_client_id?: string;
+    mp_client_secret?: string;
+    mp_public_key?: string;
+    receiver_id?: string;
+    account_holder?: string;
+    updatedAt?: Date | string;
 }
 
 export interface AccountFilters {

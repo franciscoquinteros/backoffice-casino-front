@@ -44,10 +44,11 @@ export default function DepositsDirectPage() {
                 if (tx.description === 'Bank Transfer') {
                     // Usar el account_name directamente del backend
                     // El componente TransactionTable se encargará de buscar valores actualizados si es necesario
+                    const txWithFields = tx as Transaction & { accountName?: string };
                     return {
                         ...tx,
                         // Solo asignar un valor por defecto si realmente no tiene valor
-                        account_name: tx.account_name || (tx as any).accountName || tx.account_holder || 'Cuenta Externa'
+                        account_name: tx.account_name || txWithFields.accountName || tx.account_holder || 'Cuenta Externa'
                     };
                 }
 
@@ -58,10 +59,11 @@ export default function DepositsDirectPage() {
                 }
 
                 // Si no tiene account_name pero tiene accountName, usarlo
-                if ((tx as any).accountName) {
+                const txWithFields = tx as Transaction & { accountName?: string };
+                if (txWithFields.accountName) {
                     return {
                         ...tx,
-                        account_name: (tx as any).accountName
+                        account_name: txWithFields.accountName
                     };
                 }
 
@@ -79,9 +81,6 @@ export default function DepositsDirectPage() {
                     account_name: 'No disponible'
                 };
             });
-
-            // Depuración de transacciones Bank Transfer
-            const bankTransfers = processedDeposits.filter(tx => tx.description === 'Bank Transfer');
 
             setTransactions(processedDeposits);
             setError(null);

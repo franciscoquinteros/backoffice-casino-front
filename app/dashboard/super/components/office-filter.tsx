@@ -20,7 +20,6 @@ export default function OfficeFilter({ onChange, selectedOffice }: OfficeFilterP
     const { data: session } = useSession();
     const [offices, setOffices] = useState<OfficeOption[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchOffices = async () => {
@@ -41,7 +40,6 @@ export default function OfficeFilter({ onChange, selectedOffice }: OfficeFilterP
                 setOffices(data);
             } catch (error) {
                 console.error('Error al cargar oficinas:', error);
-                setError('No se pudieron cargar las oficinas');
             } finally {
                 setIsLoading(false);
             }

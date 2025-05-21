@@ -10,18 +10,11 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ArrowUpDown, MessageSquare } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate, formatTimeAgo } from "@/lib/utils";
+import { formatTimeAgo } from "@/lib/utils";
 import { useAllChats, ChatFilters, Conversation } from "../hooks/use-all-chats";
-import Link from "next/link";
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -35,7 +28,7 @@ interface ChatsListProps {
 
 export default function ChatsList({ filters }: ChatsListProps) {
     // Usar el hook personalizado para obtener conversaciones con filtros
-    const { filteredConversations, isLoading, error, refetch } = useAllChats(filters);
+    const { filteredConversations, isLoading, error } = useAllChats(filters);
 
     // Estado para ordenación
     const [sortConfig, setSortConfig] = useState<{
@@ -106,11 +99,6 @@ export default function ChatsList({ filters }: ChatsListProps) {
             </div>
         );
     }
-
-    // Función para obtener cantidad de mensajes
-    const getMessageCount = (conversation: Conversation) => {
-        return conversation.messages?.length || 0;
-    };
 
     // Función para obtener la última actividad
     const getLastActivity = (conversation: Conversation) => {

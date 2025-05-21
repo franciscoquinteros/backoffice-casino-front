@@ -586,7 +586,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 csvContent += '\nDatos por Oficina\n';
                 csvContent += 'Oficina,Depósitos,Retiros,Total\n';
 
-                Object.entries(stats.byOffice || {}).forEach(([officeId, officeStats]: [string, any]) => {
+                Object.entries(stats.byOffice || {}).forEach(([officeId, officeStats]: [string, { depositsAmount?: number; withdrawalsAmount?: number; totalAmount?: number }]) => {
                     csvContent += `${officeId},${officeStats.depositsAmount || 0},${officeStats.withdrawalsAmount || 0},${officeStats.totalAmount || 0}\n`;
                 });
             }
@@ -596,7 +596,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 csvContent += '\nActividad Reciente\n';
                 csvContent += 'Tipo,Monto,Estado,Fecha,Oficina\n';
 
-                stats.recentActivity.forEach((activity: any) => {
+                stats.recentActivity.forEach((activity: { id: string; type: string; amount: number; status: string; date_created?: string | Date; office?: string }) => {
                     const date = activity.date_created ? new Date(activity.date_created).toLocaleString('es-AR') : 'N/A';
                     csvContent += `${activity.type},${activity.amount},${activity.status},${date},${activity.office || 'N/A'}\n`;
                 });

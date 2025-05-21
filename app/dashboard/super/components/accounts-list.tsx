@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, ArrowUpDown, Copy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { useAllAccounts, AccountFilters, Account } from "../hooks/use-all-accounts";
 import { toast } from "sonner";
 
@@ -37,7 +37,7 @@ interface AccountsListProps {
 
 export default function AccountsList({ filters }: AccountsListProps) {
     // Usar el hook personalizado para obtener cuentas con filtros
-    const { filteredAccounts, isLoading, error, refetch } = useAllAccounts(filters);
+    const { filteredAccounts, isLoading, error } = useAllAccounts(filters);
 
     // Estado para ordenación
     const [sortConfig, setSortConfig] = useState<{
