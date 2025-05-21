@@ -62,8 +62,8 @@ export default function UsersList({ filters }: UsersListProps) {
             if (!sortConfig) return 0;
 
             const { key, direction } = sortConfig;
-            let aValue = a[key];
-            let bValue = b[key];
+            const aValue = a[key];
+            const bValue = b[key];
 
             // Si ambos valores son undefined o null, considerarlos iguales
             if ((aValue === undefined || aValue === null) &&
