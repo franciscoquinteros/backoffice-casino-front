@@ -40,6 +40,16 @@ const superAdminItems: NavItem[] = [
     title: "Oficinas",
     url: "/dashboard/office-configuration",
     icon: LampDesk,
+    items: [
+      {
+        title: "Gestión de Oficinas",
+        url: "/dashboard/office-configuration",
+      },
+      {
+        title: "Panel Super Admin",
+        url: "/dashboard/super/offices",
+      },
+    ]
   },
   {
     title: "Usuarios",

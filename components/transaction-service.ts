@@ -26,6 +26,7 @@ export interface Transaction {
   reference_transaction?: string;
   office?: string; // Campo opcional para la oficina
   account_name?: string; // Nombre de la cuenta asociada
+  assignedTo?: string; // ID del usuario asignado a la transacción
 
   // Nuevos campos que pueden venir del backend después de cambios
   client_id?: string | number; // Alternativa a idCliente
@@ -89,52 +90,69 @@ class TransactionService {
     }
     if (!accessToken) {
       console.error('getTransactionsForOffice: accessToken is required');
-      // Podrías devolver un array vacío o lanzar un error más específico
       throw new Error('Authentication token is required.');
     }
     if (!this.apiUrl) {
       throw new Error('API URL is not configured.');
     }
 
-    // Construye la URL correcta del endpoint del backend
-    const endpoint = `${this.apiUrl}/transactions/${encodeURIComponent(officeId)}`;
-    console.log(`[FE Service] Fetching transactions from: ${endpoint}`);
-
     try {
+      // Construye la URL correcta del endpoint del backend
+      const endpoint = `${this.apiUrl}/transactions/${encodeURIComponent(officeId)}`;
+      console.log(`[FE Service] Fetching transactions from: ${endpoint}`);
+
       const response = await fetch(endpoint, {
-        method: 'GET', // GET es el default, pero explícito es más claro
+        method: 'GET',
         headers: {
-          // Header de autenticación OBLIGATORIO para el backend
           'Authorization': `Bearer ${accessToken}`,
-          // Headers comunes para APIs JSON
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       });
 
-      // Manejo de respuestas no exitosas (4xx, 5xx)
       if (!response.ok) {
         let errorMsg = `Error fetching transactions: ${response.status} ${response.statusText}`;
         try {
-          // Intenta leer un mensaje de error del cuerpo de la respuesta
           const errorData = await response.json();
           errorMsg = errorData.message || errorData.error || errorMsg;
         } catch { }
 
         console.error(`getTransactionsForOffice Error (${response.status}): ${errorMsg}`);
-        // Lanza un error para que el componente que llama pueda manejarlo
         throw new Error(errorMsg);
       }
 
-      // Si la respuesta es OK (200), parsea y devuelve los datos
       const data: Transaction[] = await response.json();
       console.log(`[FE Service] Received ${data.length} transactions for office ${officeId}`);
-      return data;
 
+      // Procesar los datos recibidos para normalizar propiedades para cada transacción
+      const processedData = data.map(tx => {
+        // Crear una copia de la transacción
+        const processedTx = { ...tx };
+
+        // Para transacciones no Bank Transfer (como IPN)
+        if (tx.description !== 'Bank Transfer') {
+          // Si viene accountName pero no account_name, asignar el valor
+          if ((tx as any).accountName && !tx.account_name) {
+            processedTx.account_name = (tx as any).accountName;
+          }
+
+          // Para cualquier transacción sin account_name, asignar un valor por defecto
+          if (!processedTx.account_name && tx.account_holder) {
+            processedTx.account_name = tx.account_holder;
+          }
+
+          // Solo usar 'No disponible' como último recurso
+          if (!processedTx.account_name) {
+            processedTx.account_name = 'No disponible';
+          }
+        }
+
+        return processedTx;
+      });
+
+      return processedData;
     } catch (error) {
-      // Captura errores de red u otros errores durante el fetch/parseo
       console.error('Error during getTransactionsForOffice fetch:', error);
-      // Re-lanza el error para que el componente lo maneje
       throw error;
     }
   }
@@ -205,9 +223,15 @@ class TransactionService {
 
     if (status === 'Aceptado') {
       // Para páginas "Completados", mostrar tanto aceptadas como rechazadas
+      // Sin incluir las transacciones "Bank Transfer" que ahora van en Depósitos Directos
       filtered = transactions.filter(tx =>
         tx.type === type &&
-        (tx.status === 'Aceptado' || tx.status === 'approved' || tx.status === 'Rechazado')
+        (
+          tx.status === 'Aceptado' ||
+          tx.status === 'approved' ||
+          tx.status === 'Rechazado'
+          // Ya no incluimos (tx.status === 'Pending' && tx.description === 'Bank Transfer')
+        )
       );
     } else if (type === 'deposit' && status === 'Pending') {
       // Para depósitos pendientes, filtrar por descripción específica
@@ -215,6 +239,12 @@ class TransactionService {
         tx.type === type &&
         tx.status === status &&
         tx.description.startsWith('Depósito reportado por usuario, pendiente de validación')
+      );
+    } else if (type === 'deposit' && status === 'Match MP') {
+      // Para depósitos con coincidencia MP
+      filtered = transactions.filter(tx =>
+        tx.type === type &&
+        tx.status === 'Match MP'
       );
     } else {
       // Para otras páginas, filtrar exactamente por el estado solicitado

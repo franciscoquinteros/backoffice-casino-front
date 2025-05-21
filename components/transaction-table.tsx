@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -21,10 +21,19 @@ import {
   AlertTriangle,
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Check,
+  X,
+  UserIcon,
+  MoreHorizontal
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -33,6 +42,7 @@ interface TransactionTableProps {
   onTransactionRejected?: (transaction: Transaction) => void;
   isRefreshing?: boolean;
   hideIdColumn?: boolean;
+  onRefresh?: () => void;
 }
 
 export function TransactionTable({
@@ -41,14 +51,26 @@ export function TransactionTable({
   onTransactionApproved,
   onTransactionRejected,
   isRefreshing = false,
-  hideIdColumn = false
+  hideIdColumn = false,
+  onRefresh
 }: TransactionTableProps) {
+  const { data: session } = useSession();
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [normalizedTransactions, setNormalizedTransactions] = useState<Transaction[]>([]);
+  const [showEmailColumn, setShowEmailColumn] = useState(true);
+  const [expandedInfoId, setExpandedInfoId] = useState<string | null>(null);
+  const [modalTransaction, setModalTransaction] = useState<Transaction | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isUsersLoading, setIsUsersLoading] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [accountNameCache, setAccountNameCache] = useState<Record<string, string>>({});
+  const [loadingAccountNames, setLoadingAccountNames] = useState<Record<string, boolean>>({});
+  const [failedAccountNameFetches, setFailedAccountNameFetches] = useState<Set<string | number>>(new Set());
 
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
@@ -58,38 +80,73 @@ export function TransactionTable({
 
   // Normalizar los datos de transacciones cuando cambian
   useEffect(() => {
-    console.log("Datos recibidos del backend:", transactions);
-    // Esta función normaliza los datos para manejar cambios en la estructura del backend
+    // Log de los datos originales
+
     const normalize = (transactions: Transaction[]): Transaction[] => {
       return transactions.map(tx => {
-        // Copia la transacción original
+        // Log detallado de cada transacción
+
+
+        // Crear una copia para no modificar el original
         const normalized = { ...tx };
 
-        // Asegúrate de que los campos críticos existan
-        if (normalized.idCliente === undefined && normalized.client_id !== undefined) {
-          normalized.idCliente = normalized.client_id;
+        // IMPORTANTE: Conservar account_name si ya existe en los datos originales
+        if (tx.account_name && tx.account_name !== 'No disponible') {
+          normalized.account_name = tx.account_name;
         }
 
-        // Agregar ID de oficina como posible ID de cliente si no hay otro
-        if (normalized.idCliente === undefined && normalized.client_id === undefined && normalized.office) {
-          normalized.idCliente = normalized.office;
+        // Si aún no tiene fecha, asignar una por defecto
+        if (!normalized.date_created) {
+          normalized.date_created = new Date().toISOString();
         }
 
-        // Si el campo date_created viene en un formato distinto, normalizarlo
-        if (typeof normalized.date_created === 'object' && normalized.date_created !== null) {
-          normalized.date_created = new Date(normalized.date_created).toISOString();
+        // Si no tiene tipo, asignar 'deposit' como valor por defecto
+        if (!normalized.type) {
+          normalized.type = 'deposit';
         }
 
-        // Ya no necesitamos normalizar external_reference aquí porque
-        // ahora solo usamos ese campo exacto
-
-        // Normalizar la información de la cuenta
-        if (!normalized.account_name && normalized.account_holder) {
-          normalized.account_name = normalized.account_holder;
+        // Si no tiene estado, asignar 'Pending' como valor por defecto
+        if (!normalized.status) {
+          normalized.status = 'Pending';
         }
 
-        // Log específico para payer_email
-        console.log(`normalize: transacción ID=${normalized.id}, payer_email=${normalized.payer_email}`);
+        // Caso especial para las transacciones "Bank Transfer" - asegurar que siempre tienen account_name
+        if (normalized.description === 'Bank Transfer') {
+          // Guardar account_name original para debug
+          const originalAccountName = normalized.account_name;
+          const originalAccountNameProp = (normalized as any).accountName;
+
+          // Verificar múltiples fuentes posibles para el nombre de cuenta
+          if (!normalized.account_name) {
+            // Si account_name está vacío, intentar obtenerlo de otras propiedades
+            if (originalAccountNameProp) {
+              // Primero intentar con la propiedad accountName (de la entidad TypeORM)
+              normalized.account_name = originalAccountNameProp;
+            } else if (normalized.account_holder) {
+              // Luego intentar con account_holder
+              normalized.account_name = normalized.account_holder;
+            } else {
+              // Si no hay ninguna fuente, usar un valor predeterminado
+              normalized.account_name = 'Cuenta Bancaria Externa';
+            }
+          } else {
+            // Si ya tiene account_name, mantenerlo
+          }
+
+          // Debug especial para ver qué valores estamos procesando
+        } else {
+          // Para transacciones no Bank Transfer (como IPN)
+          if (!normalized.account_name) {
+            // Si no tiene account_name, intentar obtenerlo de otras propiedades
+            if ((normalized as any).accountName) {
+              normalized.account_name = (normalized as any).accountName;
+            } else if (normalized.account_holder) {
+              normalized.account_name = normalized.account_holder;
+            } else {
+              normalized.account_name = 'No disponible';
+            }
+          }
+        }
 
         return normalized;
       });
@@ -380,8 +437,6 @@ export function TransactionTable({
       txWithDates.updated_at ||
       null;
 
-    console.log('getTransactionDate para transacción ID:', transaction.id, 'Fecha encontrada:', dateValue);
-
     // Verificar si la fecha es válida antes de formatearla
     if (dateValue) {
       try {
@@ -389,11 +444,9 @@ export function TransactionTable({
         if (!isNaN(date.getTime())) {
           return date.toLocaleString('es-AR');
         } else {
-          console.log('Fecha inválida para transacción ID:', transaction.id, 'Valor:', dateValue);
           return 'Fecha inválida';
         }
       } catch (e) {
-        console.error('Error al procesar fecha para transacción ID:', transaction.id, 'Error:', e);
         return 'Error de formato';
       }
     }
@@ -401,14 +454,102 @@ export function TransactionTable({
     return 'No disponible';
   };
 
-  // Renderizar el badge de estado apropiado
-  const renderStatusBadge = (status: string) => {
+  // Función para obtener usuarios de la oficina
+  const fetchOfficeUsers = useCallback(async () => {
+    if (!session?.accessToken || !session?.user?.officeId) return;
+
+    try {
+      setIsUsersLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudieron obtener los usuarios');
+      }
+
+      const data = await response.json();
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error al obtener usuarios:', error);
+      toast.error('No se pudieron cargar los usuarios');
+    } finally {
+      setIsUsersLoading(false);
+    }
+  }, [session?.accessToken, session?.user?.officeId]);
+
+  // Cargar usuarios al iniciar
+  useEffect(() => {
+    fetchOfficeUsers();
+  }, [fetchOfficeUsers]);
+
+  // Función para asignar un usuario a una transacción
+  const assignUserToTransaction = async (transactionId: string, userId: string) => {
+    if (!session?.accessToken) {
+      toast.error('No hay sesión activa');
+      return;
+    }
+
+    try {
+      setIsAssigning(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${transactionId}/assign/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo asignar el usuario');
+      }
+
+      const result = await response.json();
+      toast.success('Usuario asignado correctamente');
+
+      // Actualizar la lista de transacciones
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error al asignar usuario:', error);
+      toast.error('No se pudo asignar el usuario');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  // Función para mostrar los detalles de una transacción
+  const handleShowDetails = (transaction: Transaction) => {
+    setModalTransaction(transaction);
+    setIsModalOpen(true);
+  };
+
+  // Función para obtener el nombre de usuario
+  const getUserName = (userId: string) => {
+    const user = users.find(u => u.id.toString() === userId.toString());
+    return user ? user.username || user.email || 'Usuario' : 'Usuario';
+  };
+
+  const renderStatusBadge = (status: string, transaction: Transaction) => {
     if (!status) return (
       <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
         <AlertTriangle className="h-3 w-3" />
         <span>Desconocido</span>
       </Badge>
     );
+
+    // Para transacciones de tipo Bank Transfer ya aceptadas y que están en estado Pending
+    if (transaction.description === 'Bank Transfer' && status === 'Pending') {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <UserIcon className="h-3 w-3" />
+          <span>Asignado</span>
+        </Badge>
+      );
+    }
 
     if (status === 'Pending') {
       return (
@@ -417,36 +558,196 @@ export function TransactionTable({
           <span>Pendiente</span>
         </Badge>
       );
+    } else if (status === 'Match MP') {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          <span>Match MP</span>
+        </Badge>
+      );
     } else if (status === 'Aceptado' || status === 'approved') {
       return (
         <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-          <CheckCircle className="h-3 w-3" />
+          <Check className="h-3 w-3" />
           <span>Aceptado</span>
         </Badge>
       );
-    } else if (status === 'Rechazado') {
+    } else if (status === 'Rechazado' || status === 'rejected') {
       return (
         <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
-          <XCircle className="h-3 w-3" />
+          <X className="h-3 w-3" />
           <span>Rechazado</span>
         </Badge>
       );
-    } else if (status === 'Error') {
-      return (
-        <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
-          <XCircle className="h-3 w-3" />
-          <span>Error</span>
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3" />
-          <span>{status}</span>
-        </Badge>
-      );
     }
+
+    return <Badge>{status}</Badge>;
   };
+
+  // Función para obtener el nombre de cuenta directamente desde el backend
+  const fetchAccountNameFromBackend = useCallback(async (transactionId: string | number) => {
+    // Si ya hemos intentado y fallado antes, no volver a intentar
+    if (failedAccountNameFetches.has(transactionId)) {
+      return null;
+    }
+
+    if (!session?.accessToken) return null;
+
+    try {
+      setLoadingAccountNames(prev => ({ ...prev, [transactionId]: true }));
+
+      // Solo intentar obtener detalles para transacciones Bank Transfer para evitar 404
+      const transaction = normalizedTransactions.find(tx => tx.id === transactionId);
+      if (!transaction || transaction.description !== 'Bank Transfer') {
+        // Marcar como fallido si no es Bank Transfer para evitar nuevos intentos
+        setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
+        return null;
+      }
+
+      // Consultar el endpoint para obtener detalles de la transacción
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/details/${transactionId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.status === 404) {
+        // Error 404: La transacción no existe o el endpoint no está disponible
+        setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
+        return null;
+      }
+
+      if (!response.ok) {
+        // Otros errores (500, 401, etc.) - Puede ser temporal, no marcar como fallido permanentemente
+        return null;
+      }
+
+      // Intentar procesar la respuesta JSON
+      try {
+        const data = await response.json();
+
+
+
+        // Verificar todas las posibles ubicaciones donde puede estar el account_name
+        let accountName = null;
+        if (data) {
+          // Prioridad 1: campo account_name directo
+          if (data.account_name && data.account_name !== 'No disponible') {
+            accountName = data.account_name;
+          }
+          // Prioridad 2: dentro del objeto transaction
+          else if (data.transaction && data.transaction.account_name && data.transaction.account_name !== 'No disponible') {
+            accountName = data.transaction.account_name;
+          }
+          // Prioridad 3: usar account_holder
+          else if (data.account_holder && data.account_holder !== 'No disponible') {
+            accountName = data.account_holder;
+          }
+          // Prioridad 4: usar accountName (camelCase)
+          else if (data.accountName && data.accountName !== 'No disponible') {
+            accountName = data.accountName;
+          }
+          // Prioridad 5: verificar si está en la columna "accountName" directamente
+          else if (data.transaction && data.transaction.accountName && data.transaction.accountName !== 'No disponible') {
+            accountName = data.transaction.accountName;
+          }
+        }
+
+        if (accountName) {
+          // Guardar en caché
+          setAccountNameCache(prev => ({
+            ...prev,
+            [transactionId]: accountName
+          }));
+
+          // Actualizar también en normalizedTransactions para mostrar de inmediato
+          setNormalizedTransactions(prev =>
+            prev.map(tx =>
+              tx.id === transactionId
+                ? { ...tx, account_name: accountName }
+                : tx
+            )
+          );
+
+          return accountName;
+        }
+
+        // Marcar como fallido si no se encontró un nombre válido
+        setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
+        return null;
+      } catch (jsonError) {
+        console.error('Error al procesar JSON de detalles:', jsonError);
+        // Error al procesar JSON - respuesta inválida
+        setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
+        return null;
+      }
+    } catch (error) {
+      // Error de red o de otro tipo - podría ser temporal
+      // No marcamos como fallido permanentemente para poder reintentar
+      return null;
+    } finally {
+      setLoadingAccountNames(prev => ({ ...prev, [transactionId]: false }));
+    }
+  }, [session?.accessToken, failedAccountNameFetches, normalizedTransactions, setNormalizedTransactions]);
+
+  // useEffect para cargar nombres para transacciones Bank Transfer
+  useEffect(() => {
+    if (normalizedTransactions.length === 0) return;
+
+    // Filtrar transacciones tipo "Bank Transfer"
+    const bankTransfers = normalizedTransactions.filter(tx => tx.description === 'Bank Transfer');
+
+    // Limitar peticiones a 5 a la vez para evitar sobrecarga
+    const transactionsToProcess = bankTransfers.slice(0, 5);
+
+    // Procesar solo transacciones que necesitan nombre
+    for (const tx of transactionsToProcess) {
+      // Evitar peticiones duplicadas
+      if (accountNameCache[tx.id] ||
+        loadingAccountNames[tx.id] ||
+        failedAccountNameFetches.has(tx.id) ||
+        (tx.account_name && tx.account_name !== 'No disponible')) {
+        continue;
+      }
+
+      // Cargar los datos del backend
+      fetchAccountNameFromBackend(tx.id);
+    }
+
+    // Procesar el siguiente lote después de 5 segundos
+    if (bankTransfers.length > 5) {
+      const timer = setTimeout(() => {
+        setNormalizedTransactions([...normalizedTransactions]);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [normalizedTransactions, accountNameCache, loadingAccountNames, failedAccountNameFetches]);
+
+  const getAccountNameDisplay = useCallback((transaction: Transaction) => {
+
+
+    // Si ya tiene un account_name, usarlo directamente
+    if (transaction.account_name &&
+      transaction.account_name !== 'No disponible') {
+      return transaction.account_name;
+    }
+
+    // Continuar con la lógica existente para casos donde account_name no existe
+    if (transaction.description === 'Bank Transfer') {
+      if (accountNameCache[transaction.id]) {
+        return accountNameCache[transaction.id];
+      }
+
+      // Resto de verificaciones...
+    }
+
+    return transaction.account_holder || 'No disponible';
+  }, [accountNameCache, loadingAccountNames, fetchAccountNameFromBackend, failedAccountNameFetches]);
 
   // Renderizado condicional para tabla vacía
   if (transactions.length === 0) {
@@ -551,7 +852,7 @@ export function TransactionTable({
                   {formatAmount(transaction.amount)}
                 </TableCell>
                 <TableCell>
-                  {renderStatusBadge(transaction.status)}
+                  {renderStatusBadge(transaction.status, transaction)}
                 </TableCell>
                 <TableCell>
                   {getTransactionDate(transaction)}
@@ -566,7 +867,7 @@ export function TransactionTable({
                   }
                 </TableCell>
                 <TableCell>
-                  {transaction.account_name || transaction.account_holder || 'No disponible'}
+                  {getAccountNameDisplay(transaction)}
                 </TableCell>
                 {showApproveButton && (
                   <TableCell>
@@ -593,7 +894,7 @@ export function TransactionTable({
                         </Button>
                       </div>
                     ) : (
-                      renderStatusBadge(transaction.status)
+                      renderStatusBadge(transaction.status, transaction)
                     )}
                   </TableCell>
                 )}
@@ -657,6 +958,20 @@ export function TransactionTable({
         message={errorModal.message}
         onClose={closeErrorModal}
       />
+
+      {/* Modal para ver detalles de la transacción */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalles de la transacción</DialogTitle>
+          </DialogHeader>
+          {modalTransaction && (
+            <div className="grid gap-4">
+              {/* ... existing modal content ... */}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -13,8 +13,7 @@ interface SimpleErrorModalProps {
 
 export function SimpleErrorModal({ isOpen, title, message, onClose }: SimpleErrorModalProps) {
   // Log para depuración
-  console.log("SimpleErrorModal rendering with isOpen:", isOpen);
-  
+
   useEffect(() => {
     console.log("SimpleErrorModal effect, isOpen changed to:", isOpen);
   }, [isOpen]);

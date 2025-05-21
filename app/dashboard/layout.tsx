@@ -9,13 +9,20 @@ import { Loader2 } from "lucide-react";
 import { SocketProvider } from "@/lib/SocketContext";
 import { NotificationProvider } from "@/lib/NotificationContext";
 import { DashboardNavigation } from "@/components/dashboard-navigation";
+import { usePathname } from "next/navigation";
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const { isLoading, isAuthenticated } = useAuth(true)
+    const { isLoading, isAuthenticated, isSuperAdmin } = useAuth(true)
+    const pathname = usePathname();
+
+    // Si estamos en la ruta de superadmin, no aplicar este layout
+    if (pathname?.startsWith('/dashboard/super')) {
+        return children;
+    }
 
     if (isLoading) {
         return (

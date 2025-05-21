@@ -7,8 +7,10 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 // --- Asegúrate que las rutas sean correctas ---
 import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
-import { Transaction, TransactionFilter, transactionService } from '@/components/transaction-service';
+import { Transaction, TransactionFilter as TransactionFilterType, transactionService } from '@/components/transaction-service';
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 // --- Quita TransactionError si no la usas ---
 // interface TransactionError extends Error { message: string; }
@@ -18,7 +20,7 @@ export default function DepositsCompletedPage() {
 
     const [allOfficeTransactions, setAllOfficeTransactions] = useState<Transaction[]>([]);
     const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
-    const [filters, setFilters] = useState<TransactionFilter>({});
+    const [filters, setFilters] = useState<TransactionFilterType>({});
     const [isLoading, setIsLoading] = useState(true); // Carga inicial
     const [isRefreshing, setIsRefreshing] = useState(false); // Carga en segundo plano (intervalo/manual)
     const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export default function DepositsCompletedPage() {
 
 
     // Handlers de filtros (sin cambios)
-    const handleFilterChange = (newFilters: TransactionFilter) => setFilters(newFilters);
+    const handleFilterChange = (newFilters: TransactionFilterType) => setFilters(newFilters);
     const handleResetFilters = () => setFilters({});
 
 
@@ -135,33 +137,45 @@ export default function DepositsCompletedPage() {
     if (sessionStatus === "unauthenticated") { /* ... Mensaje Login ... */ }
 
     return (
-        <div className="container mx-auto p-4">
-            <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-2xl font-bold">Depósitos Completados</CardTitle>
-                    <CardDescription> Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'}) </CardDescription>
-                </CardHeader>
-                <div className="p-6 pt-3">
-                    <TransactionFilters onChange={handleFilterChange} onReset={handleResetFilters} />
+        <div className="container mx-auto py-4">
+            <div className="flex flex-col gap-6">
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-2xl font-bold">Depósitos Completados</CardTitle>
+                        <CardDescription> Historial de depósitos aprobados o rechazados (Oficina: {session?.user?.officeId || 'N/A'}) </CardDescription>
+                    </CardHeader>
+                    <div className="p-6 pt-3">
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-64">
+                                <Loader2 className="animate-spin h-8 w-8" />
+                                <span className="ml-2">Cargando transacciones...</span>
+                            </div>
+                        ) : error ? (
+                            <div className="border border-red-400 bg-red-100 text-red-700 p-4 rounded-md">
+                                <p>{error}</p>
+                                <Button onClick={() => fetchTransactions(true)} className="mt-2">
+                                    Reintentar
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <TransactionFilters
+                                    onChange={handleFilterChange}
+                                    onReset={handleResetFilters}
+                                />
 
-                    {/* Muestra skeleton solo en carga INICIAL */}
-                    {isLoading && filteredTransactions.length === 0 ? (
-                        <TableSkeleton columns={tableColumns} rowCount={5} /> // Usa tu variable tableColumns
-                    ) : error ? (
-                        <Card className="p-8 text-center"><p className="text-red-500">{error}</p></Card>
-                    ) : (
-                        // Pasa isRefreshing a la tabla para feedback visual opcional
-                        <TransactionTable
-                            transactions={filteredTransactions}
-                            showApproveButton={false}
-                            onTransactionApproved={() => { }}
-                            onTransactionRejected={() => { }}
-                            isRefreshing={isRefreshing}
-                            hideIdColumn={true} // Ocultar la columna ID
-                        />
-                    )}
-                </div>
-            </Card>
+                                <TransactionTable
+                                    transactions={filteredTransactions}
+                                    onRefresh={() => fetchTransactions(true)}
+                                    isRefreshing={isRefreshing}
+                                    isViewOnly={true}
+                                    hideIdColumn={true}
+                                />
+                            </>
+                        )}
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 }

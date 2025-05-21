@@ -57,7 +57,6 @@ export function TransferMonitoringContent() {
           throw new Error(`Error al obtener transacciones: ${response.status} - ${response.statusText}`);
         }
         const data = await response.json();
-        console.log('Datos recibidos del backend:', data);
 
         setTimeout(() => {
           setTransactions(data);
@@ -77,6 +76,9 @@ export function TransferMonitoringContent() {
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'Pending') {
       return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
+    }
+    if (status === 'Match MP') {
+      return <Badge className="bg-blue-100 text-blue-800">Match MP</Badge>;
     }
     if (status === 'Aceptado' || status === 'approved') {
       return <Badge className="bg-green-100 text-green-800">Aceptado</Badge>;

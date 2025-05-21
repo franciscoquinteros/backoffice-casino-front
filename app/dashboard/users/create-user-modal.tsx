@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -28,9 +28,10 @@ import { useSession } from "next-auth/react"
 interface CreateUserModalProps {
     onUserCreated: () => Promise<void>
     userType: 'internal' | 'external'
+    allowOfficeSelection?: boolean // Nueva prop para permitir selección de oficina
 }
 
-export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProps) {
+export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection = false }: CreateUserModalProps) {
     const [open, setOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const { data: session, status: sessionStatus } = useSession();
@@ -42,8 +43,16 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
         status: "active",
         password: "",
     })
-    // Ya no necesitamos el hook de oficinas
-    const { isLoading: isLoadingOffices } = useOffices()
+
+    // Usamos el hook de oficinas cuando se permite la selección de oficina (para SuperAdmin)
+    const { offices, isLoading: isLoadingOffices } = useOffices()
+
+    // Inicializar oficina del usuario al abrir el modal
+    useEffect(() => {
+        if (session?.user?.officeId && !allowOfficeSelection) {
+            setFormData(prev => ({ ...prev, office: session.user.officeId }))
+        }
+    }, [session?.user?.officeId, allowOfficeSelection])
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -92,7 +101,7 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
                     username: "",
                     email: "",
                     role: "",
-                    office: "",
+                    office: allowOfficeSelection ? "" : (session?.user?.officeId || ""),
                     status: "active",
                     password: "",
                 })
@@ -198,12 +207,36 @@ export function CreateUserModal({ onUserCreated, userType }: CreateUserModalProp
                             <Label htmlFor="office" className="text-right">
                                 Oficina
                             </Label>
-                            <Input
-                                id="office"
-                                className="col-span-3"
-                                value={session?.user?.officeId || ""}
-                                disabled
-                            />
+                            {allowOfficeSelection ? (
+                                // Select de oficinas para SuperAdmin
+                                <Select
+                                    value={formData.office}
+                                    onValueChange={(value) => handleChange("office", value)}
+                                >
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder={isLoadingOffices ? "Cargando..." : "Seleccionar oficina"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {isLoadingOffices ? (
+                                            <SelectItem value="" disabled>Cargando oficinas...</SelectItem>
+                                        ) : (
+                                            offices?.map((office) => (
+                                                <SelectItem key={office.id} value={office.id}>
+                                                    {office.name} ({office.id})
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                // Input deshabilitado para usuarios normales
+                                <Input
+                                    id="office"
+                                    className="col-span-3"
+                                    value={session?.user?.officeId || ""}
+                                    disabled
+                                />
+                            )}
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="status" className="text-right">

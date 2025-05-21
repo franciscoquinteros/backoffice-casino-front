@@ -5,15 +5,19 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEffect } from 'react'
 
 export default function DashboardPage() {
-  const { isLoading } = useAuth()
-  
+  const { isLoading, isSuperAdmin } = useAuth()
+
   useEffect(() => {
     if (!isLoading) {
-      // Redirect all users to chat page
-      redirect("/dashboard/chat")
+      // Redirect superadmins to super dashboard, others to chat
+      if (isSuperAdmin) {
+        redirect("/dashboard/super")
+      } else {
+        redirect("/dashboard/chat")
+      }
     }
-  }, [isLoading])
-  
+  }, [isLoading, isSuperAdmin])
+
   // Show nothing while determining where to redirect
   return null
 }

@@ -29,8 +29,8 @@ export function useAuth(requireAuth = true) {
 
   const logout = async () => {
     try {
-      // Mostrar un indicador de carga
-      toast.loading('Cerrando sesión...');
+      // Mostrar un indicador de carga con un ID único
+      const loadingToastId = toast.loading('Cerrando sesión...');
 
       // Llamar a signOut con redirect: false para manejar la redirección manualmente
       await signOut({
@@ -40,13 +40,16 @@ export function useAuth(requireAuth = true) {
       // Limpiar cualquier estado local si es necesario
       localStorage.removeItem('user-preferences');
 
-      // Mostrar toast de éxito
+      // Descartar el toast de carga y mostrar toast de éxito
+      toast.dismiss(loadingToastId);
       toast.success('Sesión cerrada correctamente');
 
       // Redirigir al login - usamos router.push que es más confiable
       router.push('/auth/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      // Descartar cualquier toast de carga pendiente
+      toast.dismiss();
       toast.error('Error al cerrar sesión');
       // Intentar redirección incluso en caso de error
       router.push('/auth/login');
