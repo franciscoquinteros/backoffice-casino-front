@@ -63,13 +63,25 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             let aValue = a[key];
             let bValue = b[key];
 
+            // Si ambos valores son undefined o null, considerarlos iguales
+            if ((aValue === undefined || aValue === null) &&
+                (bValue === undefined || bValue === null)) return 0;
+
+            // Si solo aValue es undefined o null, considerarlo menor
+            if (aValue === undefined || aValue === null) return direction === 'asc' ? -1 : 1;
+
+            // Si solo bValue es undefined o null, considerarlo menor
+            if (bValue === undefined || bValue === null) return direction === 'asc' ? 1 : -1;
+
             // Manejar fechas
             if (key === 'date_created' && aValue && bValue) {
-                aValue = new Date(aValue).getTime();
-                bValue = new Date(bValue).getTime();
+                // Crear variables temporales para los timestamps
+                const aTime = new Date(aValue).getTime();
+                const bTime = new Date(bValue).getTime();
+                return direction === 'asc' ? aTime - bTime : bTime - aTime;
             }
 
-            // Comparación
+            // Ya sabemos que ambos valores están definidos, podemos comparar con seguridad
             if (aValue < bValue) return direction === 'asc' ? -1 : 1;
             if (aValue > bValue) return direction === 'asc' ? 1 : -1;
             return 0;
