@@ -39,7 +39,7 @@ export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection 
         username: "",
         email: "",
         role: "",
-        office: session?.user?.officeId || "",
+        office: session?.user?.officeId ? session.user.officeId.toString() : "",
         status: "active",
         password: "",
     })
@@ -50,7 +50,7 @@ export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection 
     // Inicializar oficina del usuario al abrir el modal
     useEffect(() => {
         if (session?.user?.officeId && !allowOfficeSelection) {
-            setFormData(prev => ({ ...prev, office: session.user.officeId }))
+            setFormData(prev => ({ ...prev, office: session.user.officeId.toString() }))
         }
     }, [session?.user?.officeId, allowOfficeSelection])
 
@@ -101,7 +101,7 @@ export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection 
                     username: "",
                     email: "",
                     role: "",
-                    office: allowOfficeSelection ? "" : (session?.user?.officeId || ""),
+                    office: allowOfficeSelection ? "" : (session?.user?.officeId ? session.user.officeId.toString() : ""),
                     status: "active",
                     password: "",
                 })
@@ -221,7 +221,7 @@ export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection 
                                             <SelectItem value="" disabled>Cargando oficinas...</SelectItem>
                                         ) : (
                                             offices?.map((office) => (
-                                                <SelectItem key={office.id} value={office.id}>
+                                                <SelectItem key={office.id} value={office.id.toString()}>
                                                     {office.name} ({office.id})
                                                 </SelectItem>
                                             ))
@@ -233,7 +233,7 @@ export function CreateUserModal({ onUserCreated, userType, allowOfficeSelection 
                                 <Input
                                     id="office"
                                     className="col-span-3"
-                                    value={session?.user?.officeId || ""}
+                                    value={session?.user?.officeId ? session.user.officeId.toString() : ""}
                                     disabled
                                 />
                             )}

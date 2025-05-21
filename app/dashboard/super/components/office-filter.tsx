@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface OfficeOption {
-    id: string;
+    id: number | string;
     name: string;
 }
 
@@ -67,7 +67,7 @@ export default function OfficeFilter({ onChange, selectedOffice }: OfficeFilterP
                 <SelectContent>
                     <SelectItem value="all">Todas las Oficinas</SelectItem>
                     {offices.map((office) => (
-                        <SelectItem key={office.id} value={office.id}>
+                        <SelectItem key={office.id} value={office.id.toString()}>
                             {office.name} ({office.id})
                         </SelectItem>
                     ))}
