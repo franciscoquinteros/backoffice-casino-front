@@ -24,7 +24,8 @@ import {
   ChevronRight,
   Check,
   X,
-  UserIcon
+  UserIcon,
+  RefreshCcw
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
@@ -40,6 +41,7 @@ interface TransactionTableProps {
   isRefreshing?: boolean;
   hideIdColumn?: boolean;
   onRefresh?: () => void;
+  isViewOnly?: boolean;
 }
 
 export function TransactionTable({
@@ -49,6 +51,8 @@ export function TransactionTable({
   onTransactionRejected,
   isRefreshing = false,
   hideIdColumn = false,
+  onRefresh,
+  isViewOnly = false,
 }: TransactionTableProps) {
   const { data: session } = useSession();
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
@@ -694,6 +698,18 @@ export function TransactionTable({
     <>
       <Card className={isRefreshing ? "opacity-70 transition-opacity" : ""}>
         <div className="flex justify-between p-4">
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCcw className="h-4 w-4" />
+              <span>Actualizar</span>
+            </Button>
+          )}
           {isRefreshing && (
             <div className="flex items-center">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -759,7 +775,7 @@ export function TransactionTable({
               </TableHead>
               <TableHead>CBU/Cuenta</TableHead>
               <TableHead>Nombre Cuenta</TableHead>
-              {showApproveButton && <TableHead>Acciones</TableHead>}
+              {showApproveButton && !isViewOnly && <TableHead>Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -799,7 +815,7 @@ export function TransactionTable({
                 <TableCell>
                   {getAccountNameDisplay(transaction)}
                 </TableCell>
-                {showApproveButton && (
+                {showApproveButton && !isViewOnly && (
                   <TableCell>
                     {transaction.status === 'Pending' ? (
                       <div className="flex space-x-2">
