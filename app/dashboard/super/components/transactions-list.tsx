@@ -134,12 +134,13 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
         try {
             // Asegurar que la transacción tenga una fecha de creación válida
-            const processedTransaction: Transaction = {
+            const processedTransaction = {
                 ...transaction,
-                // Si date_created es undefined, usar dateCreated o fecha actual
+                // date_created nunca debe ser undefined sino una cadena de texto
                 date_created: transaction.date_created ||
                     (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
-                        new Date().toISOString())
+                        transaction.dateCreated instanceof Date ? transaction.dateCreated.toISOString() :
+                            new Date().toISOString())
             };
 
             const result = await transactionService.approveTransaction(processedTransaction, session.accessToken);
@@ -169,12 +170,13 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
         try {
             // Asegurar que la transacción tenga una fecha de creación válida
-            const processedTransaction: Transaction = {
+            const processedTransaction = {
                 ...transaction,
-                // Si date_created es undefined, usar dateCreated o fecha actual
+                // date_created nunca debe ser undefined sino una cadena de texto
                 date_created: transaction.date_created ||
                     (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
-                        new Date().toISOString())
+                        transaction.dateCreated instanceof Date ? transaction.dateCreated.toISOString() :
+                            new Date().toISOString())
             };
 
             await transactionService.rejectTransaction(processedTransaction, session.accessToken);

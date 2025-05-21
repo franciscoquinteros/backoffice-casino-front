@@ -17,7 +17,7 @@ export interface Transaction {
     office?: string;
     accountName?: string;
     // Propiedades opcionales específicas
-    date_created?: string;
+    date_created: string;
     account_name?: string;
     external_reference?: string;
     reference_transaction?: string;
@@ -77,7 +77,23 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
             }
 
             const data = await response.json();
-            setTransactions(data);
+
+            // Asegurarnos de que todas las transacciones tengan date_created
+            const processedData = data.map((transaction: any) => {
+                if (!transaction.date_created) {
+                    // Si no existe date_created, establecerlo en base a otras propiedades disponibles
+                    transaction.date_created =
+                        transaction.dateCreated ||
+                        transaction.createdAt ||
+                        transaction.created_at ||
+                        transaction.updatedAt ||
+                        transaction.updated_at ||
+                        new Date().toISOString();
+                }
+                return transaction;
+            });
+
+            setTransactions(processedData);
             setError(null);
         } catch (err) {
             console.error('Error al obtener transacciones:', err);
