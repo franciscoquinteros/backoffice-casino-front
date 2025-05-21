@@ -133,7 +133,16 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         setProcessingId(transaction.id);
 
         try {
-            const result = await transactionService.approveTransaction(transaction, session.accessToken);
+            // Asegurar que la transacción tenga una fecha de creación válida
+            const processedTransaction: Transaction = {
+                ...transaction,
+                // Si date_created es undefined, usar dateCreated o fecha actual
+                date_created: transaction.date_created ||
+                    (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
+                        new Date().toISOString())
+            };
+
+            const result = await transactionService.approveTransaction(processedTransaction, session.accessToken);
 
             if (result.success) {
                 toast.success("Transacción aprobada exitosamente");
@@ -159,7 +168,16 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         setProcessingId(transaction.id);
 
         try {
-            await transactionService.rejectTransaction(transaction, session.accessToken);
+            // Asegurar que la transacción tenga una fecha de creación válida
+            const processedTransaction: Transaction = {
+                ...transaction,
+                // Si date_created es undefined, usar dateCreated o fecha actual
+                date_created: transaction.date_created ||
+                    (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
+                        new Date().toISOString())
+            };
+
+            await transactionService.rejectTransaction(processedTransaction, session.accessToken);
             toast.success("Transacción rechazada exitosamente");
             await refetch();
         } catch (error) {
