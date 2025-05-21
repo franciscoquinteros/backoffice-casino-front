@@ -41,16 +41,26 @@ export default function ChatsList({ filters }: ChatsListProps) {
         if (!sortConfig) return 0;
 
         const { key, direction } = sortConfig;
-        let aValue = a[key];
-        let bValue = b[key];
+        const aValue = a[key];
+        const bValue = b[key];
 
-        // Manejar fechas
+        // Si ambos valores son undefined, considerarlos iguales
+        if (aValue === undefined && bValue === undefined) return 0;
+
+        // Si solo aValue es undefined, considerarlo menor
+        if (aValue === undefined) return direction === 'asc' ? -1 : 1;
+
+        // Si solo bValue es undefined, considerarlo menor
+        if (bValue === undefined) return direction === 'asc' ? 1 : -1;
+
+        // Manejar fechas - usar variables temporales para almacenar los timestamps
         if ((key === 'createdAt' || key === 'updatedAt') && aValue && bValue) {
-            aValue = new Date(aValue).getTime();
-            bValue = new Date(bValue).getTime();
+            const aTime = new Date(aValue).getTime();
+            const bTime = new Date(bValue).getTime();
+            return direction === 'asc' ? aTime - bTime : bTime - aTime;
         }
 
-        // Comparación
+        // Comparación para otros tipos de valores
         if (aValue < bValue) return direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return direction === 'asc' ? 1 : -1;
         return 0;
