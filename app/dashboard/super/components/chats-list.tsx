@@ -36,6 +36,21 @@ export default function ChatsList({ filters }: ChatsListProps) {
         direction: 'asc' | 'desc';
     } | null>(null);
 
+    // Función auxiliar para obtener un timestamp de forma segura
+    const getTimestamp = (value: any): number => {
+        // Solo tratar como fecha si es string, Date o number
+        if (value instanceof Date) {
+            return value.getTime();
+        }
+
+        if (typeof value === 'string' || typeof value === 'number') {
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? 0 : date.getTime();
+        }
+
+        return 0; // Valor por defecto para cualquier otro tipo
+    };
+
     // Función para ordenar conversaciones
     const sortedConversations = [...filteredConversations].sort((a, b) => {
         if (!sortConfig) return 0;
@@ -53,10 +68,10 @@ export default function ChatsList({ filters }: ChatsListProps) {
         // Si solo bValue es undefined, considerarlo menor
         if (bValue === undefined) return direction === 'asc' ? 1 : -1;
 
-        // Manejar fechas - usar variables temporales para almacenar los timestamps
-        if ((key === 'createdAt' || key === 'updatedAt') && aValue && bValue) {
-            const aTime = new Date(aValue).getTime();
-            const bTime = new Date(bValue).getTime();
+        // Manejar fechas usando la función auxiliar
+        if (key === 'createdAt' || key === 'updatedAt') {
+            const aTime = getTimestamp(aValue);
+            const bTime = getTimestamp(bValue);
             return direction === 'asc' ? aTime - bTime : bTime - aTime;
         }
 
