@@ -184,7 +184,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketInstance.off('newMessage', onNewMessage);
       socketInstance.disconnect();
     };
-  }, [user, agentId, agentName, agentRole, hasAuthorizedRole, isSuperadmin, connectionAttempts, disableSocketForSuperadmin]);
+  }, [user, agentId, agentName, agentRole, hasAuthorizedRole, isSuperadmin, connectionAttempts, disableSocketForSuperadmin, isConnected]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

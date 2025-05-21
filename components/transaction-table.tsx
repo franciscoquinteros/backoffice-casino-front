@@ -49,7 +49,6 @@ export function TransactionTable({
   onTransactionRejected,
   isRefreshing = false,
   hideIdColumn = false,
-  onRefresh
 }: TransactionTableProps) {
   const { data: session } = useSession();
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
@@ -58,9 +57,7 @@ export function TransactionTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [normalizedTransactions, setNormalizedTransactions] = useState<Transaction[]>([]);
-  const [modalTransaction, setModalTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [users, setUsers] = useState<{ id: string; username?: string; email?: string }[]>([]);
   const [accountNameCache, setAccountNameCache] = useState<Record<string, string>>({});
   const [loadingAccountNames, setLoadingAccountNames] = useState<Record<string, boolean>>({});
   const [failedAccountNameFetches, setFailedAccountNameFetches] = useState<Set<string | number>>(new Set());
@@ -349,9 +346,8 @@ export function TransactionTable({
         return 'No disponible';
       }
       return date.toLocaleString('es-AR');
-    } catch (e) {
-      console.error("Error formateando fecha:", e, "Valor recibido:", dateString);
-      return 'No disponible';
+    } catch (_) {
+      return 'Error de formato';
     }
   };
 
@@ -438,7 +434,7 @@ export function TransactionTable({
         } else {
           return 'Fecha inválida';
         }
-      } catch (e) {
+      } catch (_) {
         return 'Error de formato';
       }
     }
@@ -462,7 +458,6 @@ export function TransactionTable({
       }
 
       const data = await response.json();
-      setUsers(data || []);
     } catch (fetchError) {
       console.error('Error al obtener usuarios:', fetchError);
       toast.error('No se pudieron cargar los usuarios');
@@ -624,7 +619,7 @@ export function TransactionTable({
         setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
         return null;
       }
-    } catch (error) {
+    } catch (_) {
       // Error de red o de otro tipo - podría ser temporal
       // No marcamos como fallido permanentemente para poder reintentar
       return null;
@@ -900,11 +895,7 @@ export function TransactionTable({
           <DialogHeader>
             <DialogTitle>Detalles de la transacción</DialogTitle>
           </DialogHeader>
-          {modalTransaction && (
-            <div className="grid gap-4">
-              {/* ... existing modal content ... */}
-            </div>
-          )}
+          {/* ... existing modal content ... */}
         </DialogContent>
       </Dialog>
     </>
