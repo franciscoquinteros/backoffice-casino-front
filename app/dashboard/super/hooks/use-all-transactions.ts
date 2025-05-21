@@ -79,18 +79,23 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
             const data = await response.json();
 
             // Asegurarnos de que todas las transacciones tengan date_created
-            const processedData = data.map((transaction: any) => {
+            const processedData = data.map((transaction: Partial<Transaction> & {
+                createdAt?: string;
+                created_at?: string;
+                updatedAt?: string;
+                updated_at?: string;
+            }) => {
                 if (!transaction.date_created) {
                     // Si no existe date_created, establecerlo en base a otras propiedades disponibles
                     transaction.date_created =
-                        transaction.dateCreated ||
+                        transaction.dateCreated as string ||
                         transaction.createdAt ||
                         transaction.created_at ||
                         transaction.updatedAt ||
                         transaction.updated_at ||
                         new Date().toISOString();
                 }
-                return transaction;
+                return transaction as Transaction;
             });
 
             setTransactions(processedData);
