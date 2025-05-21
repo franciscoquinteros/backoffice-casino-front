@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate } from "@/lib/utils";
 import { useAllUsers, UserFilters, User } from "../hooks/use-all-users";
 import { Pagination } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,7 +44,7 @@ interface UsersListProps {
 
 export default function UsersList({ filters }: UsersListProps) {
     // Usar el hook personalizado para obtener usuarios con filtros
-    const { filteredUsers, isLoading, error, refetch } = useAllUsers(filters);
+    const { filteredUsers, isLoading, error } = useAllUsers(filters);
 
     // Estados para paginación
     const [currentPage, setCurrentPage] = useState(1);

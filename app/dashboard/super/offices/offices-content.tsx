@@ -17,11 +17,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
 import { SkeletonLoader } from "@/components/skeleton-loader";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useSession } from "next-auth/react";
 import { useOffices, Office } from "@/components/hooks/use-offices";
 import { CreateOfficeModal } from "../../office-configuration/create-office-modal";
 import { EditOfficeModal } from "../../office-configuration/edit-office-modal";
@@ -31,7 +29,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export function OfficesContent() {
     // Utilizamos el hook useOffices para obtener los datos
     const { offices, isLoading, error, refreshOffices } = useOffices();
-    const { data: session } = useSession();
 
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);

@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import { RoleGuard } from '@/components/role-guard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SuperDashboardSkeleton from './components/super-dashboard-skeleton';
 import SuperDashboardContent from './components/super-dashboard-content';
 

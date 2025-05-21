@@ -132,8 +132,8 @@ class TransactionService {
         // Para transacciones no Bank Transfer (como IPN)
         if (tx.description !== 'Bank Transfer') {
           // Si viene accountName pero no account_name, asignar el valor
-          if ((tx as any).accountName && !tx.account_name) {
-            processedTx.account_name = (tx as any).accountName;
+          if ((tx as { accountName?: string }).accountName && !tx.account_name) {
+            processedTx.account_name = (tx as { accountName?: string }).accountName;
           }
 
           // Para cualquier transacción sin account_name, asignar un valor por defecto

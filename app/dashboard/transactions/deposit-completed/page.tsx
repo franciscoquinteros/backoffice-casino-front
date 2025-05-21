@@ -8,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
 import { Transaction, TransactionFilter as TransactionFilterType, transactionService } from '@/components/transaction-service';
-import { TableSkeleton, type ColumnConfig } from '@/components/ui/table-skeleton';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -24,9 +23,6 @@ export default function DepositsCompletedPage() {
     const [isLoading, setIsLoading] = useState(true); // Carga inicial
     const [isRefreshing, setIsRefreshing] = useState(false); // Carga en segundo plano (intervalo/manual)
     const [error, setError] = useState<string | null>(null);
-
-    // --- Columnas para Skeleton ---
-    const tableColumns: ColumnConfig[] = [ /* ... tu config ... */];
 
     // --- fetchTransactions CORREGIDO ---
     const fetchTransactions = useCallback(async (isRefresh = false) => { // Cambiado nombre de flag para claridad

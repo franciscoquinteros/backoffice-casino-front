@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // Importación necesaria para anular el layout padre
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function SuperDashboardLayout({
@@ -21,7 +21,6 @@ export default function SuperDashboardLayout({
     const { isLoading, isAuthenticated, user, logout, isSuperAdmin } = useAuth(true)
     const { setTheme, theme } = useTheme()
     const router = useRouter()
-    const pathname = usePathname()
 
     // Redirigir si no es superadmin
     useEffect(() => {

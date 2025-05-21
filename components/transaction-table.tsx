@@ -463,8 +463,8 @@ export function TransactionTable({
 
       const data = await response.json();
       setUsers(data || []);
-    } catch (error) {
-      console.error('Error al obtener usuarios:', error);
+    } catch (fetchError) {
+      console.error('Error al obtener usuarios:', fetchError);
       toast.error('No se pudieron cargar los usuarios');
     }
   }, [session?.accessToken, session?.user?.officeId]);
@@ -473,51 +473,6 @@ export function TransactionTable({
   useEffect(() => {
     fetchOfficeUsers();
   }, [fetchOfficeUsers]);
-
-  // Función para asignar un usuario a una transacción
-  const assignUserToTransaction = async (transactionId: string, userId: string) => {
-    if (!session?.accessToken) {
-      toast.error('No hay sesión activa');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${transactionId}/assign/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('No se pudo asignar el usuario');
-      }
-
-      const result = await response.json();
-      toast.success('Usuario asignado correctamente');
-
-      // Actualizar la lista de transacciones
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error('Error al asignar usuario:', error);
-      toast.error('No se pudo asignar el usuario');
-    }
-  };
-
-  // Función para mostrar los detalles de una transacción
-  const handleShowDetails = (transaction: Transaction) => {
-    setModalTransaction(transaction);
-    setIsModalOpen(true);
-  };
-
-  // Función para obtener el nombre de usuario
-  const getUserName = (userId: string) => {
-    const user = users.find(u => u.id.toString() === userId.toString());
-    return user ? user.username || user.email || 'Usuario' : 'Usuario';
-  };
 
   const renderStatusBadge = (status: string, transaction: Transaction) => {
     if (!status) return (

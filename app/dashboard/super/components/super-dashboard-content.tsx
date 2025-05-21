@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
     RefreshCw,
     Search,
-    Filter,
-    ArrowUpDown,
-    DownloadCloud,
-    Calendar
+    DownloadCloud
 } from 'lucide-react';
 import OfficeFilter from './office-filter';
 import TransactionsList from './transactions-list';
