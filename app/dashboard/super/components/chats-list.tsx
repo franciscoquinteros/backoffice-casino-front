@@ -26,6 +26,10 @@ interface ChatsListProps {
     filters: ChatFilters;
 }
 
+// Agregar un tipo más específico para los valores de fecha
+// Justo antes de la función getTimestamp
+type DateValue = Date | string | number | unknown;
+
 export default function ChatsList({ filters }: ChatsListProps) {
     // Usar el hook personalizado para obtener conversaciones con filtros
     const { filteredConversations, isLoading, error } = useAllChats(filters);
@@ -37,7 +41,7 @@ export default function ChatsList({ filters }: ChatsListProps) {
     } | null>(null);
 
     // Función auxiliar para obtener un timestamp de forma segura
-    const getTimestamp = (value: any): number => {
+    const getTimestamp = (value: DateValue): number => {
         // Solo tratar como fecha si es string, Date o number
         if (value instanceof Date) {
             return value.getTime();
