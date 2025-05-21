@@ -222,14 +222,15 @@ class TransactionService {
     let filtered;
 
     if (status === 'Aceptado') {
-      // Para páginas "Completados", mostrar tanto aceptadas como rechazadas
+      // Para páginas "Completados", mostrar tanto aceptadas como rechazadas y Match MP
       // Sin incluir las transacciones "Bank Transfer" que ahora van en Depósitos Directos
       filtered = transactions.filter(tx =>
         tx.type === type &&
         (
           tx.status === 'Aceptado' ||
           tx.status === 'approved' ||
-          tx.status === 'Rechazado'
+          tx.status === 'Rechazado' ||
+          tx.status === 'Match MP'
           // Ya no incluimos (tx.status === 'Pending' && tx.description === 'Bank Transfer')
         )
       );

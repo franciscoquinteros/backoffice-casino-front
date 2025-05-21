@@ -134,23 +134,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
           setDisableSocketForSuperadmin(true);
         }
       }
-      // Para otros roles autorizados, mostrar error 
+      // Para otros roles autorizados, solo registrar en consola, sin mostrar toast
       else if (hasAuthorizedRole) {
-        toast.error(`Error de conexión: ${error.message}`);
+        console.log(`Error de conexión para ${agentRole}: ${error.message}`);
       }
     }
 
     function onDisconnect(reason: string) {
       setIsConnected(false);
 
-      // Para superadmin, manejar desconexiones de manera silenciosa
-      if (isSuperadmin) {
-        console.log('Superadmin: desconexión del socket, reintentando silenciosamente');
-      }
-      // Para otros roles, mostrar toast si es relevante
-      else if (reason !== 'io client disconnect' && hasAuthorizedRole) {
-        toast.error(`Se perdió la conexión con el servidor: ${reason}`);
-      }
+      // Manejar desconexiones de manera silenciosa para todos los roles
+      console.log(`Desconexión del socket (${agentRole}): ${reason}`);
     }
 
     // Handle new messages globally
