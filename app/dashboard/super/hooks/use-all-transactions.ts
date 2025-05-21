@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { PayerIdentification } from '@/components/transaction-service';
 
 // Tipos requeridos
 export interface Transaction {
@@ -24,7 +25,7 @@ export interface Transaction {
     payment_method_id?: string;
     payer_id?: string;
     payer_email?: string;
-    payer_identification?: string;
+    payer_identification?: PayerIdentification | string;
     receiver_id?: string;
     account_holder?: string;
     client_id?: string;
@@ -84,6 +85,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                 created_at?: string;
                 updatedAt?: string;
                 updated_at?: string;
+                payer_identification?: PayerIdentification | string;
             }) => {
                 if (!transaction.date_created) {
                     // Si no existe date_created, establecerlo en base a otras propiedades disponibles
@@ -95,6 +97,15 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                         transaction.updated_at ||
                         new Date().toISOString();
                 }
+
+                // Procesar payer_identification si existe y es una cadena
+                if (transaction.payer_identification && typeof transaction.payer_identification === 'string') {
+                    transaction.payer_identification = {
+                        type: 'DNI',
+                        number: transaction.payer_identification
+                    };
+                }
+
                 return transaction as Transaction;
             });
 

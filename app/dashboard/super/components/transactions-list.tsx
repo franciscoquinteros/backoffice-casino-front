@@ -133,6 +133,13 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         setProcessingId(transaction.id);
 
         try {
+            // Convertir el tipo de payer_identification si es necesario
+            const payerIdentification = transaction.payer_identification
+                ? (typeof transaction.payer_identification === 'string'
+                    ? { type: 'DNI', number: transaction.payer_identification }
+                    : transaction.payer_identification)
+                : undefined;
+
             // Asegurar que la transacción tenga una fecha de creación válida
             const processedTransaction = {
                 ...transaction,
@@ -140,7 +147,9 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                 date_created: transaction.date_created ||
                     (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
                         transaction.dateCreated instanceof Date ? transaction.dateCreated.toISOString() :
-                            new Date().toISOString())
+                            new Date().toISOString()),
+                // Reemplazar payer_identification con el formato correcto
+                payer_identification: payerIdentification
             };
 
             const result = await transactionService.approveTransaction(processedTransaction, session.accessToken);
@@ -169,6 +178,13 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         setProcessingId(transaction.id);
 
         try {
+            // Convertir el tipo de payer_identification si es necesario
+            const payerIdentification = transaction.payer_identification
+                ? (typeof transaction.payer_identification === 'string'
+                    ? { type: 'DNI', number: transaction.payer_identification }
+                    : transaction.payer_identification)
+                : undefined;
+
             // Asegurar que la transacción tenga una fecha de creación válida
             const processedTransaction = {
                 ...transaction,
@@ -176,7 +192,9 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                 date_created: transaction.date_created ||
                     (typeof transaction.dateCreated === 'string' ? transaction.dateCreated :
                         transaction.dateCreated instanceof Date ? transaction.dateCreated.toISOString() :
-                            new Date().toISOString())
+                            new Date().toISOString()),
+                // Reemplazar payer_identification con el formato correcto
+                payer_identification: payerIdentification
             };
 
             await transactionService.rejectTransaction(processedTransaction, session.accessToken);
