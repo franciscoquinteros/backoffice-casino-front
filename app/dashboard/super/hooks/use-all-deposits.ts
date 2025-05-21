@@ -76,10 +76,10 @@ export function useAllDeposits(filters: DepositFilters = {}) {
 
             const data = await response.json();
             // Filtramos solo los depósitos
-            const depositsOnly = data.filter(tx => tx.type === 'deposit');
+            const depositsOnly = data.filter((tx: { type: string }) => tx.type === 'deposit');
             setDeposits(depositsOnly);
             setError(null);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error al obtener depósitos:', err);
             setError(err instanceof Error ? err.message : 'Error al cargar depósitos');
             setDeposits([]);
@@ -101,18 +101,18 @@ export function useAllDeposits(filters: DepositFilters = {}) {
 
         // Filtrar por oficina
         if (filters.officeId) {
-            result = result.filter(dep => dep.office === filters.officeId);
+            result = result.filter((dep: Deposit) => dep.office === filters.officeId);
         }
 
         // Filtrar por estado
         if (filters.status) {
-            result = result.filter(dep => dep.status === filters.status);
+            result = result.filter((dep: Deposit) => dep.status === filters.status);
         }
 
         // Filtrar por fechas
         if (filters.date?.from) {
             const fromDate = new Date(filters.date.from);
-            result = result.filter(dep => {
+            result = result.filter((dep: Deposit) => {
                 const depDate = dep.dateCreated ? new Date(dep.dateCreated) : null;
                 return depDate && depDate >= fromDate;
             });
@@ -121,7 +121,7 @@ export function useAllDeposits(filters: DepositFilters = {}) {
         if (filters.date?.to) {
             const toDate = new Date(filters.date.to);
             toDate.setHours(23, 59, 59, 999); // Final del día
-            result = result.filter(dep => {
+            result = result.filter((dep: Deposit) => {
                 const depDate = dep.dateCreated ? new Date(dep.dateCreated) : null;
                 return depDate && depDate <= toDate;
             });
@@ -130,7 +130,7 @@ export function useAllDeposits(filters: DepositFilters = {}) {
         // Búsqueda de texto
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
-            result = result.filter(dep =>
+            result = result.filter((dep: Deposit) =>
                 (dep.id?.toString().toLowerCase().includes(searchLower)) ||
                 (dep.payerEmail?.toLowerCase().includes(searchLower)) ||
                 (dep.description?.toLowerCase().includes(searchLower)) ||

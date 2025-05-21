@@ -77,10 +77,10 @@ export function useAllWithdraws(filters: WithdrawFilters = {}) {
 
             const data = await response.json();
             // Filtramos solo los retiros
-            const withdrawsOnly = data.filter(tx => tx.type === 'withdraw');
+            const withdrawsOnly = data.filter((tx: { type: string }) => tx.type === 'withdraw');
             setWithdraws(withdrawsOnly);
             setError(null);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error al obtener retiros:', err);
             setError(err instanceof Error ? err.message : 'Error al cargar retiros');
             setWithdraws([]);
@@ -102,18 +102,18 @@ export function useAllWithdraws(filters: WithdrawFilters = {}) {
 
         // Filtrar por oficina
         if (filters.officeId) {
-            result = result.filter(withdraw => withdraw.office === filters.officeId);
+            result = result.filter((withdraw: Withdraw) => withdraw.office === filters.officeId);
         }
 
         // Filtrar por estado
         if (filters.status) {
-            result = result.filter(withdraw => withdraw.status === filters.status);
+            result = result.filter((withdraw: Withdraw) => withdraw.status === filters.status);
         }
 
         // Filtrar por fechas
         if (filters.date?.from) {
             const fromDate = new Date(filters.date.from);
-            result = result.filter(withdraw => {
+            result = result.filter((withdraw: Withdraw) => {
                 const withdrawDate = withdraw.dateCreated ? new Date(withdraw.dateCreated) : null;
                 return withdrawDate && withdrawDate >= fromDate;
             });
@@ -122,7 +122,7 @@ export function useAllWithdraws(filters: WithdrawFilters = {}) {
         if (filters.date?.to) {
             const toDate = new Date(filters.date.to);
             toDate.setHours(23, 59, 59, 999); // Final del día
-            result = result.filter(withdraw => {
+            result = result.filter((withdraw: Withdraw) => {
                 const withdrawDate = withdraw.dateCreated ? new Date(withdraw.dateCreated) : null;
                 return withdrawDate && withdrawDate <= toDate;
             });
@@ -131,7 +131,7 @@ export function useAllWithdraws(filters: WithdrawFilters = {}) {
         // Búsqueda de texto
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
-            result = result.filter(withdraw =>
+            result = result.filter((withdraw: Withdraw) =>
                 (withdraw.id?.toString().toLowerCase().includes(searchLower)) ||
                 (withdraw.walletAddress?.toLowerCase().includes(searchLower)) ||
                 (withdraw.description?.toLowerCase().includes(searchLower)) ||
