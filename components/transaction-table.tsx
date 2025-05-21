@@ -346,7 +346,7 @@ export function TransactionTable({
         return 'No disponible';
       }
       return date.toLocaleString('es-AR');
-    } catch (_) {
+    } catch {
       return 'Error de formato';
     }
   };
@@ -434,7 +434,7 @@ export function TransactionTable({
         } else {
           return 'Fecha inválida';
         }
-      } catch (_) {
+      } catch {
         return 'Error de formato';
       }
     }
@@ -457,7 +457,7 @@ export function TransactionTable({
         throw new Error('No se pudieron obtener los usuarios');
       }
 
-      const data = await response.json();
+      await response.json();
     } catch (fetchError) {
       console.error('Error al obtener usuarios:', fetchError);
       toast.error('No se pudieron cargar los usuarios');
@@ -619,7 +619,7 @@ export function TransactionTable({
         setFailedAccountNameFetches(prev => new Set([...prev, transactionId]));
         return null;
       }
-    } catch (_) {
+    } catch {
       // Error de red o de otro tipo - podría ser temporal
       // No marcamos como fallido permanentemente para poder reintentar
       return null;
