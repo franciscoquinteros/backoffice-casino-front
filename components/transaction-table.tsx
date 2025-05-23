@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -192,41 +192,65 @@ export function TransactionTable({
     });
   };
 
-  // Ordenar transacciones
-  const sortedTransactions = [...normalizedTransactions].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
+  // Ordenar transacciones usando useMemo para asegurar actualizaciones correctas
+  const sortedTransactions = useMemo(() => {
+    console.log(`🔄 [TransactionTable] Recalculando sortedTransactions. Total: ${normalizedTransactions.length}, ForceUpdate: ${forceUpdate}`);
 
-    if (aValue === bValue) return 0;
+    const sorted = [...normalizedTransactions].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
 
-    // Manejo para diferentes tipos de datos
-    if (sortField === 'date_created') {
-      // Usar updated_at si está disponible, sino usar date_created
-      const aDate = new Date(a.updated_at || a.date_created || '');
-      const bDate = new Date(b.updated_at || b.date_created || '');
+      if (aValue === bValue) return 0;
+
+      // Manejo para diferentes tipos de datos
+      if (sortField === 'date_created') {
+        // Usar updated_at si está disponible, sino usar date_created
+        const aDate = new Date(a.updated_at || a.date_created || '');
+        const bDate = new Date(b.updated_at || b.date_created || '');
+        return sortDirection === 'asc'
+          ? aDate.getTime() - bDate.getTime()
+          : bDate.getTime() - aDate.getTime();
+      }
+
+      // Para valores numéricos
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // Para strings
+      const aString = String(aValue || '').toLowerCase();
+      const bString = String(bValue || '').toLowerCase();
       return sortDirection === 'asc'
-        ? aDate.getTime() - bDate.getTime()
-        : bDate.getTime() - aDate.getTime();
-    }
+        ? aString.localeCompare(bString)
+        : bString.localeCompare(aString);
+    });
 
-    // Para valores numéricos
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    }
+    console.log(`✅ [TransactionTable] sortedTransactions calculadas. Primeras 3:`, sorted.slice(0, 3).map(tx => ({
+      id: tx.id,
+      status: tx.status
+    })));
 
-    // Para strings
-    const aString = String(aValue || '').toLowerCase();
-    const bString = String(bValue || '').toLowerCase();
-    return sortDirection === 'asc'
-      ? aString.localeCompare(bString)
-      : bString.localeCompare(aString);
-  });
+    return sorted;
+  }, [normalizedTransactions, sortField, sortDirection, forceUpdate]);
 
-  // Paginación
-  const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex);
+  // Paginación usando useMemo para asegurar actualizaciones correctas
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex);
+
+    console.log(`🔄 [TransactionTable] Paginación recalculada. Página ${currentPage}, Total páginas: ${totalPages}, Transacciones en página: ${paginatedTransactions.length}`);
+
+    return {
+      totalPages,
+      startIndex,
+      endIndex,
+      paginatedTransactions
+    };
+  }, [sortedTransactions, currentPage, itemsPerPage]);
+
+  const { totalPages, startIndex, endIndex, paginatedTransactions } = paginationData;
 
   // Cambia el campo de ordenamiento o la dirección
   const handleSort = (field: keyof Transaction) => {
@@ -873,77 +897,84 @@ export function TransactionTable({
           </TableHeader>
           <TableBody>
             {paginatedTransactions.map((transaction, index) => {
-              // Debug para ver qué se está renderizando
-              console.log(`🎨 [TransactionTable] Renderizando fila para TX ${transaction.id}: status="${transaction.status}"`);
+              // CRÍTICO: Buscar la transacción más actualizada de normalizedTransactions
+              const updatedTransaction = normalizedTransactions.find(tx => tx.id === transaction.id) || transaction;
+
+              // Debug crítico para ver qué estados estamos comparando
+              console.log(`🎨 [TransactionTable] Renderizando fila para TX ${transaction.id}:`);
+              console.log(`    - Estado original: "${transaction.status}"`);
+              console.log(`    - Estado actualizado: "${updatedTransaction.status}"`);
+              console.log(`    - ¿Son diferentes?: ${transaction.status !== updatedTransaction.status}`);
 
               // Crear una key más específica que incluya status, timestamp Y forceUpdate para forzar re-render
-              const specificKey = `${transaction.id}-${transaction.status}-${transaction.updated_at || transaction.date_created}-${forceUpdate}-${index}`;
+              const specificKey = `${updatedTransaction.id}-${updatedTransaction.status}-${updatedTransaction.updated_at || updatedTransaction.date_created}-${forceUpdate}-${index}`;
 
               return (
                 <TableRow key={specificKey} className="hover:bg-muted/50">
                   {!hideIdColumn && (
                     <TableCell className="font-medium w-[80px] whitespace-pre-line">
-                      {formatId(transaction.id)}
+                      {formatId(updatedTransaction.id)}
                     </TableCell>
                   )}
                   <TableCell>
-                    {transaction.idCliente || transaction.client_id ||
-                      (transaction.office ? `Oficina: ${transaction.office}` : 'No disponible')}
+                    {updatedTransaction.idCliente || updatedTransaction.client_id ||
+                      (updatedTransaction.office ? `Oficina: ${updatedTransaction.office}` : 'No disponible')}
                   </TableCell>
                   <TableCell>
-                    {getTransactionReference(transaction)}
+                    {getTransactionReference(updatedTransaction)}
                   </TableCell>
-                  <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
+                  <TableCell>{updatedTransaction.description || 'Sin descripción'}</TableCell>
                   <TableCell className="font-medium">
-                    {formatAmount(transaction.amount)}
+                    {formatAmount(updatedTransaction.amount)}
                   </TableCell>
                   <TableCell>
-                    {renderStatusBadge(transaction.status, transaction)}
+                    {/* CRÍTICO: Usar updatedTransaction.status para asegurar el estado más reciente */}
+                    {renderStatusBadge(updatedTransaction.status, updatedTransaction)}
                   </TableCell>
                   <TableCell>
-                    {getTransactionDate(transaction)}
+                    {getTransactionDate(updatedTransaction)}
                   </TableCell>
                   <TableCell>
-                    {transaction.description === 'Bank Transfer' ?
+                    {updatedTransaction.description === 'Bank Transfer' ?
                       '' // Mostrar guión para Bank Transfer
                       :
-                      transaction.payer_email ?
+                      updatedTransaction.payer_email ?
                         // Si hay payer_email, mostrarlo directamente con prioridad
-                        transaction.payer_email
+                        updatedTransaction.payer_email
                         :
                         // Si no hay payer_email, usar la función getTransactionAccount
-                        getTransactionAccount(transaction)
+                        getTransactionAccount(updatedTransaction)
                     }
                   </TableCell>
                   <TableCell>
-                    {getAccountNameDisplay(transaction)}
+                    {getAccountNameDisplay(updatedTransaction)}
                   </TableCell>
                   {showApproveButton && !isViewOnly && (
                     <TableCell>
-                      {transaction.status === 'Pending' ? (
+                      {updatedTransaction.status === 'Pending' ? (
                         <div className="flex space-x-2">
                           <Button
-                            onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }}
-                            disabled={processingId === transaction.id || isRefreshing}
+                            onClick={(e) => { e.stopPropagation(); handleApprove(updatedTransaction); }}
+                            disabled={processingId === updatedTransaction.id || isRefreshing}
                             size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
                           >
-                            {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                            <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
+                            {processingId === updatedTransaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                            <span className={processingId === updatedTransaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
                           </Button>
                           <Button
-                            onClick={(e) => { e.stopPropagation(); handleReject(transaction); }}
-                            disabled={processingId === transaction.id || isRefreshing}
+                            onClick={(e) => { e.stopPropagation(); handleReject(updatedTransaction); }}
+                            disabled={processingId === updatedTransaction.id || isRefreshing}
                             size="sm"
                             variant="destructive"
                             className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
                           >
-                            {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                            <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
+                            {processingId === updatedTransaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                            <span className={processingId === updatedTransaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
                           </Button>
                         </div>
                       ) : (
-                        renderStatusBadge(transaction.status, transaction)
+                        renderStatusBadge(updatedTransaction.status, updatedTransaction)
                       )}
                     </TableCell>
                   )}
