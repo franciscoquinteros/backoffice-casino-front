@@ -11,7 +11,7 @@ import {
 } from '@/components/transaction-service'; // Ajusta ruta si es necesario
 import { TableSkeleton } from '@/components/ui/table-skeleton'; // Ajusta ruta
 import { toast } from "sonner";
-import { TransactionTable } from '@/components/transaction-table2';
+import { TransactionTable } from '@/components/transaction-table';
 import { TransactionFilters } from '@/components/transaction-filters';
 
 

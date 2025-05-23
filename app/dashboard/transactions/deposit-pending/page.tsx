@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from "next-auth/react"; // <--- 1. Importa useSession
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TransactionTable } from '../../../../components/transaction-table-noquiero';
-import { TransactionFilters } from '../../../../components/transaction-filters';
+import { TransactionTable } from '@/components/transaction-table';
+import { TransactionFilters } from '@/components/transaction-filters';
 import {
     Transaction,
     TransactionFilter,
