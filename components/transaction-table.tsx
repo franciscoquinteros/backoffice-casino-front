@@ -549,40 +549,6 @@ export function TransactionTable({
       </Badge>
     );
 
-    // Para transacciones de tipo Bank Transfer ya aceptadas y que están en estado Pending
-    if (transaction.description === 'Bank Transfer' && status === 'Pending') {
-      const badge = (
-        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-          <UserIcon className="h-3 w-3" />
-          <span>Asignado</span>
-        </Badge>
-      );
-
-      // Si onStatusToggle está presente, hacer el badge con dropdown
-      if (onStatusToggle) {
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="cursor-pointer">
-                {badge}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                onClick={() => onStatusToggle(transaction)}
-                className="cursor-pointer"
-              >
-                <Clock className="h-3 w-3 mr-2" />
-                Cambiar a Pendiente
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
-
-      return badge;
-    }
-
     let badgeContent;
     if (status === 'Pending') {
       badgeContent = (
