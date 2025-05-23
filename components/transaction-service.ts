@@ -14,6 +14,7 @@ export interface Transaction {
   amount: number;
   status: string;
   date_created: string;
+  updated_at?: string;
   description: string;
   payment_method_id?: string;
   payer_email?: string;

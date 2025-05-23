@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { PayerIdentification } from '@/components/transaction-service';
+import { useOffices } from '@/components/hooks/use-offices';
 
 // Tipos requeridos
 export interface Transaction {
@@ -49,6 +50,7 @@ export interface TransactionFilters {
 
 export function useAllTransactions(filters: TransactionFilters = {}) {
     const { data: session } = useSession();
+    const { offices, isLoading: isLoadingOffices } = useOffices();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +111,25 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                 return transaction as Transaction;
             });
 
-            setTransactions(processedData);
+            // Obtener lista de IDs de oficinas válidas (registradas)
+            const validOfficeIds = new Set(offices.map(office => office.id.toString()));
+
+            // Filtrar las transacciones para excluir:
+            // 1. Las que tengan estado "Match" 
+            // 2. Las que no pertenezcan a oficinas registradas
+            const filteredData = processedData.filter(transaction => {
+                // Excluir transacciones con estado "Match"
+                if (transaction.status === 'Match') return false;
+
+                // Solo incluir transacciones de oficinas válidas/registradas
+                // Si no tiene oficina asignada o la oficina no existe, excluir
+                if (!transaction.office) return false;
+
+                return validOfficeIds.has(transaction.office.toString());
+            });
+
+            console.log(`Transacciones filtradas: ${processedData.length} -> ${filteredData.length} (solo oficinas registradas)`);
+            setTransactions(filteredData);
             setError(null);
         } catch (err) {
             console.error('Error al obtener transacciones:', err);
@@ -118,14 +138,14 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
         } finally {
             setIsLoading(false);
         }
-    }, [session?.accessToken]);
+    }, [session?.accessToken, offices]);
 
-    // Efecto para cargar transacciones al inicio
+    // Efecto para cargar transacciones al inicio y cuando cambien las oficinas
     useEffect(() => {
-        if (session?.accessToken) {
+        if (session?.accessToken && !isLoadingOffices) {
             fetchAllTransactions();
         }
-    }, [session?.accessToken, fetchAllTransactions]);
+    }, [session?.accessToken, fetchAllTransactions, isLoadingOffices]);
 
     // Función para aplicar filtros a las transacciones
     const applyFilters = useCallback(() => {
@@ -188,7 +208,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
     return {
         allTransactions: transactions,
         filteredTransactions,
-        isLoading,
+        isLoading: isLoading || isLoadingOffices,
         error,
         refetch: fetchAllTransactions
     };

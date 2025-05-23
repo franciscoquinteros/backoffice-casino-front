@@ -14,7 +14,6 @@ import OfficeFilter from './office-filter';
 import TransactionsList from './transactions-list';
 import UsersList from './users-list';
 import AccountsList from './accounts-list';
-import ChatsList from './chats-list';
 import { OfficesContent } from '../offices/offices-content';
 import {
     Select,
@@ -28,9 +27,8 @@ import {
 import { TransactionFilters } from '../hooks/use-all-transactions';
 import { UserFilters } from '../hooks/use-all-users';
 import { AccountFilters } from '../hooks/use-all-accounts';
-import { ChatFilters } from '../hooks/use-all-chats';
 
-import { useDashboardStats } from '../hooks/use-dashboard-stats';
+import { useDashboardStats, DateFilter } from '../hooks/use-dashboard-stats';
 import { formatCurrency } from '@/lib/utils';
 
 // Importamos las ventanas modales para crear usuarios y cuentas
@@ -44,6 +42,9 @@ export default function SuperDashboardContent() {
     // Estados para fechas de transacciones
     const [fromDate, setFromDate] = useState<string>('');
     const [toDate, setToDate] = useState<string>('');
+
+    // Estados para controlar refresh y loading
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
     // Estados para los demás filtros por sección
     const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({
@@ -67,12 +68,6 @@ export default function SuperDashboardContent() {
         search: null
     });
 
-    const [chatFilters, setChatFilters] = useState<ChatFilters>({
-        officeId: null,
-        status: null,
-        search: null
-    });
-
     // Estado para el término de búsqueda compartido
     const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -82,7 +77,6 @@ export default function SuperDashboardContent() {
         setTransactionFilters(prev => ({ ...prev, officeId }));
         setUserFilters(prev => ({ ...prev, officeId }));
         setAccountFilters(prev => ({ ...prev, officeId }));
-        setChatFilters(prev => ({ ...prev, officeId }));
     };
 
     // Función para aplicar filtros de búsqueda
@@ -103,9 +97,6 @@ export default function SuperDashboardContent() {
                 break;
             case 'accounts':
                 setAccountFilters(prev => ({ ...prev, search: searchTerm || null }));
-                break;
-            case 'chats':
-                setChatFilters(prev => ({ ...prev, search: searchTerm || null }));
                 break;
         }
     };
@@ -139,13 +130,6 @@ export default function SuperDashboardContent() {
                     search: null
                 });
                 break;
-            case 'chats':
-                setChatFilters({
-                    officeId: selectedOffice,
-                    status: null,
-                    search: null
-                });
-                break;
         }
         setSearchTerm('');
     };
@@ -163,6 +147,27 @@ export default function SuperDashboardContent() {
         // Aquí podrías tener una función para recargar los datos
     };
 
+    // Función para manejar el refresh de transacciones
+    const handleRefreshTransactions = () => {
+        setIsRefreshing(true);
+        // Force re-fetch by updating filters with a timestamp
+        setTransactionFilters(prev => ({
+            ...prev,
+            _refresh: Date.now()
+        } as any));
+        setTimeout(() => setIsRefreshing(false), 1000);
+    };
+
+    // Función para exportar transacciones
+    const handleExportTransactions = () => {
+        // Esta función será llamada desde el componente TransactionsList
+        // Trigger export by setting a flag
+        setTransactionFilters(prev => ({
+            ...prev,
+            _export: Date.now()
+        } as any));
+    };
+
     return (
         <div>
             {/* Selector de oficina global */}
@@ -174,7 +179,14 @@ export default function SuperDashboardContent() {
             </div>
 
             {/* Tabs para las diferentes secciones */}
-            <Tabs defaultValue="transactions" className="space-y-4">                <TabsList className="grid grid-cols-6 mb-4">                    <TabsTrigger value="transactions">Transacciones</TabsTrigger>                    <TabsTrigger value="users">Usuarios</TabsTrigger>                    <TabsTrigger value="accounts">Cuentas</TabsTrigger>                    <TabsTrigger value="chats">Chats</TabsTrigger>                    <TabsTrigger value="offices">Oficinas</TabsTrigger>                    <TabsTrigger value="reports">Reportes</TabsTrigger>                </TabsList>
+            <Tabs defaultValue="transactions" className="space-y-4">
+                <TabsList className="grid grid-cols-5 mb-4">
+                    <TabsTrigger value="transactions">Transacciones</TabsTrigger>
+                    <TabsTrigger value="users">Usuarios</TabsTrigger>
+                    <TabsTrigger value="accounts">Cuentas</TabsTrigger>
+                    <TabsTrigger value="offices">Oficinas</TabsTrigger>
+                    <TabsTrigger value="reports">Reportes</TabsTrigger>
+                </TabsList>
 
                 {/* Sección de Transacciones */}
                 <TabsContent value="transactions" className="space-y-4">
@@ -247,10 +259,11 @@ export default function SuperDashboardContent() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">Todos</SelectItem>
-                                                <SelectItem value="pending">Pendiente</SelectItem>
-                                                <SelectItem value="approved">Aprobado</SelectItem>
-                                                <SelectItem value="rejected">Rechazado</SelectItem>
-                                                <SelectItem value="processing">Procesando</SelectItem>
+                                                <SelectItem value="Pending">Pendiente</SelectItem>
+                                                <SelectItem value="Asignado">Asignado</SelectItem>
+                                                <SelectItem value="Aceptado">Aprobado</SelectItem>
+                                                <SelectItem value="Rechazado">Rechazado</SelectItem>
+                                                <SelectItem value="Match MP">Match MP</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -265,11 +278,16 @@ export default function SuperDashboardContent() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => resetFilters('transactions')}
+                                            onClick={handleRefreshTransactions}
+                                            disabled={isRefreshing}
                                         >
-                                            <RefreshCw className="h-4 w-4" />
+                                            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                                         </Button>
-                                        <Button variant="ghost" size="icon">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleExportTransactions}
+                                        >
                                             <DownloadCloud className="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -277,7 +295,7 @@ export default function SuperDashboardContent() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <TransactionsList filters={transactionFilters} />
+                            <TransactionsList filters={transactionFilters} onRefresh={handleRefreshTransactions} onExport={handleExportTransactions} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -439,76 +457,9 @@ export default function SuperDashboardContent() {
                     </Card>
                 </TabsContent>
 
-                {/* Sección de Chats */}
-                <TabsContent value="chats" className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                <div>
-                                    <CardTitle>Chats</CardTitle>
-                                    <CardDescription>
-                                        Monitoreo centralizado de todas las conversaciones de soporte
-                                    </CardDescription>
-                                </div>
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <div className="relative">
-                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Buscar chat..."
-                                            className="pl-8 w-full md:w-[250px]"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && applySearchFilter('chats')}
-                                        />
-                                    </div>
-                                    <Select
-                                        value={chatFilters.status || "all"}
-                                        onValueChange={(value) => setChatFilters((prev) => ({
-                                            ...prev,
-                                            status: value === "all" ? null : value as 'active' | 'closed'
-                                        }))}
-                                    >
-                                        <SelectTrigger className="w-[130px]">
-                                            <SelectValue placeholder="Estado" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todos</SelectItem>
-                                            <SelectItem value="active">Activos</SelectItem>
-                                            <SelectItem value="closed">Cerrados</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => applySearchFilter('chats')}
-                                        >
-                                            <Search className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => resetFilters('chats')}
-                                        >
-                                            <RefreshCw className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon">
-                                            <DownloadCloud className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <ChatsList filters={chatFilters} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 {/* Sección de Oficinas */}
                 <TabsContent value="offices" className="space-y-4">
                     <Card>
-
                         <CardContent>
                             <OfficesContent />
                         </CardContent>
@@ -548,7 +499,36 @@ export default function SuperDashboardContent() {
 }
 
 function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
-    const { stats, isLoading, error } = useDashboardStats(selectedOffice);
+    // Estados para los filtros de fecha
+    const [dateFilter, setDateFilter] = useState<DateFilter>({
+        period: 'month' // Por defecto, mostrar datos del mes
+    });
+    const [customFromDate, setCustomFromDate] = useState<string>('');
+    const [customToDate, setCustomToDate] = useState<string>('');
+
+    const { stats, isLoading, error } = useDashboardStats(selectedOffice, dateFilter);
+
+    // Función para manejar cambios en el período de tiempo
+    const handlePeriodChange = (period: 'day' | 'week' | 'month' | 'custom') => {
+        if (period === 'custom') {
+            setDateFilter({
+                period: 'custom',
+                from: customFromDate || null,
+                to: customToDate || null
+            });
+        } else {
+            setDateFilter({ period });
+        }
+    };
+
+    // Función para manejar cambios en las fechas personalizadas
+    const handleCustomDateChange = () => {
+        setDateFilter({
+            period: 'custom',
+            from: customFromDate || null,
+            to: customToDate || null
+        });
+    };
 
     // Función para exportar los datos de reportes a CSV
     const exportReportToCSV = () => {
@@ -565,14 +545,14 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
 
             // Datos globales
             csvContent += 'Tipo,Valor\n';
-            csvContent += `Transacciones Totales,${stats.totalAmount || 0}\n`;
+            csvContent += `Depósitos,${stats.deposits?.amount || 0}\n`;
+            csvContent += `Retiros,${stats.withdrawals?.amount || 0}\n`;
+            csvContent += `Total Neto,${stats.netTotal || 0}\n`;
             csvContent += `Número de Depósitos,${stats.deposits?.total || 0}\n`;
-            csvContent += `Monto de Depósitos,${stats.deposits?.amount || 0}\n`;
             csvContent += `Depósitos Aceptados,${stats.deposits?.accepted || 0}\n`;
             csvContent += `Depósitos Pendientes,${stats.deposits?.pending || 0}\n`;
             csvContent += `Depósitos Rechazados,${stats.deposits?.rejected || 0}\n`;
             csvContent += `Número de Retiros,${stats.withdrawals?.total || 0}\n`;
-            csvContent += `Monto de Retiros,${stats.withdrawals?.amount || 0}\n`;
             csvContent += `Retiros Aceptados,${stats.withdrawals?.accepted || 0}\n`;
             csvContent += `Retiros Pendientes,${stats.withdrawals?.pending || 0}\n`;
             csvContent += `Retiros Rechazados,${stats.withdrawals?.rejected || 0}\n`;
@@ -588,16 +568,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 });
             }
 
-            // Añadir actividad reciente
-            if (stats.recentActivity && stats.recentActivity.length > 0) {
-                csvContent += '\nActividad Reciente\n';
-                csvContent += 'Tipo,Monto,Estado,Fecha,Oficina\n';
 
-                stats.recentActivity.forEach((activity: { id: string; type: string; amount: number; status: string; date_created?: string | Date; office?: string }) => {
-                    const date = activity.date_created ? new Date(activity.date_created).toLocaleString('es-AR') : 'N/A';
-                    csvContent += `${activity.type},${activity.amount},${activity.status},${date},${activity.office || 'N/A'}\n`;
-                });
-            }
 
             // Crear blob y descargarlo
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -647,37 +618,61 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
         return `${sign}${value.toFixed(1)}%`;
     };
 
-    // Formatear fechas para mostrar
-    const formatDate = (dateStr?: string | Date) => {
-        if (!dateStr) return 'Desconocido';
-        const date = new Date(dateStr);
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
-    };
 
-    // Determinar el estatus de la transacción (texto y color)
-    const getStatusInfo = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'pending':
-                return { text: 'Pendiente', color: 'bg-yellow-500' };
-            case 'aceptado':
-                return { text: 'Aceptado', color: 'bg-green-500' };
-            case 'rechazado':
-                return { text: 'Rechazado', color: 'bg-red-500' };
-            default:
-                return { text: status, color: 'bg-blue-500' };
-        }
-    };
 
     // Renderizar contenido de estadísticas
     return (
         <div>
-            <div className="flex justify-end mb-4">
+            {/* Filtros de fecha y controles */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Período:</label>
+                        <Select
+                            value={dateFilter.period || 'month'}
+                            onValueChange={(value) => handlePeriodChange(value as 'day' | 'week' | 'month' | 'custom')}
+                        >
+                            <SelectTrigger className="w-[130px]">
+                                <SelectValue placeholder="Período" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="day">Hoy</SelectItem>
+                                <SelectItem value="week">Esta semana</SelectItem>
+                                <SelectItem value="month">Este mes</SelectItem>
+                                <SelectItem value="custom">Personalizado</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Filtros de fecha personalizada */}
+                    {dateFilter.period === 'custom' && (
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="date"
+                                value={customFromDate}
+                                onChange={(e) => setCustomFromDate(e.target.value)}
+                                className="w-[150px]"
+                                placeholder="Desde"
+                            />
+                            <span className="text-sm text-muted-foreground">hasta</span>
+                            <Input
+                                type="date"
+                                value={customToDate}
+                                onChange={(e) => setCustomToDate(e.target.value)}
+                                className="w-[150px]"
+                                placeholder="Hasta"
+                            />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCustomDateChange}
+                            >
+                                Aplicar
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
                 <Button
                     variant="outline"
                     size="sm"
@@ -689,22 +684,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Tarjeta: Transacciones Totales */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Transacciones Totales
-                            {selectedOffice && <span className="text-xs font-normal ml-1 text-muted-foreground">(Oficina)</span>}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(stats.totalAmount || 0)}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {formatPercentage(stats.monthlyTrend?.amountChange)} respecto al mes anterior
-                        </p>
-                    </CardContent>
-                </Card>
-
                 {/* Tarjeta: Depósitos */}
                 <Card>
                     <CardHeader className="pb-2">
@@ -714,7 +693,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(stats.deposits?.amount || 0)}</div>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.deposits?.amount || 0)}</div>
                         <div className="flex justify-between mt-1">
                             <p className="text-xs">{stats.deposits?.total || 0} operaciones</p>
                             <p className="text-xs">
@@ -735,7 +714,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(stats.withdrawals?.amount || 0)}</div>
+                        <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.withdrawals?.amount || 0)}</div>
                         <div className="flex justify-between mt-1">
                             <p className="text-xs">{stats.withdrawals?.total || 0} operaciones</p>
                             <p className="text-xs">
@@ -747,8 +726,28 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                     </CardContent>
                 </Card>
 
-                {/* Tarjeta: Ingresos por Oficina o Mensuales */}
-                <Card className="md:col-span-2">
+                {/* Tarjeta: Total (Depósitos - Retiros) */}
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">
+                            Total Neto
+                            {selectedOffice && <span className="text-xs font-normal ml-1 text-muted-foreground">(Oficina)</span>}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${(stats.netTotal || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(stats.netTotal || 0)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Depósitos - Retiros
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            {formatPercentage(stats.monthlyTrend?.amountChange)} respecto al mes anterior
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* Tarjeta: Ingresos por Oficina o Mensuales */}                <Card className="md:col-span-3">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">
                             {selectedOffice ? "Ingresos Mensuales" : "Ingresos por Oficina"}
@@ -844,49 +843,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                     </CardContent>
                 </Card>
 
-                {/* Tarjeta: Actividad Reciente */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Actividad Reciente
-                            {selectedOffice && <span className="text-xs font-normal ml-1 text-muted-foreground">(Oficina)</span>}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {stats.recentActivity && stats.recentActivity.length > 0 ? (
-                                stats.recentActivity.map((activity) => {
-                                    const statusInfo = getStatusInfo(activity.status);
-                                    return (
-                                        <div key={activity.id} className="flex items-center gap-4">
-                                            <div className={`w-2 h-2 ${statusInfo.color} rounded-full`}></div>
-                                            <div className="flex-1 space-y-1">
-                                                <p className="text-sm">
-                                                    {activity.type === 'deposit' ? 'Depósito' : 'Retiro'}: <span className="font-medium">{formatCurrency(activity.amount)}</span>
-                                                    {!selectedOffice && activity.office && <span className="text-xs ml-1 text-muted-foreground">(Oficina {activity.office})</span>}
-                                                </p>
-                                                <div className="flex justify-between">
-                                                    <p className="text-xs text-muted-foreground">{formatDate(activity.date_created)}</p>
-                                                    <p className="text-xs font-medium" style={{
-                                                        color: statusInfo.color === 'bg-green-500' ? 'rgb(22, 163, 74)' :
-                                                            statusInfo.color === 'bg-yellow-500' ? 'rgb(202, 138, 4)' :
-                                                                statusInfo.color === 'bg-red-500' ? 'rgb(220, 38, 38)' : 'inherit'
-                                                    }}>
-                                                        {statusInfo.text}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="text-center py-2 text-muted-foreground">
-                                    No hay actividad reciente
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+
             </div>
         </div>
     );

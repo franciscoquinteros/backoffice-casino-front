@@ -15,13 +15,17 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ArrowUpDown, Copy } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { useAllAccounts, AccountFilters, Account } from "../hooks/use-all-accounts";
 import { toast } from "sonner";
+import { EditTransferAccountModal } from "@/components/transfer-accounts/edit-transfer-account-modal";
+import { DeleteTransferAccountModal } from "@/components/transfer-accounts/delete-transfer-account-modal";
+import { TransferAccount } from "@/types/transfer-account";
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -37,13 +41,39 @@ interface AccountsListProps {
 
 export default function AccountsList({ filters }: AccountsListProps) {
     // Usar el hook personalizado para obtener cuentas con filtros
-    const { filteredAccounts, isLoading, error } = useAllAccounts(filters);
+    const { filteredAccounts, isLoading, error, refetch } = useAllAccounts(filters);
+
+    // Estados para los modales
+    const [editingAccount, setEditingAccount] = useState<TransferAccount | null>(null);
+    const [deletingAccount, setDeletingAccount] = useState<TransferAccount | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Estado para ordenación
     const [sortConfig, setSortConfig] = useState<{
         key: keyof Account;
         direction: 'asc' | 'desc';
     } | null>(null);
+
+    // Función para convertir Account a TransferAccount
+    const convertToTransferAccount = (account: Account): TransferAccount => {
+        return {
+            id: account.id.toString(),
+            userName: account.name,
+            office: account.office,
+            officeId: account.office, // Assuming office is the same as officeId
+            cbu: account.cbu,
+            alias: account.alias,
+            wallet: 'mercadopago',
+            operator: account.operator,
+            agent: account.agent || account.office, // fallback to office if agent is not available
+            isActive: account.status === 'active',
+            mp_client_id: account.mp_client_id,
+            mp_client_secret: account.mp_client_secret,
+            mp_public_key: account.mp_public_key,
+            mp_access_token: account.mp_access_token,
+            receiver_id: account.receiver_id,
+        };
+    };
 
     // Función para ordenar cuentas
     const sortedAccounts = [...filteredAccounts].sort((a, b) => {
@@ -103,6 +133,49 @@ export default function AccountsList({ filters }: AccountsListProps) {
         });
     };
 
+    // Función para manejar la edición de cuenta
+    const handleEdit = (account: Account) => {
+        const transferAccount = convertToTransferAccount(account);
+        setEditingAccount(transferAccount);
+    };
+
+    // Función para manejar la eliminación de cuenta
+    const handleDelete = (account: Account) => {
+        const transferAccount = convertToTransferAccount(account);
+        setDeletingAccount(transferAccount);
+        setIsDeleteModalOpen(true);
+    };
+
+    // Función para confirmar la edición
+    const handleEditConfirm = async (updatedAccount: TransferAccount) => {
+        try {
+            // TODO: Implementar API call para actualizar cuenta
+            console.log('Actualizando cuenta:', updatedAccount);
+            toast.success('Cuenta actualizada exitosamente');
+            await refetch(); // Recargar la lista
+        } catch (error) {
+            console.error('Error al actualizar cuenta:', error);
+            toast.error('Error al actualizar la cuenta');
+            throw error;
+        }
+    };
+
+    // Función para confirmar la eliminación
+    const handleDeleteConfirm = async () => {
+        if (!deletingAccount) return;
+
+        try {
+            // TODO: Implementar API call para eliminar cuenta
+            console.log('Eliminando cuenta:', deletingAccount);
+            toast.success('Cuenta eliminada exitosamente');
+            await refetch(); // Recargar la lista
+        } catch (error) {
+            console.error('Error al eliminar cuenta:', error);
+            toast.error('Error al eliminar la cuenta');
+            throw error;
+        }
+    };
+
     // Si está cargando, mostrar skeleton
     if (isLoading) {
         return (
@@ -159,11 +232,6 @@ export default function AccountsList({ filters }: AccountsListProps) {
                                 Operador <ArrowUpDown className="ml-1 h-4 w-4" />
                             </Button>
                         </TableHead>
-                        <TableHead>
-                            <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => handleSort('accumulatedAmount')}>
-                                Monto Acumulado <ArrowUpDown className="ml-1 h-4 w-4" />
-                            </Button>
-                        </TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -206,7 +274,6 @@ export default function AccountsList({ filters }: AccountsListProps) {
                                 </Badge>
                             </TableCell>
                             <TableCell>{account.operator}</TableCell>
-                            <TableCell>{account.accumulatedAmount !== undefined ? formatCurrency(account.accumulatedAmount) : 'N/A'}</TableCell>
                             <TableCell className="text-right">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -216,14 +283,18 @@ export default function AccountsList({ filters }: AccountsListProps) {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                                        <DropdownMenuItem>Ver transacciones</DropdownMenuItem>
-                                        {account.status === 'active' ? (
-                                            <DropdownMenuItem>Desactivar</DropdownMenuItem>
-                                        ) : (
-                                            <DropdownMenuItem>Activar</DropdownMenuItem>
-                                        )}
+                                        <DropdownMenuItem onClick={() => handleEdit(account)}>
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            <span>Editar</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => handleDelete(account)}
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Eliminar</span>
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
@@ -231,6 +302,23 @@ export default function AccountsList({ filters }: AccountsListProps) {
                     ))}
                 </TableBody>
             </Table>
+
+            {/* Modales */}
+            <EditTransferAccountModal
+                account={editingAccount}
+                onClose={() => setEditingAccount(null)}
+                onConfirm={handleEditConfirm}
+            />
+
+            <DeleteTransferAccountModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletingAccount(null);
+                }}
+                onConfirm={handleDeleteConfirm}
+                account={deletingAccount}
+            />
         </div>
     );
 } 

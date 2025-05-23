@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
+// Interfaz para filtros de fecha
+export interface DateFilter {
+    from?: string | null;
+    to?: string | null;
+    period?: 'day' | 'week' | 'month' | 'custom' | null;
+}
+
 // Interfaz para las estadísticas
 export interface DashboardStats {
     totalTransactions: number;
@@ -21,6 +28,8 @@ export interface DashboardStats {
         accepted: number;
         rejected: number;
     };
+    // Nuevo campo para el total neto (depósitos - retiros)
+    netTotal: number;
     byOffice: Record<string, {
         total: number;
         totalAmount: number;
@@ -28,14 +37,6 @@ export interface DashboardStats {
         withdrawals: number;
         depositsAmount: number;
         withdrawalsAmount: number;
-    }>;
-    recentActivity: Array<{
-        id: string;
-        type: string;
-        amount: number;
-        status: string;
-        date_created?: string | Date;
-        office?: string;
     }>;
     monthlyTrend: {
         currentMonth: {
@@ -51,7 +52,7 @@ export interface DashboardStats {
     };
 }
 
-export function useDashboardStats(officeId?: string | null) {
+export function useDashboardStats(officeId?: string | null, dateFilter?: DateFilter) {
     const { data: session } = useSession();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -70,9 +71,19 @@ export function useDashboardStats(officeId?: string | null) {
             console.log('Fetching dashboard stats with token:', session.accessToken);
 
             // Construir la URL según si hay un officeId o no
-            const url = officeId
+            let url = officeId
                 ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/stats/by-office/${officeId}`
                 : `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/stats/summary`;
+
+            // Agregar parámetros de fecha si existen
+            const params = new URLSearchParams();
+            if (dateFilter?.from) params.append('from', dateFilter.from);
+            if (dateFilter?.to) params.append('to', dateFilter.to);
+            if (dateFilter?.period) params.append('period', dateFilter.period);
+
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
 
             // Hacer la petición al endpoint
             const response = await fetch(url, {
@@ -87,7 +98,15 @@ export function useDashboardStats(officeId?: string | null) {
             }
 
             const data = await response.json();
-            setStats(data);
+
+            // Calcular el total neto (depósitos - retiros)
+            const netTotal = (data.deposits?.amount || 0) - (data.withdrawals?.amount || 0);
+            const statsWithNetTotal = {
+                ...data,
+                netTotal
+            };
+
+            setStats(statsWithNetTotal);
             setError(null);
         } catch (err) {
             console.error('Error al obtener estadísticas:', err);
@@ -96,14 +115,14 @@ export function useDashboardStats(officeId?: string | null) {
         } finally {
             setIsLoading(false);
         }
-    }, [session?.accessToken, officeId]);
+    }, [session?.accessToken, officeId, dateFilter]);
 
-    // Efecto para cargar estadísticas al inicio o cuando cambia la oficina seleccionada
+    // Efecto para cargar estadísticas al inicio o cuando cambia la oficina seleccionada o los filtros
     useEffect(() => {
         if (session?.accessToken) {
             fetchStats();
         }
-    }, [session?.accessToken, officeId, fetchStats]);
+    }, [session?.accessToken, officeId, dateFilter, fetchStats]);
 
     return {
         stats,

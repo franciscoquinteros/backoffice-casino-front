@@ -21,6 +21,7 @@ import {
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { Office } from "@/components/hooks/use-offices"
+import { useSession } from "next-auth/react"
 
 interface EditOfficeModalProps {
     office: Office | null;
@@ -36,6 +37,7 @@ interface OfficeFormData {
 
 export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }: EditOfficeModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const { data: session, status: sessionStatus } = useSession()
 
     const form = useForm({
         defaultValues: {
@@ -61,6 +63,11 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
             return
         }
 
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado.");
+            return;
+        }
+
         setIsLoading(true)
 
         try {
@@ -68,9 +75,20 @@ export function EditOfficeModal({ office, open, onOpenChange, onOfficeUpdated }:
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.accessToken}`,
                 },
                 body: JSON.stringify(data),
             })
+
+            if (response.status === 401) {
+                toast.error("Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.");
+                return;
+            }
+
+            if (response.status === 403) {
+                toast.error("No tienes permisos para editar esta oficina.");
+                return;
+            }
 
             if (response.ok) {
                 toast.success("Oficina actualizada exitosamente")

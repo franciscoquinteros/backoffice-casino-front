@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     Table,
     TableBody,
@@ -34,9 +34,11 @@ const statusColors: Record<string, string> = {
 
 interface TransactionsListProps {
     filters: TransactionFilters;
+    onRefresh?: () => void;
+    onExport?: () => void;
 }
 
-export default function TransactionsList({ filters }: TransactionsListProps) {
+export default function TransactionsList({ filters, onRefresh, onExport }: TransactionsListProps) {
     // Usar el hook personalizado para obtener transacciones con filtros
     const { filteredTransactions, isLoading, error, refetch } = useAllTransactions(filters);
     const { data: session, status: sessionStatus } = useSession();
@@ -265,6 +267,175 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         return 'No disponible';
     };
 
+    // Función para obtener la cuenta de la transacción (igual que en depósitos)
+    const getTransactionAccount = (transaction: Transaction): string => {
+        // Si es una transacción Bank Transfer, devolver cadena vacía
+        if (transaction.description === 'Bank Transfer') {
+            return ''; // Campo vacío para Bank Transfer
+        }
+
+        // Intentar múltiples posibles campos donde puede estar la información de cuenta
+        return transaction.payer_email ||
+            transaction.walletAddress ||
+            transaction.cbu ||
+            (transaction as any).account_number ||
+            (transaction as any).account ||
+            'No disponible';
+    };
+
+    // Función para obtener el nombre de cuenta
+    const getAccountNameDisplay = (transaction: Transaction): string => {
+        return transaction.account_name || transaction.account_holder || 'No disponible';
+    };
+
+    // Función para actualización masiva de nombres de cuenta Bank Transfer
+    const handleMassiveUpdateAccountNames = async () => {
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado para realizar esta operación.");
+            return;
+        }
+
+        // Confirmar la operación
+        const confirmed = window.confirm(
+            "¿Estás seguro de que quieres actualizar TODOS los nombres de cuenta para transacciones Bank Transfer existentes? Esta operación no se puede deshacer."
+        );
+
+        if (!confirmed) return;
+
+        setProcessingId("massive-update");
+
+        try {
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/update-all-account-names`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            toast.success(`${result.message}. Actualizadas: ${result.updated} transacciones`);
+
+            // Mostrar detalles si hay
+            if (result.details && result.details.length > 0) {
+                console.log("Detalles de actualización:", result.details);
+            }
+
+            // Refrescar la lista
+            await refetch();
+        } catch (error) {
+            console.error('Error en actualización masiva:', error);
+            toast.error(`Error en actualización masiva: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    // Función para exportar transacciones a CSV
+    const handleExport = async () => {
+        try {
+            // Usamos setTimeout y Promise para evitar bloquear el hilo principal
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Crear encabezados para el CSV
+            const headers = [
+                'Tipo',
+                'Monto',
+                'Estado',
+                'Fecha',
+                'Oficina',
+                'CBU/Cuenta',
+                'Nombre Cuenta'
+            ];
+
+            // Procesamiento por lotes para evitar bloqueos en grandes conjuntos de datos
+            const batchSize = 100;
+            let rows: Array<Array<string | number | undefined>> = [];
+
+            // Procesar en pequeños lotes (usar paginatedTransactions para exportar solo lo visible)
+            for (let i = 0; i < paginatedTransactions.length; i += batchSize) {
+                const batch = paginatedTransactions.slice(i, i + batchSize);
+
+                // Permitir que el navegador respire entre lotes
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+
+                const batchRows = batch.map(transaction => {
+                    return [
+                        transaction.type === 'deposit' ? 'Depósito' : 'Retiro',
+                        transaction.amount,
+                        transaction.status,
+                        getTransactionDate(transaction),
+                        transaction.office || 'N/A',
+                        getTransactionAccount(transaction),
+                        getAccountNameDisplay(transaction)
+                    ];
+                });
+
+                rows = [...rows, ...batchRows];
+            }
+
+            // Combinar encabezados y filas
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row =>
+                    row.map((cell: string | number | undefined) =>
+                        `"${String(cell || '').replace(/"/g, '""')}"`
+                    ).join(',')
+                )
+            ].join('\n');
+
+            // Otra pequeña pausa antes de crear el blob
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Crear un Blob y generar URL
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            // Crear enlace y descargar
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `transacciones_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+
+            // Limpiar, pero con un pequeño retraso para asegurar que se complete la descarga
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            toast.success('Transacciones exportadas correctamente');
+
+        } catch (error) {
+            console.error("Error al exportar transacciones:", error);
+            toast.error('Error al exportar transacciones');
+        }
+    };
+
+    // useEffect para detectar cuando se solicita exportar desde el dashboard
+    useEffect(() => {
+        if ((filters as any)?._export) {
+            handleExport();
+        }
+    }, [(filters as any)?._export]);
+
+    // useEffect para detectar cuando se solicita refresh desde el dashboard
+    useEffect(() => {
+        if ((filters as any)?._refresh) {
+            refetch();
+        }
+    }, [(filters as any)?._refresh, refetch]);
+
     // Si está cargando, mostrar skeleton
     if (isLoading) {
         return (
@@ -297,15 +468,27 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     // Renderizar tabla con transacciones
     return (
         <div className="space-y-4">
+            {/* Botón de actualización masiva */}
+            <div className="flex justify-end">
+                <Button
+                    variant="outline"
+                    onClick={handleMassiveUpdateAccountNames}
+                    disabled={processingId === "massive-update"}
+                    className="flex items-center gap-2 bg-blue-500/10 text-blue-700 dark:text-blue-500 hover:bg-blue-500/20"
+                >
+                    {processingId === "massive-update" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <CheckCircle className="h-4 w-4" />
+                    )}
+                    {processingId === "massive-update" ? "Actualizando..." : "Actualizar nombres Bank Transfer"}
+                </Button>
+            </div>
+
             <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[100px]">
-                                <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => handleSort('id')}>
-                                    ID <ArrowUpDown className="ml-1 h-4 w-4" />
-                                </Button>
-                            </TableHead>
                             <TableHead>
                                 <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => handleSort('type')}>
                                     Tipo <ArrowUpDown className="ml-1 h-4 w-4" />
@@ -331,13 +514,14 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                     Oficina <ArrowUpDown className="ml-1 h-4 w-4" />
                                 </Button>
                             </TableHead>
+                            <TableHead>CBU/Cuenta</TableHead>
+                            <TableHead>Nombre Cuenta</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {paginatedTransactions.map((transaction) => (
                             <TableRow key={transaction.id}>
-                                <TableCell className="font-medium">{transaction.id.toString().slice(0, 8)}...</TableCell>
                                 <TableCell>
                                     <Badge variant={transaction.type === 'deposit' ? 'default' : 'secondary'}>
                                         {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
@@ -351,38 +535,47 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                 </TableCell>
                                 <TableCell>{getTransactionDate(transaction)}</TableCell>
                                 <TableCell>{transaction.office || 'N/A'}</TableCell>
+                                <TableCell>{getTransactionAccount(transaction)}</TableCell>
+                                <TableCell>{getAccountNameDisplay(transaction)}</TableCell>
                                 <TableCell className="text-right">
                                     {transaction.status === 'Pending' ? (
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex items-center gap-1 bg-green-500/10 text-green-700 dark:text-green-500 hover:bg-green-500/20"
-                                                onClick={() => handleApprove(transaction)}
-                                                disabled={processingId === transaction.id}
-                                            >
-                                                {processingId === transaction.id ? (
-                                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                                ) : (
-                                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                                )}
-                                                Aprobar
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex items-center gap-1 bg-red-500/10 text-red-700 dark:text-red-500 hover:bg-red-500/20"
-                                                onClick={() => handleReject(transaction)}
-                                                disabled={processingId === transaction.id}
-                                            >
-                                                {processingId === transaction.id ? (
-                                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                                ) : (
-                                                    <XCircle className="h-3 w-3 mr-1" />
-                                                )}
-                                                Rechazar
-                                            </Button>
-                                        </div>
+                                        // Solo mostrar botones de aprobar/rechazar para depósitos externos (no IPN)
+                                        transaction.description !== 'Pago recibido vía IPN - Pendiente de validación' ? (
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex items-center gap-1 bg-green-500/10 text-green-700 dark:text-green-500 hover:bg-green-500/20"
+                                                    onClick={() => handleApprove(transaction)}
+                                                    disabled={processingId === transaction.id}
+                                                >
+                                                    {processingId === transaction.id ? (
+                                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                    ) : (
+                                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    Aprobar
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex items-center gap-1 bg-red-500/10 text-red-700 dark:text-red-500 hover:bg-red-500/20"
+                                                    onClick={() => handleReject(transaction)}
+                                                    disabled={processingId === transaction.id}
+                                                >
+                                                    {processingId === transaction.id ? (
+                                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                    ) : (
+                                                        <XCircle className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    Rechazar
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">
+                                                IPN - Sin acciones
+                                            </span>
+                                        )
                                     ) : (
                                         <span className="text-sm text-muted-foreground">
                                             {transaction.status === 'Aceptado' ? 'Aprobada' :

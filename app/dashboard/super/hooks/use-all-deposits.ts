@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useOffices } from '@/components/hooks/use-offices';
 
 // Tipos requeridos
 export interface Deposit {
@@ -13,17 +14,17 @@ export interface Deposit {
     description: string;
     cbu?: string;
     payerEmail?: string;
+    walletAddress?: string;
     office?: string;
     accountName?: string;
     // Propiedades opcionales específicas
-    date_created?: string;
+    date_created: string;
     account_name?: string;
     external_reference?: string;
     reference_transaction?: string;
     payment_method_id?: string;
     payer_id?: string;
     payer_email?: string;
-    payer_identification?: string;
     receiver_id?: string;
     account_holder?: string;
     client_id?: string;
@@ -46,6 +47,7 @@ export interface DepositFilters {
 
 export function useAllDeposits(filters: DepositFilters = {}) {
     const { data: session } = useSession();
+    const { offices, isLoading: isLoadingOffices } = useOffices();
     const [deposits, setDeposits] = useState<Deposit[]>([]);
     const [filteredDeposits, setFilteredDeposits] = useState<Deposit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -75,8 +77,22 @@ export function useAllDeposits(filters: DepositFilters = {}) {
             }
 
             const data = await response.json();
-            // Filtramos solo los depósitos
-            const depositsOnly = data.filter((tx: { type: string }) => tx.type === 'deposit');
+
+            // Obtener lista de IDs de oficinas válidas (registradas)
+            const validOfficeIds = new Set(offices.map(office => office.id.toString()));
+
+            // Filtramos solo los depósitos de oficinas registradas
+            const depositsOnly = data.filter((tx: { type: string; office?: string }) => {
+                // Solo depósitos
+                if (tx.type !== 'deposit') return false;
+
+                // Solo de oficinas válidas/registradas
+                if (!tx.office) return false;
+
+                return validOfficeIds.has(tx.office.toString());
+            });
+
+            console.log(`Depósitos filtrados: ${data.length} -> ${depositsOnly.length} (solo oficinas registradas)`);
             setDeposits(depositsOnly);
             setError(null);
         } catch (err: unknown) {
@@ -86,14 +102,14 @@ export function useAllDeposits(filters: DepositFilters = {}) {
         } finally {
             setIsLoading(false);
         }
-    }, [session?.accessToken]);
+    }, [session?.accessToken, offices]);
 
-    // Efecto para cargar depósitos al inicio
+    // Efecto para cargar depósitos al inicio y cuando cambien las oficinas
     useEffect(() => {
-        if (session?.accessToken) {
+        if (session?.accessToken && !isLoadingOffices) {
             fetchAllDeposits();
         }
-    }, [session?.accessToken, fetchAllDeposits]);
+    }, [session?.accessToken, fetchAllDeposits, isLoadingOffices]);
 
     // Función para aplicar filtros a los depósitos
     const applyFilters = useCallback(() => {
@@ -101,41 +117,42 @@ export function useAllDeposits(filters: DepositFilters = {}) {
 
         // Filtrar por oficina
         if (filters.officeId) {
-            result = result.filter((dep: Deposit) => dep.office === filters.officeId);
+            result = result.filter(deposit => deposit.office === filters.officeId);
         }
 
-        // Filtrar por estado
+        // Filtrar por estado (Pending, Accepted, Rejected, etc)
         if (filters.status) {
-            result = result.filter((dep: Deposit) => dep.status === filters.status);
+            result = result.filter(deposit => deposit.status === filters.status);
         }
 
         // Filtrar por fechas
         if (filters.date?.from) {
             const fromDate = new Date(filters.date.from);
-            result = result.filter((dep: Deposit) => {
-                const depDate = dep.dateCreated ? new Date(dep.dateCreated) : null;
-                return depDate && depDate >= fromDate;
+            result = result.filter(deposit => {
+                const depositDate = deposit.dateCreated ? new Date(deposit.dateCreated) : null;
+                return depositDate && depositDate >= fromDate;
             });
         }
 
         if (filters.date?.to) {
             const toDate = new Date(filters.date.to);
             toDate.setHours(23, 59, 59, 999); // Final del día
-            result = result.filter((dep: Deposit) => {
-                const depDate = dep.dateCreated ? new Date(dep.dateCreated) : null;
-                return depDate && depDate <= toDate;
+            result = result.filter(deposit => {
+                const depositDate = deposit.dateCreated ? new Date(deposit.dateCreated) : null;
+                return depositDate && depositDate <= toDate;
             });
         }
 
         // Búsqueda de texto
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
-            result = result.filter((dep: Deposit) =>
-                (dep.id?.toString().toLowerCase().includes(searchLower)) ||
-                (dep.payerEmail?.toLowerCase().includes(searchLower)) ||
-                (dep.description?.toLowerCase().includes(searchLower)) ||
-                (dep.cbu?.toLowerCase().includes(searchLower)) ||
-                (dep.accountName?.toLowerCase().includes(searchLower))
+            result = result.filter(deposit =>
+                (deposit.id?.toString().toLowerCase().includes(searchLower)) ||
+                (deposit.payerEmail?.toLowerCase().includes(searchLower)) ||
+                (deposit.description?.toLowerCase().includes(searchLower)) ||
+                (deposit.cbu?.toLowerCase().includes(searchLower)) ||
+                (deposit.walletAddress?.toLowerCase().includes(searchLower)) ||
+                (deposit.accountName?.toLowerCase().includes(searchLower))
             );
         }
 
@@ -150,7 +167,7 @@ export function useAllDeposits(filters: DepositFilters = {}) {
     return {
         allDeposits: deposits,
         filteredDeposits,
-        isLoading,
+        isLoading: isLoading || isLoadingOffices,
         error,
         refetch: fetchAllDeposits
     };

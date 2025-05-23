@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Office } from "@/components/hooks/use-offices"
+import { useSession } from "next-auth/react"
 
 interface DeleteOfficeModalProps {
     office: Office | null;
@@ -22,16 +23,35 @@ interface DeleteOfficeModalProps {
 
 export function DeleteOfficeModal({ office, open, onOpenChange, onOfficeDeleted }: DeleteOfficeModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const { data: session, status: sessionStatus } = useSession()
 
     const handleDelete = async () => {
         if (!office) return;
+
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado.");
+            return;
+        }
 
         setIsLoading(true)
 
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/offices/${office.id}`, {
                 method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${session.accessToken}`,
+                },
             })
+
+            if (response.status === 401) {
+                toast.error("Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.");
+                return;
+            }
+
+            if (response.status === 403) {
+                toast.error("No tienes permisos para eliminar esta oficina.");
+                return;
+            }
 
             if (response.ok) {
                 toast.success("Oficina eliminada exitosamente")
@@ -58,7 +78,7 @@ export function DeleteOfficeModal({ office, open, onOpenChange, onOfficeDeleted 
         if (!newOpen && isLoading) {
             return;
         }
-        
+
         // Si estamos cerrando el modal, asegurarse de que se limpie correctamente
         if (!newOpen && !isLoading) {
             // Pequeño retraso para asegurar que la animación termine correctamente
@@ -80,13 +100,13 @@ export function DeleteOfficeModal({ office, open, onOpenChange, onOfficeDeleted 
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         onClick={() => {
                             if (!isLoading) {
                                 onOpenChange(false);
                             }
-                        }} 
+                        }}
                         disabled={isLoading}
                     >
                         Cancelar
@@ -98,4 +118,4 @@ export function DeleteOfficeModal({ office, open, onOpenChange, onOfficeDeleted 
             </DialogContent>
         </Dialog>
     )
-} 
+}

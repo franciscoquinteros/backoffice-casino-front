@@ -33,7 +33,7 @@ export default function DepositsDirectPage() {
             // Excluir 'Bank Transfer' ya que ahora aparecen en la página de "Depósitos Completados"
             const directDeposits = officeTransactions.filter((tx: Transaction) =>
                 tx.type === 'deposit' &&
-                tx.status === 'Pending' &&
+                (tx.status === 'Pending' || tx.status === 'Asignado') &&
                 (tx.description === 'Pago recibido vía IPN - Pendiente de validación' ||
                     tx.description === 'Bank Transfer')
             );
@@ -82,7 +82,17 @@ export default function DepositsDirectPage() {
                 };
             });
 
-            setTransactions(processedDeposits);
+            // Ordenar por fecha de actualización (updated_at) primero, luego por fecha de creación
+            const sortedDeposits = processedDeposits.sort((a, b) => {
+                // Usar updated_at si está disponible, sino usar date_created
+                const aDate = new Date(a.updated_at || a.date_created);
+                const bDate = new Date(b.updated_at || b.date_created);
+
+                // Ordenar de más reciente a más antiguo (descendente)
+                return bDate.getTime() - aDate.getTime();
+            });
+
+            setTransactions(sortedDeposits);
             setError(null);
         } catch (err) {
             console.error('Error fetching transactions:', err);
@@ -147,6 +157,37 @@ export default function DepositsDirectPage() {
         } catch (err) {
             console.error('Error rejecting transaction:', err);
             setError('Error al rechazar la transacción. Por favor, intente nuevamente.');
+        }
+    };
+
+    // Función para cambiar el estado entre Pendiente y Asignado
+    const handleStatusToggle = async (transaction: Transaction) => {
+        if (!session?.accessToken) return;
+
+        try {
+            const newStatus = transaction.status === 'Pending' ? 'Asignado' : 'Pending';
+
+            // Llamar al endpoint para actualizar el estado
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${transaction.id}/status`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${session.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                }
+            );
+
+            if (response.ok) {
+                await fetchTransactions(); // Recargar después del cambio
+            } else {
+                throw new Error('Error al cambiar el estado');
+            }
+        } catch (err) {
+            console.error('Error changing status:', err);
+            setError('Error al cambiar el estado. Por favor, intente nuevamente.');
         }
     };
 
@@ -235,6 +276,7 @@ export default function DepositsDirectPage() {
                                     onTransactionRejected={handleTransactionRejected}
                                     onRefresh={fetchTransactions}
                                     hideIdColumn={true}
+                                    onStatusToggle={handleStatusToggle}
                                 />
                             </>
                         )}

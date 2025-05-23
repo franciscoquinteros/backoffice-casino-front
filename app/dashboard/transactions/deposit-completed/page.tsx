@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 // --- Asegúrate que las rutas sean correctas ---
-import { TransactionTable } from '@/components/transaction-table';
+import { TransactionTable } from '@/components/transaction-table2';
 import { TransactionFilters } from '@/components/transaction-filters';
 import { Transaction, TransactionFilter as TransactionFilterType, transactionService } from '@/components/transaction-service';
 import { Button } from "@/components/ui/button";

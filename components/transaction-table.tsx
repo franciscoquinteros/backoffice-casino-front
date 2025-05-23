@@ -25,13 +25,21 @@ import {
   Check,
   X,
   UserIcon,
-  RefreshCcw
+  RefreshCcw,
+  DatabaseIcon
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import axios from "axios";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -42,6 +50,7 @@ interface TransactionTableProps {
   hideIdColumn?: boolean;
   onRefresh?: () => void;
   isViewOnly?: boolean;
+  onStatusToggle?: (transaction: Transaction) => void;
 }
 
 export function TransactionTable({
@@ -53,8 +62,10 @@ export function TransactionTable({
   hideIdColumn = false,
   onRefresh,
   isViewOnly = false,
+  onStatusToggle,
 }: TransactionTableProps) {
   const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'superadmin';
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
@@ -167,8 +178,9 @@ export function TransactionTable({
 
     // Manejo para diferentes tipos de datos
     if (sortField === 'date_created') {
-      const aDate = new Date(a.date_created || '');
-      const bDate = new Date(b.date_created || '');
+      // Usar updated_at si está disponible, sino usar date_created
+      const aDate = new Date(a.updated_at || a.date_created || '');
+      const bDate = new Date(b.updated_at || b.date_created || '');
       return sortDirection === 'asc'
         ? aDate.getTime() - bDate.getTime()
         : bDate.getTime() - aDate.getTime();
@@ -400,8 +412,12 @@ export function TransactionTable({
       account: transaction.account
     });
 
+    // Si es una transacción Bank Transfer, devolver cadena vacía
+    if (transaction.description === 'Bank Transfer') {
+      return ''; // Campo vacío para Bank Transfer
+    }
+
     // Intentar múltiples posibles campos donde puede estar la información de cuenta
-    // IMPORTANTE: La prioridad es mostrar el email (payer_email) si está disponible
     return transaction.payer_email ||
       transaction.wallet_address ||
       transaction.cbu ||
@@ -422,10 +438,12 @@ export function TransactionTable({
 
     const txWithDates = transaction as TransactionWithDates;
 
-    const dateValue = transaction.date_created ||
+    // Priorizar updated_at sobre date_created para mostrar la fecha más reciente
+    const dateValue = transaction.updated_at ||
+      txWithDates.updatedAt ||
+      transaction.date_created ||
       txWithDates.createdAt ||
       txWithDates.created_at ||
-      txWithDates.updatedAt ||
       txWithDates.updated_at ||
       null;
 
@@ -483,45 +501,104 @@ export function TransactionTable({
 
     // Para transacciones de tipo Bank Transfer ya aceptadas y que están en estado Pending
     if (transaction.description === 'Bank Transfer' && status === 'Pending') {
-      return (
+      const badge = (
         <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
           <UserIcon className="h-3 w-3" />
           <span>Asignado</span>
         </Badge>
       );
+
+      // Si onStatusToggle está presente, hacer el badge con dropdown
+      if (onStatusToggle) {
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="cursor-pointer">
+                {badge}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={() => onStatusToggle(transaction)}
+                className="cursor-pointer"
+              >
+                <Clock className="h-3 w-3 mr-2" />
+                Cambiar a Pendiente
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
+
+      return badge;
     }
 
+    let badgeContent;
     if (status === 'Pending') {
-      return (
+      badgeContent = (
         <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
           <Clock className="h-3 w-3" />
           <span>Pendiente</span>
         </Badge>
       );
+    } else if (status === 'Asignado') {
+      badgeContent = (
+        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <UserIcon className="h-3 w-3" />
+          <span>Asignado</span>
+        </Badge>
+      );
     } else if (status === 'Match MP') {
-      return (
+      badgeContent = (
         <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
           <CheckCircle className="h-3 w-3" />
           <span>Match MP</span>
         </Badge>
       );
     } else if (status === 'Aceptado' || status === 'approved') {
-      return (
+      badgeContent = (
         <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
           <Check className="h-3 w-3" />
           <span>Aceptado</span>
         </Badge>
       );
     } else if (status === 'Rechazado' || status === 'rejected') {
-      return (
+      badgeContent = (
         <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
           <X className="h-3 w-3" />
           <span>Rechazado</span>
         </Badge>
       );
+    } else {
+      badgeContent = <Badge>{status}</Badge>;
     }
 
-    return <Badge>{status}</Badge>;
+    // Si onStatusToggle está presente y el estado es Pending o Asignado, usar dropdown
+    if (onStatusToggle && (status === 'Pending' || status === 'Asignado')) {
+      const oppositeStatus = status === 'Pending' ? 'Asignado' : 'Pendiente';
+      const oppositeIcon = status === 'Pending' ? <UserIcon className="h-3 w-3 mr-2" /> : <Clock className="h-3 w-3 mr-2" />;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="cursor-pointer hover:opacity-80 transition-opacity">
+              {badgeContent}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onClick={() => onStatusToggle(transaction)}
+              className="cursor-pointer"
+            >
+              {oppositeIcon}
+              Cambiar a {oppositeStatus}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    return badgeContent;
   };
 
   // Función para obtener el nombre de cuenta directamente desde el backend
@@ -683,6 +760,34 @@ export function TransactionTable({
     return transaction.account_holder || 'No disponible';
   }, [accountNameCache]);
 
+  // Función para actualizar nombres de cuentas Bank Transfer
+  const refreshBankTransferNames = async () => {
+    if (!session?.accessToken) return;
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/refresh-account-names`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast.success(`${response.data.message}`);
+        // Si hay función onRefresh, llamarla para recargar los datos
+        if (onRefresh) {
+          onRefresh();
+        }
+      }
+    } catch (error) {
+      console.error("Error al actualizar nombres de cuentas:", error);
+      toast.error("Error al actualizar nombres de cuentas");
+    }
+  };
+
   // Renderizado condicional para tabla vacía
   if (transactions.length === 0) {
     return (
@@ -698,18 +803,8 @@ export function TransactionTable({
     <>
       <Card className={isRefreshing ? "opacity-70 transition-opacity" : ""}>
         <div className="flex justify-between p-4">
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCcw className="h-4 w-4" />
-              <span>Actualizar</span>
-            </Button>
-          )}
+
+
           {isRefreshing && (
             <div className="flex items-center">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -769,7 +864,7 @@ export function TransactionTable({
                 onClick={() => handleSort('date_created')}
               >
                 <div className="flex items-center">
-                  Fecha
+                  Última Actualización
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
@@ -804,12 +899,15 @@ export function TransactionTable({
                   {getTransactionDate(transaction)}
                 </TableCell>
                 <TableCell>
-                  {transaction.payer_email ?
-                    // Si hay payer_email, mostrarlo directamente con prioridad
-                    transaction.payer_email
+                  {transaction.description === 'Bank Transfer' ?
+                    '' // Mostrar guión para Bank Transfer
                     :
-                    // Si no hay payer_email, usar la función getTransactionAccount
-                    getTransactionAccount(transaction)
+                    transaction.payer_email ?
+                      // Si hay payer_email, mostrarlo directamente con prioridad
+                      transaction.payer_email
+                      :
+                      // Si no hay payer_email, usar la función getTransactionAccount
+                      getTransactionAccount(transaction)
                   }
                 </TableCell>
                 <TableCell>
