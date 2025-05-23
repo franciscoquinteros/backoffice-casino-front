@@ -70,6 +70,7 @@ export function TransactionTable({
   const [accountNameCache, setAccountNameCache] = useState<Record<string, string>>({});
   const [loadingAccountNames, setLoadingAccountNames] = useState<Record<string, boolean>>({});
   const [failedAccountNameFetches, setFailedAccountNameFetches] = useState<Set<string | number>>(new Set());
+  const [forceUpdate, setForceUpdate] = useState(0); // Para forzar re-renderizado interno
 
   const [errorModal, setErrorModal] = useState({
     isOpen: false,
@@ -79,11 +80,21 @@ export function TransactionTable({
 
   // Normalizar los datos de transacciones cuando cambian
   useEffect(() => {
-    // Log de los datos originales
+    console.log(`🔄 [TransactionTable] Normalizando transacciones. Total recibidas: ${transactions.length}`);
+
+    // Agregar logs detallados de las primeras transacciones para debuggear
+    if (transactions.length > 0) {
+      console.log(`🔄 [TransactionTable] Primeras 3 transacciones:`, transactions.slice(0, 3).map(tx => ({
+        id: tx.id,
+        status: tx.status,
+        updated_at: tx.updated_at
+      })));
+    }
 
     const normalize = (transactions: Transaction[]): Transaction[] => {
       return transactions.map(tx => {
-        // Log detallado de cada transacción
+        // Log detallado de cada transacción para debuggear problemas de estado
+        console.log(`🔄 [TransactionTable] Normalizando TX ${tx.id}: status="${tx.status}"`);
 
         // Crear una copia para no modificar el original
         const normalized = { ...tx };
@@ -146,12 +157,30 @@ export function TransactionTable({
           }
         }
 
+        console.log(`✅ [TransactionTable] TX ${tx.id} normalizada con status: "${normalized.status}"`);
         return normalized;
       });
     };
 
-    setNormalizedTransactions(normalize(transactions));
-  }, [transactions]);
+    const normalizedTxs = normalize(transactions);
+    console.log(`✅ [TransactionTable] Normalizacion completada. Total: ${normalizedTxs.length}`);
+    setNormalizedTransactions(normalizedTxs);
+
+    // Forzar actualización interna cada vez que cambien las transacciones
+    setForceUpdate(prev => prev + 1);
+    console.log(`🔄 [TransactionTable] ForceUpdate incrementado por cambio de transacciones`);
+  }, [transactions]); // Solo depende de transactions
+
+  // useEffect adicional para detectar cambios específicos en normalizedTransactions
+  useEffect(() => {
+    if (normalizedTransactions.length > 0) {
+      console.log(`🔄 [TransactionTable] normalizedTransactions cambiaron. ForceUpdate: ${forceUpdate}`);
+      console.log(`🔄 [TransactionTable] Estados actuales:`, normalizedTransactions.slice(0, 3).map(tx => ({
+        id: tx.id,
+        status: tx.status
+      })));
+    }
+  }, [normalizedTransactions, forceUpdate]);
 
   // Función para cerrar el modal
   const closeErrorModal = () => {
@@ -486,6 +515,9 @@ export function TransactionTable({
   }, [fetchOfficeUsers]);
 
   const renderStatusBadge = (status: string, transaction: Transaction) => {
+    // Debug para rastrear qué estado se está usando para renderizar
+    console.log(`🏷️ [TransactionTable] Renderizando badge para TX ${transaction.id}: status="${status}" (transaction.status="${transaction.status}")`);
+
     if (!status) return (
       <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
         <AlertTriangle className="h-3 w-3" />
@@ -840,76 +872,84 @@ export function TransactionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedTransactions.map((transaction, index) => (
-              <TableRow key={`${transaction.id}-${index}`} className="hover:bg-muted/50">
-                {!hideIdColumn && (
-                  <TableCell className="font-medium w-[80px] whitespace-pre-line">
-                    {formatId(transaction.id)}
-                  </TableCell>
-                )}
-                <TableCell>
-                  {transaction.idCliente || transaction.client_id ||
-                    (transaction.office ? `Oficina: ${transaction.office}` : 'No disponible')}
-                </TableCell>
-                <TableCell>
-                  {getTransactionReference(transaction)}
-                </TableCell>
-                <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
-                <TableCell className="font-medium">
-                  {formatAmount(transaction.amount)}
-                </TableCell>
-                <TableCell>
-                  {renderStatusBadge(transaction.status, transaction)}
-                </TableCell>
-                <TableCell>
-                  {getTransactionDate(transaction)}
-                </TableCell>
-                <TableCell>
-                  {transaction.description === 'Bank Transfer' ?
-                    '' // Mostrar guión para Bank Transfer
-                    :
-                    transaction.payer_email ?
-                      // Si hay payer_email, mostrarlo directamente con prioridad
-                      transaction.payer_email
-                      :
-                      // Si no hay payer_email, usar la función getTransactionAccount
-                      getTransactionAccount(transaction)
-                  }
-                </TableCell>
-                <TableCell>
-                  {getAccountNameDisplay(transaction)}
-                </TableCell>
-                {showApproveButton && !isViewOnly && (
+            {paginatedTransactions.map((transaction, index) => {
+              // Debug para ver qué se está renderizando
+              console.log(`🎨 [TransactionTable] Renderizando fila para TX ${transaction.id}: status="${transaction.status}"`);
+
+              // Crear una key más específica que incluya status, timestamp Y forceUpdate para forzar re-render
+              const specificKey = `${transaction.id}-${transaction.status}-${transaction.updated_at || transaction.date_created}-${forceUpdate}-${index}`;
+
+              return (
+                <TableRow key={specificKey} className="hover:bg-muted/50">
+                  {!hideIdColumn && (
+                    <TableCell className="font-medium w-[80px] whitespace-pre-line">
+                      {formatId(transaction.id)}
+                    </TableCell>
+                  )}
                   <TableCell>
-                    {transaction.status === 'Pending' ? (
-                      <div className="flex space-x-2">
-                        <Button
-                          onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }}
-                          disabled={processingId === transaction.id || isRefreshing}
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
-                        >
-                          {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
-                        </Button>
-                        <Button
-                          onClick={(e) => { e.stopPropagation(); handleReject(transaction); }}
-                          disabled={processingId === transaction.id || isRefreshing}
-                          size="sm"
-                          variant="destructive"
-                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
-                        >
-                          {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                          <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
-                        </Button>
-                      </div>
-                    ) : (
-                      renderStatusBadge(transaction.status, transaction)
-                    )}
+                    {transaction.idCliente || transaction.client_id ||
+                      (transaction.office ? `Oficina: ${transaction.office}` : 'No disponible')}
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
+                  <TableCell>
+                    {getTransactionReference(transaction)}
+                  </TableCell>
+                  <TableCell>{transaction.description || 'Sin descripción'}</TableCell>
+                  <TableCell className="font-medium">
+                    {formatAmount(transaction.amount)}
+                  </TableCell>
+                  <TableCell>
+                    {renderStatusBadge(transaction.status, transaction)}
+                  </TableCell>
+                  <TableCell>
+                    {getTransactionDate(transaction)}
+                  </TableCell>
+                  <TableCell>
+                    {transaction.description === 'Bank Transfer' ?
+                      '' // Mostrar guión para Bank Transfer
+                      :
+                      transaction.payer_email ?
+                        // Si hay payer_email, mostrarlo directamente con prioridad
+                        transaction.payer_email
+                        :
+                        // Si no hay payer_email, usar la función getTransactionAccount
+                        getTransactionAccount(transaction)
+                    }
+                  </TableCell>
+                  <TableCell>
+                    {getAccountNameDisplay(transaction)}
+                  </TableCell>
+                  {showApproveButton && !isViewOnly && (
+                    <TableCell>
+                      {transaction.status === 'Pending' ? (
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); handleApprove(transaction); }}
+                            disabled={processingId === transaction.id || isRefreshing}
+                            size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
+                          >
+                            {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                            <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
+                          </Button>
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); handleReject(transaction); }}
+                            disabled={processingId === transaction.id || isRefreshing}
+                            size="sm"
+                            variant="destructive"
+                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
+                          >
+                            {processingId === transaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                            <span className={processingId === transaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        renderStatusBadge(transaction.status, transaction)
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
 
