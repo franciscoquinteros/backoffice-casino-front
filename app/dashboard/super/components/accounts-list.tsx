@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, ArrowUpDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
 import { useAllAccounts, AccountFilters, Account } from "../hooks/use-all-accounts";
 import { toast } from "sonner";
 import { EditTransferAccountModal } from "@/components/transfer-accounts/edit-transfer-account-modal";
@@ -72,6 +71,7 @@ export default function AccountsList({ filters }: AccountsListProps) {
             mp_public_key: account.mp_public_key,
             mp_access_token: account.mp_access_token,
             receiver_id: account.receiver_id,
+            createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
         };
     };
 

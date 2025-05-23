@@ -274,7 +274,6 @@ export default function DepositsDirectPage() {
                                     transactions={filteredTransactions}
                                     onTransactionApproved={handleTransactionApproved}
                                     onTransactionRejected={handleTransactionRejected}
-                                    onRefresh={fetchTransactions}
                                     hideIdColumn={true}
                                     onStatusToggle={handleStatusToggle}
                                 />

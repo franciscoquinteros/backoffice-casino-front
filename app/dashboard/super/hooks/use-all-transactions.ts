@@ -117,7 +117,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
             // Filtrar las transacciones para excluir:
             // 1. Las que tengan estado "Match" 
             // 2. Las que no pertenezcan a oficinas registradas
-            const filteredData = processedData.filter(transaction => {
+            const filteredData = processedData.filter((transaction: Transaction) => {
                 // Excluir transacciones con estado "Match"
                 if (transaction.status === 'Match') return false;
 

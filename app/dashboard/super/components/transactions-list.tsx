@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -34,11 +34,9 @@ const statusColors: Record<string, string> = {
 
 interface TransactionsListProps {
     filters: TransactionFilters;
-    onRefresh?: () => void;
-    onExport?: () => void;
 }
 
-export default function TransactionsList({ filters, onRefresh, onExport }: TransactionsListProps) {
+export default function TransactionsList({ filters }: TransactionsListProps) {
     // Usar el hook personalizado para obtener transacciones con filtros
     const { filteredTransactions, isLoading, error, refetch } = useAllTransactions(filters);
     const { data: session, status: sessionStatus } = useSession();
@@ -274,12 +272,20 @@ export default function TransactionsList({ filters, onRefresh, onExport }: Trans
             return ''; // Campo vacío para Bank Transfer
         }
 
+        // Crear un tipo extendido para campos adicionales
+        type ExtendedTransaction = Transaction & {
+            account_number?: string;
+            account?: string;
+        };
+
+        const extendedTx = transaction as ExtendedTransaction;
+
         // Intentar múltiples posibles campos donde puede estar la información de cuenta
         return transaction.payer_email ||
             transaction.walletAddress ||
             transaction.cbu ||
-            (transaction as any).account_number ||
-            (transaction as any).account ||
+            extendedTx.account_number ||
+            extendedTx.account ||
             'No disponible';
     };
 
@@ -340,7 +346,7 @@ export default function TransactionsList({ filters, onRefresh, onExport }: Trans
     };
 
     // Función para exportar transacciones a CSV
-    const handleExport = async () => {
+    const handleExport = useCallback(async () => {
         try {
             // Usamos setTimeout y Promise para evitar bloquear el hilo principal
             await new Promise(resolve => setTimeout(resolve, 0));
@@ -420,21 +426,29 @@ export default function TransactionsList({ filters, onRefresh, onExport }: Trans
             console.error("Error al exportar transacciones:", error);
             toast.error('Error al exportar transacciones');
         }
+    }, [paginatedTransactions]);
+
+    // Tipo extendido para filtros que incluye propiedades adicionales de control
+    type ExtendedTransactionFilters = TransactionFilters & {
+        _export?: number;
+        _refresh?: number;
     };
 
     // useEffect para detectar cuando se solicita exportar desde el dashboard
     useEffect(() => {
-        if ((filters as any)?._export) {
+        const extendedFilters = filters as ExtendedTransactionFilters;
+        if (extendedFilters._export) {
             handleExport();
         }
-    }, [(filters as any)?._export]);
+    }, [filters, handleExport]);
 
     // useEffect para detectar cuando se solicita refresh desde el dashboard
     useEffect(() => {
-        if ((filters as any)?._refresh) {
+        const extendedFilters = filters as ExtendedTransactionFilters;
+        if (extendedFilters._refresh) {
             refetch();
         }
-    }, [(filters as any)?._refresh, refetch]);
+    }, [filters, refetch]);
 
     // Si está cargando, mostrar skeleton
     if (isLoading) {

@@ -24,16 +24,13 @@ import {
   ChevronRight,
   Check,
   X,
-  UserIcon,
-  RefreshCcw,
-  DatabaseIcon
+  UserIcon
 } from "lucide-react";
 import { Transaction } from "@/components/transaction-service";
 import { SimpleErrorModal } from "@/components/error-modal";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import axios from "axios";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +45,6 @@ interface TransactionTableProps {
   onTransactionRejected?: (transaction: Transaction) => void;
   isRefreshing?: boolean;
   hideIdColumn?: boolean;
-  onRefresh?: () => void;
   isViewOnly?: boolean;
   onStatusToggle?: (transaction: Transaction) => void;
 }
@@ -60,12 +56,10 @@ export function TransactionTable({
   onTransactionRejected,
   isRefreshing = false,
   hideIdColumn = false,
-  onRefresh,
   isViewOnly = false,
   onStatusToggle,
 }: TransactionTableProps) {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'superadmin';
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
@@ -759,34 +753,6 @@ export function TransactionTable({
 
     return transaction.account_holder || 'No disponible';
   }, [accountNameCache]);
-
-  // Función para actualizar nombres de cuentas Bank Transfer
-  const refreshBankTransferNames = async () => {
-    if (!session?.accessToken) return;
-
-    try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/refresh-account-names`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${session.accessToken}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        toast.success(`${response.data.message}`);
-        // Si hay función onRefresh, llamarla para recargar los datos
-        if (onRefresh) {
-          onRefresh();
-        }
-      }
-    } catch (error) {
-      console.error("Error al actualizar nombres de cuentas:", error);
-      toast.error("Error al actualizar nombres de cuentas");
-    }
-  };
 
   // Renderizado condicional para tabla vacía
   if (transactions.length === 0) {

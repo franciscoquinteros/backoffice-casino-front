@@ -154,7 +154,7 @@ export default function SuperDashboardContent() {
         setTransactionFilters(prev => ({
             ...prev,
             _refresh: Date.now()
-        } as any));
+        } as TransactionFilters & { _refresh?: number }));
         setTimeout(() => setIsRefreshing(false), 1000);
     };
 
@@ -165,7 +165,7 @@ export default function SuperDashboardContent() {
         setTransactionFilters(prev => ({
             ...prev,
             _export: Date.now()
-        } as any));
+        } as TransactionFilters & { _export?: number }));
     };
 
     return (
@@ -295,7 +295,7 @@ export default function SuperDashboardContent() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <TransactionsList filters={transactionFilters} onRefresh={handleRefreshTransactions} onExport={handleExportTransactions} />
+                            <TransactionsList filters={transactionFilters} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -747,7 +747,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                     </CardContent>
                 </Card>
 
-                {/* Tarjeta: Ingresos por Oficina o Mensuales */}                <Card className="md:col-span-3">
+                {/* Tarjeta: Ingresos por Oficina o Mensuales */}
+                <Card className="md:col-span-3">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">
                             {selectedOffice ? "Ingresos Mensuales" : "Ingresos por Oficina"}

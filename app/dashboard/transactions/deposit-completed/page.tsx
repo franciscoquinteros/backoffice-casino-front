@@ -162,7 +162,6 @@ export default function DepositsCompletedPage() {
 
                                 <TransactionTable
                                     transactions={filteredTransactions}
-                                    onRefresh={() => fetchTransactions(true)}
                                     isRefreshing={isRefreshing}
                                     isViewOnly={true}
                                     hideIdColumn={true}
