@@ -175,29 +175,7 @@ export default function DepositsDirectPage() {
         console.log(`🔄 [StatusToggle] Estado actual: ${originalStatus} → Nuevo estado: ${newStatus}`);
 
         try {
-            // 1. Actualizar estado local INMEDIATAMENTE para UI responsiva
-            console.log(`📝 [StatusToggle] Actualizando estado local inmediatamente...`);
-            setTransactions(prevTransactions => {
-                const updatedTransactions = prevTransactions.map(tx => {
-                    if (tx.id === transaction.id) {
-                        console.log(`📝 [StatusToggle] Actualizando transacción ${tx.id}: ${tx.status} → ${newStatus}`);
-                        return {
-                            ...tx,
-                            status: newStatus,
-                            updated_at: new Date().toISOString()
-                        };
-                    }
-                    return tx;
-                });
-                console.log(`📝 [StatusToggle] Estado local actualizado. Transacciones totales: ${updatedTransactions.length}`);
-                return updatedTransactions;
-            });
-
-            // Forzar re-render de la tabla
-            setForceUpdateKey(prev => prev + 1);
-            console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado para forzar re-render`);
-
-            // 2. Llamar al backend
+            // 1. NO actualizar estado local. Solo llamar al backend
             console.log(`🌐 [StatusToggle] Enviando petición al backend...`);
             const result = await transactionService.updateTransactionStatus(
                 transaction.id,
@@ -207,66 +185,23 @@ export default function DepositsDirectPage() {
 
             if (result.success) {
                 console.log(`✅ [StatusToggle] Backend confirmó el cambio exitosamente`);
-
-                // 3. Mostrar notificación de éxito
                 toast.success(`Estado cambiado a ${newStatus} exitosamente`);
-
-                // 4. Forzar recarga después de un delay para sincronizar con el backend
-                console.log(`🔄 [StatusToggle] Programando recarga en 1 segundo...`);
-                setTimeout(async () => {
-                    console.log(`🔄 [StatusToggle] Ejecutando recarga...`);
-                    try {
-                        await fetchTransactions();
-                        console.log(`✅ [StatusToggle] Recarga completada exitosamente`);
-                        // Incrementar forceUpdateKey después de la recarga para asegurar re-render
-                        setForceUpdateKey(prev => prev + 1);
-                        console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado después de recarga`);
-                    } catch (reloadError) {
-                        console.error(`❌ [StatusToggle] Error en recarga:`, reloadError);
-                    }
-                }, 1000); // Aumentamos el delay a 1 segundo
-
+                // 2. Fetch inmediato de las transacciones desde el backend
+                await fetchTransactions();
+                // 3. Forzar re-render
+                setForceUpdateKey(prev => prev + 1);
             } else {
                 console.error(`❌ [StatusToggle] Backend rechazó el cambio:`, result.error);
-
-                // Revertir el cambio local si el backend falló
-                console.log(`🔄 [StatusToggle] Revirtiendo cambio local...`);
-                setTransactions(prevTransactions =>
-                    prevTransactions.map(tx =>
-                        tx.id === transaction.id
-                            ? { ...tx, status: originalStatus }
-                            : tx
-                    )
-                );
-
                 throw new Error(result.error || 'Error al cambiar el estado en el servidor');
             }
         } catch (err) {
             console.error(`❌ [StatusToggle] Error en handleStatusToggle:`, err);
-
             const errorMessage = err instanceof Error ? err.message : 'Error al cambiar el estado. Por favor, intente nuevamente.';
             setError(errorMessage);
             toast.error(errorMessage);
-
-            // Revertir el cambio local en caso de error
-            console.log(`🔄 [StatusToggle] Revirtiendo cambio local por error...`);
-            setTransactions(prevTransactions =>
-                prevTransactions.map(tx =>
-                    tx.id === transaction.id
-                        ? { ...tx, status: originalStatus }
-                        : tx
-                )
-            );
-
-            // Recargar para asegurar consistencia
-            console.log(`🔄 [StatusToggle] Forzando recarga por error...`);
-            fetchTransactions().then(() => {
-                // Incrementar forceUpdateKey después de la recarga por error
-                setForceUpdateKey(prev => prev + 1);
-                console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado después de recarga por error`);
-            }).catch(reloadError => {
-                console.error(`❌ [StatusToggle] Error en recarga de recuperación:`, reloadError);
-            });
+            // Recarga para asegurar consistencia
+            await fetchTransactions();
+            setForceUpdateKey(prev => prev + 1);
         }
     };
 
