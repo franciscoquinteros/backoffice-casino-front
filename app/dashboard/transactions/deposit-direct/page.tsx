@@ -19,6 +19,7 @@ export default function DepositsDirectPage() {
     const [filters, setFilters] = useState<TransactionFilterType>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [forceUpdateKey, setForceUpdateKey] = useState(0); // Para forzar re-render
 
     const fetchTransactions = useCallback(async () => {
         if (!session?.user?.officeId || !session?.accessToken) return;
@@ -117,13 +118,15 @@ export default function DepositsDirectPage() {
     }, [sessionStatus, fetchTransactions]);
 
     useEffect(() => {
+        console.log(`🔄 [FilterEffect] Transacciones cambiaron. Total: ${transactions.length}, ForceUpdateKey: ${forceUpdateKey}`);
         if (transactions.length > 0) {
             const filtered = transactionService.applyFilters(transactions, filters);
+            console.log(`🔄 [FilterEffect] Transacciones filtradas: ${filtered.length}`);
             setFilteredTransactions(filtered);
         } else {
             setFilteredTransactions([]);
         }
-    }, [filters, transactions]);
+    }, [filters, transactions, forceUpdateKey]);
 
     const handleFilterChange = (newFilters: TransactionFilterType) => {
         setFilters(newFilters);
@@ -165,11 +168,37 @@ export default function DepositsDirectPage() {
     const handleStatusToggle = async (transaction: Transaction) => {
         if (!session?.accessToken) return;
 
-        try {
-            const newStatus = transaction.status === 'Pending' ? 'Asignado' : 'Pending';
-            console.log(`Cambiando estado de transacción ${transaction.id} de ${transaction.status} a ${newStatus}`);
+        const originalStatus = transaction.status;
+        const newStatus = transaction.status === 'Pending' ? 'Asignado' : 'Pending';
 
-            // Usar el método del servicio para actualizar el estado
+        console.log(`🔄 [StatusToggle] INICIO: Cambiando estado de transacción ${transaction.id}`);
+        console.log(`🔄 [StatusToggle] Estado actual: ${originalStatus} → Nuevo estado: ${newStatus}`);
+
+        try {
+            // 1. Actualizar estado local INMEDIATAMENTE para UI responsiva
+            console.log(`📝 [StatusToggle] Actualizando estado local inmediatamente...`);
+            setTransactions(prevTransactions => {
+                const updatedTransactions = prevTransactions.map(tx => {
+                    if (tx.id === transaction.id) {
+                        console.log(`📝 [StatusToggle] Actualizando transacción ${tx.id}: ${tx.status} → ${newStatus}`);
+                        return {
+                            ...tx,
+                            status: newStatus,
+                            updated_at: new Date().toISOString()
+                        };
+                    }
+                    return tx;
+                });
+                console.log(`📝 [StatusToggle] Estado local actualizado. Transacciones totales: ${updatedTransactions.length}`);
+                return updatedTransactions;
+            });
+
+            // Forzar re-render de la tabla
+            setForceUpdateKey(prev => prev + 1);
+            console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado para forzar re-render`);
+
+            // 2. Llamar al backend
+            console.log(`🌐 [StatusToggle] Enviando petición al backend...`);
             const result = await transactionService.updateTransactionStatus(
                 transaction.id,
                 newStatus,
@@ -177,36 +206,67 @@ export default function DepositsDirectPage() {
             );
 
             if (result.success) {
-                console.log(`Estado actualizado exitosamente para transacción ${transaction.id}`);
+                console.log(`✅ [StatusToggle] Backend confirmó el cambio exitosamente`);
 
-                // Actualizar el estado local inmediatamente para UI responsiva
+                // 3. Mostrar notificación de éxito
+                toast.success(`Estado cambiado a ${newStatus} exitosamente`);
+
+                // 4. Forzar recarga después de un delay para sincronizar con el backend
+                console.log(`🔄 [StatusToggle] Programando recarga en 1 segundo...`);
+                setTimeout(async () => {
+                    console.log(`🔄 [StatusToggle] Ejecutando recarga...`);
+                    try {
+                        await fetchTransactions();
+                        console.log(`✅ [StatusToggle] Recarga completada exitosamente`);
+                        // Incrementar forceUpdateKey después de la recarga para asegurar re-render
+                        setForceUpdateKey(prev => prev + 1);
+                        console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado después de recarga`);
+                    } catch (reloadError) {
+                        console.error(`❌ [StatusToggle] Error en recarga:`, reloadError);
+                    }
+                }, 1000); // Aumentamos el delay a 1 segundo
+
+            } else {
+                console.error(`❌ [StatusToggle] Backend rechazó el cambio:`, result.error);
+
+                // Revertir el cambio local si el backend falló
+                console.log(`🔄 [StatusToggle] Revirtiendo cambio local...`);
                 setTransactions(prevTransactions =>
                     prevTransactions.map(tx =>
                         tx.id === transaction.id
-                            ? { ...tx, status: newStatus, updated_at: new Date().toISOString() }
+                            ? { ...tx, status: originalStatus }
                             : tx
                     )
                 );
 
-                // Pequeño delay antes de recargar para asegurar que el backend esté actualizado
-                setTimeout(() => {
-                    fetchTransactions();
-                }, 500);
-
-                // Mostrar notificación de éxito
-                console.log(`✅ Estado cambiado a ${newStatus} para transacción ${transaction.id}`);
-                toast.success(`Estado cambiado a ${newStatus} exitosamente`);
-            } else {
-                throw new Error(result.error || 'Error al cambiar el estado');
+                throw new Error(result.error || 'Error al cambiar el estado en el servidor');
             }
         } catch (err) {
-            console.error('Error changing status:', err);
+            console.error(`❌ [StatusToggle] Error en handleStatusToggle:`, err);
+
             const errorMessage = err instanceof Error ? err.message : 'Error al cambiar el estado. Por favor, intente nuevamente.';
             setError(errorMessage);
             toast.error(errorMessage);
 
-            // En caso de error, recargar para asegurar consistencia
-            fetchTransactions();
+            // Revertir el cambio local en caso de error
+            console.log(`🔄 [StatusToggle] Revirtiendo cambio local por error...`);
+            setTransactions(prevTransactions =>
+                prevTransactions.map(tx =>
+                    tx.id === transaction.id
+                        ? { ...tx, status: originalStatus }
+                        : tx
+                )
+            );
+
+            // Recargar para asegurar consistencia
+            console.log(`🔄 [StatusToggle] Forzando recarga por error...`);
+            fetchTransactions().then(() => {
+                // Incrementar forceUpdateKey después de la recarga por error
+                setForceUpdateKey(prev => prev + 1);
+                console.log(`🔄 [StatusToggle] ForceUpdateKey incrementado después de recarga por error`);
+            }).catch(reloadError => {
+                console.error(`❌ [StatusToggle] Error en recarga de recuperación:`, reloadError);
+            });
         }
     };
 
@@ -290,6 +350,7 @@ export default function DepositsDirectPage() {
                                 />
 
                                 <TransactionTable
+                                    key={`transactions-${forceUpdateKey}-${filteredTransactions.length}`}
                                     transactions={filteredTransactions}
                                     onTransactionApproved={handleTransactionApproved}
                                     onTransactionRejected={handleTransactionRejected}
