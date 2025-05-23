@@ -388,6 +388,60 @@ class TransactionService {
       return rejectedTransaction;
     }
   }
+
+  // Actualizar estado de transacción
+  async updateTransactionStatus(transactionId: string | number, newStatus: string, accessToken: string): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+    const opId = `fe_update_status_${transactionId}_${Date.now()}`;
+    console.log(`[${opId}] INICIO: Actualizando estado de transacción ${transactionId} a ${newStatus}`);
+
+    try {
+      if (!this.apiUrl) {
+        throw new Error('API URL is not configured.');
+      }
+
+      const endpoint = `${this.apiUrl}/transactions/${transactionId}/status`;
+      console.log(`[${opId}] Enviando solicitud a: ${endpoint}`);
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Error al actualizar estado: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorData.error || errorMsg;
+        } catch { }
+
+        console.error(`[${opId}] ERROR: ${errorMsg}`);
+        return {
+          success: false,
+          error: errorMsg
+        };
+      }
+
+      const responseData = await response.json();
+      console.log(`[${opId}] ÉXITO: Estado actualizado correctamente`);
+
+      return {
+        success: true,
+        transaction: responseData.transaction
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar el estado';
+      console.error(`[${opId}] EXCEPCIÓN: ${errorMessage}`);
+
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
 }
 
 // Singleton para acceder al servicio desde cualquier componente
@@ -417,10 +471,18 @@ export function useTransactionService() {
     return transactionService.rejectTransaction(transaction, session.accessToken);
   };
 
+  const updateTransactionStatus = async (transactionId: string | number, newStatus: string) => {
+    if (!session?.accessToken) {
+      throw new Error('No authentication token available');
+    }
+    return transactionService.updateTransactionStatus(transactionId, newStatus, session.accessToken);
+  };
+
   return {
     fetchTransactions,
     approveTransaction,
     rejectTransaction,
+    updateTransactionStatus,
     applyFilters: transactionService.applyFilters.bind(transactionService),
     filterTransactions: transactionService.filterTransactions.bind(transactionService)
   };

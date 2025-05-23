@@ -9,6 +9,7 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { TransactionFilters } from '@/components/transaction-filters';
+import { toast } from "sonner";
 
 export default function DepositsDirectPage() {
     const { data: session, status: sessionStatus } = useSession();
@@ -166,28 +167,46 @@ export default function DepositsDirectPage() {
 
         try {
             const newStatus = transaction.status === 'Pending' ? 'Asignado' : 'Pending';
+            console.log(`Cambiando estado de transacción ${transaction.id} de ${transaction.status} a ${newStatus}`);
 
-            // Llamar al endpoint para actualizar el estado
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/${transaction.id}/status`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${session.accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                }
+            // Usar el método del servicio para actualizar el estado
+            const result = await transactionService.updateTransactionStatus(
+                transaction.id,
+                newStatus,
+                session.accessToken
             );
 
-            if (response.ok) {
-                await fetchTransactions(); // Recargar después del cambio
+            if (result.success) {
+                console.log(`Estado actualizado exitosamente para transacción ${transaction.id}`);
+
+                // Actualizar el estado local inmediatamente para UI responsiva
+                setTransactions(prevTransactions =>
+                    prevTransactions.map(tx =>
+                        tx.id === transaction.id
+                            ? { ...tx, status: newStatus, updated_at: new Date().toISOString() }
+                            : tx
+                    )
+                );
+
+                // Pequeño delay antes de recargar para asegurar que el backend esté actualizado
+                setTimeout(() => {
+                    fetchTransactions();
+                }, 500);
+
+                // Mostrar notificación de éxito
+                console.log(`✅ Estado cambiado a ${newStatus} para transacción ${transaction.id}`);
+                toast.success(`Estado cambiado a ${newStatus} exitosamente`);
             } else {
-                throw new Error('Error al cambiar el estado');
+                throw new Error(result.error || 'Error al cambiar el estado');
             }
         } catch (err) {
             console.error('Error changing status:', err);
-            setError('Error al cambiar el estado. Por favor, intente nuevamente.');
+            const errorMessage = err instanceof Error ? err.message : 'Error al cambiar el estado. Por favor, intente nuevamente.';
+            setError(errorMessage);
+            toast.error(errorMessage);
+
+            // En caso de error, recargar para asegurar consistencia
+            fetchTransactions();
         }
     };
 
