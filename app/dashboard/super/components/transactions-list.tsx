@@ -291,14 +291,14 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             'No disponible';
     };
 
-    // Función para obtener el nombre de cuenta (igual que en Depositos Directos, usando receiver_id)
+    // Función para obtener el nombre de cuenta
     const getAccountNameDisplay = (transaction: Transaction): string => {
-        // Si ya tiene transaction_account_name válido, usarlo
-        if (transaction.transaction_account_name && transaction.transaction_account_name !== 'No disponible') {
+        // Si tiene transaction_account_name, usarlo primero
+        if (transaction.transaction_account_name) {
             return transaction.transaction_account_name;
         }
-        // Si tiene account_name válido, usarlo como fallback
-        if (transaction.account_name && transaction.account_name !== 'No disponible') {
+        // Si tiene account_name, usarlo como fallback
+        if (transaction.account_name) {
             return transaction.account_name;
         }
         // Buscar por receiver_id en las cuentas
