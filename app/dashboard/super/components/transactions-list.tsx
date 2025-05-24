@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { transactionService } from "@/components/transaction-service";
+import { useAllAccounts } from '../hooks/use-all-accounts';
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -40,6 +41,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     // Usar el hook personalizado para obtener transacciones con filtros
     const { filteredTransactions, isLoading, error, refetch } = useAllTransactions(filters);
     const { data: session, status: sessionStatus } = useSession();
+    const { allAccounts } = useAllAccounts();
 
     // Estado para el ID de la transacción en proceso de aprobación/rechazo
     const [processingId, setProcessingId] = useState<string | number | null>(null);
@@ -289,21 +291,20 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             'No disponible';
     };
 
-    // Función para obtener el nombre de cuenta (igual que en Depositos Directos)
+    // Función para obtener el nombre de cuenta (igual que en Depositos Directos, usando receiver_id)
     const getAccountNameDisplay = (transaction: Transaction): string => {
-        // Para Bank Transfer, usar el account_name recibido directamente del backend
-        if (transaction.description === 'Bank Transfer') {
-            const txWithFields = transaction as Transaction & { accountName?: string };
-            return transaction.account_name || txWithFields.accountName || transaction.account_holder || 'Cuenta Externa';
-        }
-        // Para transacciones IPN (Pago recibido vía IPN)
-        if (transaction.account_name) {
+        // Si ya tiene account_name válido, usarlo
+        if (transaction.account_name && transaction.account_name !== 'No disponible') {
             return transaction.account_name;
         }
-        const txWithFields = transaction as Transaction & { accountName?: string };
-        if (txWithFields.accountName) {
-            return txWithFields.accountName;
+        // Buscar por receiver_id en las cuentas
+        if (transaction.receiver_id) {
+            const found = allAccounts.find(acc => acc.receiver_id === transaction.receiver_id);
+            if (found && found.name) {
+                return found.name;
+            }
         }
+        // Fallbacks
         if (transaction.account_holder) {
             return transaction.account_holder;
         }
