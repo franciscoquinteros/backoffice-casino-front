@@ -293,14 +293,17 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
     // Función para obtener el nombre de cuenta
     const getAccountNameDisplay = (transaction: Transaction): string => {
+
         // Si tiene transaction_account_name, usarlo primero
         if (transaction.transaction_account_name) {
             return transaction.transaction_account_name;
         }
+
         // Si tiene account_name, usarlo como fallback
         if (transaction.account_name) {
             return transaction.account_name;
         }
+
         // Buscar por receiver_id en las cuentas
         if (transaction.receiver_id) {
             const found = allAccounts.find(acc => acc.receiver_id === transaction.receiver_id);
@@ -308,10 +311,12 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                 return found.name;
             }
         }
+
         // Fallbacks
         if (transaction.account_holder) {
             return transaction.account_holder;
         }
+
         return 'No disponible';
     };
 

@@ -89,27 +89,46 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                 updatedAt?: string;
                 updated_at?: string;
                 payer_identification?: PayerIdentification | string;
+                transaction_account_name?: string;
             }) => {
-                if (!transaction.date_created) {
-                    // Si no existe date_created, establecerlo en base a otras propiedades disponibles
-                    transaction.date_created =
+                // Crear un nuevo objeto con la estructura correcta
+                const processedTransaction: Transaction = {
+                    id: transaction.id || '',
+                    type: transaction.type || 'deposit',
+                    amount: transaction.amount || 0,
+                    status: transaction.status || 'Pending',
+                    description: transaction.description || '',
+                    date_created: transaction.date_created ||
                         transaction.dateCreated as string ||
                         transaction.createdAt ||
                         transaction.created_at ||
                         transaction.updatedAt ||
                         transaction.updated_at ||
-                        new Date().toISOString();
-                }
+                        new Date().toISOString(),
+                    cbu: transaction.cbu,
+                    payerEmail: transaction.payer_email,
+                    walletAddress: transaction.walletAddress,
+                    office: transaction.office,
+                    account_name: transaction.account_name,
+                    transaction_account_name: transaction.transaction_account_name,
+                    external_reference: transaction.external_reference,
+                    reference_transaction: transaction.reference_transaction,
+                    payment_method_id: transaction.payment_method_id,
+                    payer_id: transaction.payer_id,
+                    payer_identification: typeof transaction.payer_identification === 'string'
+                        ? { type: 'DNI', number: transaction.payer_identification }
+                        : transaction.payer_identification,
+                    receiver_id: transaction.receiver_id,
+                    account_holder: transaction.account_holder,
+                    client_id: transaction.client_id,
+                    idCliente: transaction.idCliente,
+                    relatedUserTransactionId: transaction.relatedUserTransactionId,
+                    assignedTo: transaction.assignedTo,
+                    createdAt: transaction.createdAt,
+                    updatedAt: transaction.updatedAt
+                };
 
-                // Procesar payer_identification si existe y es una cadena
-                if (transaction.payer_identification && typeof transaction.payer_identification === 'string') {
-                    transaction.payer_identification = {
-                        type: 'DNI',
-                        number: transaction.payer_identification
-                    };
-                }
-
-                return transaction as Transaction;
+                return processedTransaction;
             });
 
             // Obtener lista de IDs de oficinas válidas (registradas)
