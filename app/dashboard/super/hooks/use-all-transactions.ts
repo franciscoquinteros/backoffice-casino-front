@@ -21,6 +21,7 @@ export interface Transaction {
     // Propiedades opcionales específicas
     date_created: string;
     account_name?: string;
+    transaction_account_name?: string;
     external_reference?: string;
     reference_transaction?: string;
     payment_method_id?: string;
