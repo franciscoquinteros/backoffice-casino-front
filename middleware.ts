@@ -61,7 +61,18 @@ export async function middleware(request: NextRequest) {
 
   // Si es una ruta pública y el usuario está autenticado, redirigir al dashboard
   if (isPublicRoute && session) {
-    return NextResponse.redirect(new URL('/dashboard/chat', request.url))
+    // Si es superadmin, redirigir directamente al dashboard de super
+    if (session.user?.role === 'superadmin') {
+      // Solo redirigir si no está ya en una ruta de superadmin
+      if (!path.startsWith('/dashboard/super')) {
+        return NextResponse.redirect(new URL('/dashboard/super', request.url))
+      }
+    } else {
+      // Para otros roles, redirigir a chat si no están ya en una ruta válida
+      if (!path.startsWith('/dashboard/')) {
+        return NextResponse.redirect(new URL('/dashboard/chat', request.url))
+      }
+    }
   }
 
   // Si no es una ruta pública y el usuario no está autenticado, redirigir al login

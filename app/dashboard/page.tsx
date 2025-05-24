@@ -9,7 +9,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isLoading) {
-      // Redirect superadmins to super dashboard, others to chat
       if (isSuperAdmin) {
         redirect("/dashboard/super")
       } else {

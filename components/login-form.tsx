@@ -113,9 +113,19 @@ export function LoginForm({ className, ...props }: React.HTMLAttributes<HTMLDivE
       } else if (result?.ok && !result.error) {
         // Éxito
         toast.success("Inicio de sesión exitoso");
-        // Redirige al dashboard o donde necesites
-        router.push('/dashboard'); // Ajusta la ruta destino
-        router.refresh(); // Refresca para asegurar que la sesión se actualice bien en layout/header
+
+        // Obtener la sesión actualizada para verificar el rol
+        const session = await fetch('/api/auth/session');
+        const sessionData = await session.json();
+
+        // Redirigir según el rol
+        if (sessionData?.user?.role === 'superadmin') {
+          router.push('/dashboard/super');
+        } else {
+          router.push('/dashboard/chat');
+        }
+
+        router.refresh(); // Refresca para asegurar que la sesión se actualice bien
       } else {
         // Caso inesperado
         toast.error("Respuesta inesperada del servidor de autenticación.");
