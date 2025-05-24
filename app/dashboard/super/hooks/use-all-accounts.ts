@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 
 // Tipos requeridos
@@ -35,7 +35,6 @@ export interface AccountFilters {
 export function useAllAccounts(filters: AccountFilters = {}) {
     const { data: session } = useSession();
     const [accounts, setAccounts] = useState<Account[]>([]);
-    const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -81,8 +80,8 @@ export function useAllAccounts(filters: AccountFilters = {}) {
         }
     }, [session?.accessToken, fetchAllAccounts]);
 
-    // Función para aplicar filtros a las cuentas
-    const applyFilters = useCallback(() => {
+    // Usar useMemo para filtrar las cuentas
+    const filteredAccounts = useMemo(() => {
         let result = [...accounts];
 
         // Filtrar por oficina
@@ -107,13 +106,8 @@ export function useAllAccounts(filters: AccountFilters = {}) {
             );
         }
 
-        setFilteredAccounts(result);
-    }, [accounts, filters]);
-
-    // Efecto para aplicar filtros cuando cambian los filtros o las cuentas
-    useEffect(() => {
-        applyFilters();
-    }, [filters, accounts, applyFilters]);
+        return result;
+    }, [accounts, filters.officeId, filters.status, filters.search]);
 
     return {
         allAccounts: accounts,

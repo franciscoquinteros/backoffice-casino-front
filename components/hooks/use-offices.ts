@@ -51,19 +51,19 @@ export function useOffices() {
     .filter(office => office.status === "active")
     .map(office => ({
       // Para sistemas existentes que usan el nombre como valor
-      value: office.id.toString(), 
+      value: office.id.toString(),
       label: office.name
     }));
 
   // Creamos un mapa más flexible que pueda manejar varios formatos de ID
   const officesMap: Record<string, string> = {};
-  
+
   // Llenamos el mapa con diferentes formatos de claves para mayor compatibilidad
   offices.forEach(office => {
     // Aseguramos tener el ID tanto como string como en su formato original
     officesMap[office.id.toString()] = office.name;
     officesMap[office.id] = office.name;
-    
+
     // También mapeamos por nombre para retrocompatibilidad
     officesMap[office.name.toLowerCase()] = office.name;
   });
@@ -71,22 +71,22 @@ export function useOffices() {
   // Función mejorada para convertir ID a nombre de oficina
   const getOfficeName = (id: string | number | null | undefined): string => {
     if (!id) return "No asignada";
-    
+
     if (id === "remote" || id === "Remote") return "Remoto";
-    
+
     // Convertimos a string para búsqueda estándar
     const officeIdStr = id.toString();
-    
+
     // Primero buscamos exactamente como nos llega
     if (officesMap[id]) return officesMap[id];
-    
+
     // Buscamos como string
     if (officesMap[officeIdStr]) return officesMap[officeIdStr];
-    
+
     // Intentamos buscar con variaciones de formato
     const normalizedId = officeIdStr.toLowerCase();
     if (officesMap[normalizedId]) return officesMap[normalizedId];
-    
+
     // Si todo falla, mostramos el ID con un mensaje claro
     return `Desconocida (ID: ${id})`;
   };
