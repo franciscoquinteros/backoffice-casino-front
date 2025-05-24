@@ -289,60 +289,25 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             'No disponible';
     };
 
-    // Función para obtener el nombre de cuenta
+    // Función para obtener el nombre de cuenta (igual que en Depositos Directos)
     const getAccountNameDisplay = (transaction: Transaction): string => {
-        return transaction.account_name || transaction.account_holder || 'No disponible';
-    };
-
-    // Función para actualización masiva de nombres de cuenta Bank Transfer
-    const handleMassiveUpdateAccountNames = async () => {
-        if (sessionStatus !== "authenticated" || !session?.accessToken) {
-            toast.error("No estás autenticado para realizar esta operación.");
-            return;
+        // Para Bank Transfer, usar el account_name recibido directamente del backend
+        if (transaction.description === 'Bank Transfer') {
+            const txWithFields = transaction as Transaction & { accountName?: string };
+            return transaction.account_name || txWithFields.accountName || transaction.account_holder || 'Cuenta Externa';
         }
-
-        // Confirmar la operación
-        const confirmed = window.confirm(
-            "¿Estás seguro de que quieres actualizar TODOS los nombres de cuenta para transacciones Bank Transfer existentes? Esta operación no se puede deshacer."
-        );
-
-        if (!confirmed) return;
-
-        setProcessingId("massive-update");
-
-        try {
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/transactions/update-all-account-names`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${session.accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-
-            toast.success(`${result.message}. Actualizadas: ${result.updated} transacciones`);
-
-            // Mostrar detalles si hay
-            if (result.details && result.details.length > 0) {
-                console.log("Detalles de actualización:", result.details);
-            }
-
-            // Refrescar la lista
-            await refetch();
-        } catch (error) {
-            console.error('Error en actualización masiva:', error);
-            toast.error(`Error en actualización masiva: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-        } finally {
-            setProcessingId(null);
+        // Para transacciones IPN (Pago recibido vía IPN)
+        if (transaction.account_name) {
+            return transaction.account_name;
         }
+        const txWithFields = transaction as Transaction & { accountName?: string };
+        if (txWithFields.accountName) {
+            return txWithFields.accountName;
+        }
+        if (transaction.account_holder) {
+            return transaction.account_holder;
+        }
+        return 'No disponible';
     };
 
     // Función para exportar transacciones a CSV
@@ -450,6 +415,14 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }
     }, [filters, refetch]);
 
+    // Auto-refresh cada 5 segundos
+    useEffect(() => {
+        const interval = setInterval(() => {
+            refetch();
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [refetch]);
+
     // Si está cargando, mostrar skeleton
     if (isLoading) {
         return (
@@ -482,23 +455,6 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     // Renderizar tabla con transacciones
     return (
         <div className="space-y-4">
-            {/* Botón de actualización masiva */}
-            <div className="flex justify-end">
-                <Button
-                    variant="outline"
-                    onClick={handleMassiveUpdateAccountNames}
-                    disabled={processingId === "massive-update"}
-                    className="flex items-center gap-2 bg-blue-500/10 text-blue-700 dark:text-blue-500 hover:bg-blue-500/20"
-                >
-                    {processingId === "massive-update" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <CheckCircle className="h-4 w-4" />
-                    )}
-                    {processingId === "massive-update" ? "Actualizando..." : "Actualizar nombres Bank Transfer"}
-                </Button>
-            </div>
-
             <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
@@ -553,8 +509,8 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                 <TableCell>{getAccountNameDisplay(transaction)}</TableCell>
                                 <TableCell className="text-right">
                                     {transaction.status === 'Pending' ? (
-                                        // Solo mostrar botones de aprobar/rechazar para depósitos externos (no IPN)
-                                        transaction.description !== 'Pago recibido vía IPN - Pendiente de validación' ? (
+                                        // Solo mostrar botones de aprobar/rechazar para depósitos externos (no IPN ni Bank Transfer)
+                                        transaction.description !== 'Pago recibido vía IPN - Pendiente de validación' && transaction.description !== 'Bank Transfer' ? (
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="outline"
@@ -587,7 +543,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                             </div>
                                         ) : (
                                             <span className="text-sm text-muted-foreground">
-                                                IPN - Sin acciones
+                                                {transaction.description === 'Bank Transfer' ? 'Sin acciones' : 'IPN - Sin acciones'}
                                             </span>
                                         )
                                     ) : (
