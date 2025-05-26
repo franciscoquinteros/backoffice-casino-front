@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import { formatCurrency } from '@/lib/utils';
 // Importamos las ventanas modales para crear usuarios y cuentas
 import { CreateUserModal } from '@/app/dashboard/users/create-user-modal';
 import { CreateTransferAccountModal } from '@/components/transfer-accounts/create-transfer-account-modal';
+import { useOffices } from '@/components/hooks/use-offices';
 
 export default function SuperDashboardContent() {
     // Estado para el filtro de oficinas que será compartido entre todas las pestañas
@@ -507,6 +508,25 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
     const [customToDate, setCustomToDate] = useState<string>('');
 
     const { stats, isLoading, error } = useDashboardStats(selectedOffice, dateFilter);
+    const { offices } = useOffices();
+
+    // Si no hay oficina seleccionada y hay stats por oficina, mostrar todas las oficinas registradas
+    const officeStatsToShow = useMemo(() => {
+        if (!selectedOffice) {
+            // Crear un objeto con todas las oficinas registradas
+            return offices.reduce((acc, office) => {
+                const officeId = office.id.toString();
+                // Usar las estadísticas existentes o valores por defecto
+                acc[officeId] = stats?.byOffice?.[officeId] || {
+                    depositsAmount: 0,
+                    withdrawalsAmount: 0,
+                    totalAmount: 0
+                };
+                return acc;
+            }, {} as Record<string, any>);
+        }
+        return stats?.byOffice;
+    }, [selectedOffice, stats?.byOffice, offices]);
 
     // Función para manejar cambios en el período de tiempo
     const handlePeriodChange = (period: 'day' | 'week' | 'month' | 'custom') => {
@@ -568,8 +588,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 });
             }
 
-
-
             // Crear blob y descargarlo
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -617,8 +635,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
         const sign = value >= 0 ? '+' : '';
         return `${sign}${value.toFixed(1)}%`;
     };
-
-
 
     // Renderizar contenido de estadísticas
     return (
@@ -830,39 +846,46 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         ) : (
                             // Si no hay oficina, mostrar tabla de ingresos por oficina
                             <div className="space-y-1">
-                                {stats.byOffice && Object.keys(stats.byOffice).length > 0 ? (
+                                {offices.length > 0 ? (
                                     <div className="space-y-2">
-                                        {Object.entries(stats.byOffice || {}).map(([officeId, officeStats]) => (
-                                            <div key={officeId} className="flex items-center justify-between p-2 border-b">
-                                                <div className="font-medium">Oficina {officeId}</div>
-                                                <div className="space-x-4 flex">
-                                                    <div>
-                                                        <span className="text-xs text-muted-foreground">Depósitos: </span>
-                                                        <span className="font-medium">{formatCurrency(officeStats?.depositsAmount || 0)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-xs text-muted-foreground">Retiros: </span>
-                                                        <span className="font-medium">{formatCurrency(officeStats?.withdrawalsAmount || 0)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-xs text-muted-foreground">Total: </span>
-                                                        <span className="font-medium">{formatCurrency(officeStats?.totalAmount || 0)}</span>
+                                        {offices.map((office) => {
+                                            const officeId = office.id.toString();
+                                            const officeStats = officeStatsToShow?.[officeId] || {
+                                                depositsAmount: 0,
+                                                withdrawalsAmount: 0,
+                                                totalAmount: 0
+                                            };
+
+                                            return (
+                                                <div key={officeId} className="flex items-center justify-between p-2 border-b">
+                                                    <div className="font-medium">{office.name}</div>
+                                                    <div className="space-x-4 flex">
+                                                        <div>
+                                                            <span className="text-xs text-muted-foreground">Depósitos: </span>
+                                                            <span className="font-medium">{formatCurrency(officeStats?.depositsAmount || 0)}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs text-muted-foreground">Retiros: </span>
+                                                            <span className="font-medium">{formatCurrency(officeStats?.withdrawalsAmount || 0)}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs text-muted-foreground">Total: </span>
+                                                            <span className="font-medium">{formatCurrency(officeStats?.totalAmount || 0)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="text-center p-4 text-muted-foreground">
-                                        No hay datos de oficinas disponibles
+                                        No hay oficinas registradas en el sistema
                                     </div>
                                 )}
                             </div>
                         )}
                     </CardContent>
                 </Card>
-
-
             </div>
         </div>
     );

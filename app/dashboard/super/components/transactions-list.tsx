@@ -368,6 +368,10 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
     // Función para obtener el nombre de cuenta
     const getAccountNameDisplay = (transaction: Transaction): string => {
+        // Si es un retiro, mostrar payer_identification
+        if (transaction.type === 'withdraw') {
+            return getPayerIdentificationNumber(transaction.payer_identification) || 'No disponible';
+        }
 
         // Si tiene transaction_account_name, usarlo primero
         if (transaction.transaction_account_name) {
@@ -593,24 +597,17 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                 </TableCell>
                                 <TableCell>
                                     {transaction.type === 'withdraw' ? (
-                                        (() => {
-                                            // LOG PARA DEPURAR
-                                            console.log(`[FRONTEND DEBUG] Transacción ID: ${transaction.id}, Tipo: ${transaction.type}`);
-                                            console.log('[FRONTEND DEBUG] transaction.payer_identification:', transaction.payer_identification);
-                                            console.log('[FRONTEND DEBUG] typeof transaction.payer_identification:', typeof transaction.payer_identification);
-                                            if (transaction.payer_identification && typeof transaction.payer_identification === 'object') {
-                                                console.log('[FRONTEND DEBUG] transaction.payer_identification.number:', transaction.payer_identification.number);
-                                            }
-                                            // FIN LOG PARA DEPURAR
-                                            return getPayerIdentificationNumber(transaction.payer_identification);
-                                        })()
+                                        // Para retiros, dejar vacío
+                                        ''
                                     ) : (
                                         transaction.external_reference || transaction.reference_transaction || 'N/A'
                                     )}
                                 </TableCell>
                                 <TableCell>{formatCurrency(transaction.amount)}</TableCell>
                                 <TableCell>
-                                    {transaction.status === 'Pending' || transaction.status === 'Asignado' ? (
+                                    {(transaction.status === 'Pending' || transaction.status === 'Asignado') &&
+                                        (transaction.description === 'Pago recibido vía IPN - Pendiente de validación' ||
+                                            transaction.description === 'Bank Transfer') ? (
                                         <div
                                             onClick={() => handleStatusToggle(transaction)}
                                             className="cursor-pointer hover:opacity-80 transition-opacity"
