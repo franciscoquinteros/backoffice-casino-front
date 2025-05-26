@@ -22,7 +22,6 @@ import { toast } from "sonner";
 import { transactionService } from "@/components/transaction-service";
 import { useAllAccounts } from '../hooks/use-all-accounts';
 import { useTransactionService } from '@/components/transaction-service';
-import { useTransactionExport } from '@/components/transaction-export';
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -516,19 +515,6 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }, 30000);
         return () => clearInterval(interval);
     }, [refetch]);
-
-    // Hook para gestionar la exportación de transacciones
-    const { exportToExcel, isLoading: isExporting } = useTransactionExport(
-        sortedTransactions, // Usar sortedTransactions que ya están filtradas y ordenadas
-        session?.accessToken || "",
-        filters as ExtendedTransactionFilters,
-        {
-            getPayerIdentificationNumber,
-            getTransactionDate,
-            getTransactionAccount,
-            getAccountNameDisplay,
-        }
-    );
 
     // Si está cargando, mostrar skeleton
     if (isLoading) {
