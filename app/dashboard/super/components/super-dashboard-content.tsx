@@ -500,6 +500,13 @@ export default function SuperDashboardContent() {
 }
 
 function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
+    // Definir la interfaz para las estadísticas de oficina
+    interface OfficeStats {
+        depositsAmount: number;
+        withdrawalsAmount: number;
+        totalAmount: number;
+    }
+
     // Estados para los filtros de fecha
     const [dateFilter, setDateFilter] = useState<DateFilter>({
         period: 'month' // Por defecto, mostrar datos del mes
@@ -514,7 +521,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
     const officeStatsToShow = useMemo(() => {
         if (!selectedOffice) {
             // Crear un objeto con todas las oficinas registradas
-            return offices.reduce((acc, office) => {
+            return offices.reduce((acc: Record<string, OfficeStats>, office) => {
                 const officeId = office.id.toString();
                 // Usar las estadísticas existentes o valores por defecto
                 acc[officeId] = stats?.byOffice?.[officeId] || {
@@ -523,7 +530,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                     totalAmount: 0
                 };
                 return acc;
-            }, {} as Record<string, any>);
+            }, {} as Record<string, OfficeStats>);
         }
         return stats?.byOffice;
     }, [selectedOffice, stats?.byOffice, offices]);

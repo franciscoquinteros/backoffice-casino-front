@@ -484,7 +484,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             console.error("Error al exportar transacciones:", error);
             toast.error('Error al exportar transacciones');
         }
-    }, [paginatedTransactions]);
+    }, [paginatedTransactions, getTransactionDate, getTransactionAccount, getAccountNameDisplay, getPayerIdentificationNumber]);
 
     // Tipo extendido para filtros que incluye propiedades adicionales de control
     type ExtendedTransactionFilters = TransactionFilters & {
