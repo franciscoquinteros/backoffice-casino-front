@@ -440,13 +440,26 @@ export function TransactionTable({
 
   // Funciones para obtener datos de manera flexible
   const getTransactionReference = (transaction: Transaction): string => {
-    // Intentar múltiples posibles campos donde podría estar la referencia
+    // Para transacciones de tipo withdraw, mostrar el payer_identification.number
+    if (transaction.type === 'withdraw' && transaction.payer_identification) {
+      if (typeof transaction.payer_identification === 'string') {
+        try {
+          const parsed = JSON.parse(transaction.payer_identification);
+          return parsed.number || 'N/A';
+        } catch {
+          return transaction.payer_identification;
+        }
+      }
+      return transaction.payer_identification.number || 'N/A';
+    }
+
+    // Para otros tipos de transacciones, mantener la lógica existente
     return transaction.external_reference ||
       transaction.reference_id ||
       transaction.reference ||
       transaction.transaction_reference ||
       transaction.reference_transaction ||
-      'No disponible';
+      'N/A';
   };
 
   const getTransactionAccount = (transaction: Transaction): string => {

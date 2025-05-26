@@ -15,7 +15,7 @@ export interface Transaction {
     description: string;
     cbu?: string;
     payerEmail?: string;
-    walletAddress?: string;
+    wallet_address?: string;
     office?: string;
     accountName?: string;
     // Propiedades opcionales específicas
@@ -82,6 +82,19 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
 
             const data = await response.json();
 
+            // Debug: Ver los datos crudos que llegan de la API
+            console.log('Datos crudos de la API:', data);
+            if (data.length > 0) {
+                console.log('[FRONTEND] Primera transacción:', {
+                    id: data[0].id,
+                    type: data[0].type,
+                    payer_identification: data[0].payer_identification,
+                    payer_identification_type: typeof data[0].payer_identification,
+                    raw_stringified: JSON.stringify(data[0].payer_identification),
+                    allKeys: Object.keys(data[0])
+                });
+            }
+
             // Asegurarnos de que todas las transacciones tengan date_created
             const processedData = data.map((transaction: Partial<Transaction> & {
                 createdAt?: string;
@@ -91,6 +104,14 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                 payer_identification?: PayerIdentification | string;
                 transaction_account_name?: string;
             }) => {
+                console.log('Procesando transacción:', {
+                    id: transaction.id,
+                    type: transaction.type,
+                    payer_identification: transaction.payer_identification,
+                    payer_identification_type: typeof transaction.payer_identification,
+                    raw_stringified: JSON.stringify(transaction.payer_identification)
+                });
+
                 // Crear un nuevo objeto con la estructura correcta
                 const processedTransaction: Transaction = {
                     id: transaction.id || '',
@@ -107,7 +128,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                         new Date().toISOString(),
                     cbu: transaction.cbu,
                     payerEmail: transaction.payer_email,
-                    walletAddress: transaction.walletAddress,
+                    wallet_address: transaction.wallet_address,
                     office: transaction.office,
                     account_name: transaction.account_name,
                     transaction_account_name: transaction.transaction_account_name,
@@ -115,9 +136,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                     reference_transaction: transaction.reference_transaction,
                     payment_method_id: transaction.payment_method_id,
                     payer_id: transaction.payer_id,
-                    payer_identification: typeof transaction.payer_identification === 'string'
-                        ? { type: 'DNI', number: transaction.payer_identification }
-                        : transaction.payer_identification,
+                    payer_identification: transaction.payer_identification,
                     receiver_id: transaction.receiver_id,
                     account_holder: transaction.account_holder,
                     client_id: transaction.client_id,
@@ -127,6 +146,12 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                     createdAt: transaction.createdAt,
                     updatedAt: transaction.updatedAt
                 };
+
+                console.log('Transacción procesada:', {
+                    id: processedTransaction.id,
+                    type: processedTransaction.type,
+                    payer_identification: processedTransaction.payer_identification
+                });
 
                 return processedTransaction;
             });
@@ -212,7 +237,7 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
                 (tx.payerEmail?.toLowerCase().includes(searchLower)) ||
                 (tx.description?.toLowerCase().includes(searchLower)) ||
                 (tx.cbu?.toLowerCase().includes(searchLower)) ||
-                (tx.walletAddress?.toLowerCase().includes(searchLower)) ||
+                (tx.wallet_address?.toLowerCase().includes(searchLower)) ||
                 (tx.accountName?.toLowerCase().includes(searchLower))
             );
         }

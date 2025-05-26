@@ -21,6 +21,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { transactionService } from "@/components/transaction-service";
 import { useAllAccounts } from '../hooks/use-all-accounts';
+import { useTransactionService } from '@/components/transaction-service';
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -42,9 +43,52 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     const { filteredTransactions, isLoading, error, refetch } = useAllTransactions(filters);
     const { data: session, status: sessionStatus } = useSession();
     const { allAccounts } = useAllAccounts();
+    const { updateTransactionStatus } = useTransactionService();
+
+    // Función auxiliar para obtener el número de identificación
+    const getPayerIdentificationNumber = (payerIdentification: string | { type: string; number: string } | undefined): string => {
+        console.log('Procesando payer_identification:', {
+            value: payerIdentification,
+            type: typeof payerIdentification,
+            stringified: JSON.stringify(payerIdentification)
+        });
+
+        if (!payerIdentification) {
+            console.log('payer_identification es undefined o null');
+            return 'N/A';
+        }
+
+        try {
+            if (typeof payerIdentification === 'string') {
+                // Si ya parece un objeto JSON válido, intentar parsearlo
+                if (payerIdentification.startsWith('{')) {
+                    console.log('payer_identification parece JSON, intentando parsear:', payerIdentification);
+                    const parsed = JSON.parse(payerIdentification);
+                    console.log('Resultado del parseo:', parsed);
+                    return parsed.number || 'N/A';
+                }
+                // Si es un string pero no parece JSON, devolverlo como está
+                return payerIdentification;
+            }
+            // Si es un objeto, acceder directamente a la propiedad number
+            console.log('payer_identification es objeto:', payerIdentification);
+            return payerIdentification.number || 'N/A';
+        } catch (error) {
+            console.error('Error procesando payer_identification:', {
+                error,
+                input: payerIdentification,
+                inputType: typeof payerIdentification
+            });
+            // Si hay error al parsear, devolver el string original si es string
+            return typeof payerIdentification === 'string' ? payerIdentification : 'N/A';
+        }
+    };
 
     // Estado para el ID de la transacción en proceso de aprobación/rechazo
     const [processingId, setProcessingId] = useState<string | number | null>(null);
+
+    // Estado para el ID de la transacción en proceso de cambio de estado
+    const [processingStatusId, setProcessingStatusId] = useState<string | number | null>(null);
 
     // Estados para paginación
     const [currentPage, setCurrentPage] = useState(1);
@@ -233,6 +277,32 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }
     };
 
+    // Función para cambiar el estado entre Pendiente y Asignado
+    const handleStatusToggle = async (transaction: Transaction) => {
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            toast.error("No estás autenticado o falta el token para cambiar el estado.");
+            return;
+        }
+
+        const newStatus = transaction.status === 'Pending' ? 'Asignado' : 'Pending';
+        setProcessingStatusId(transaction.id);
+
+        try {
+            const result = await updateTransactionStatus(transaction.id, newStatus);
+            if (result.success) {
+                toast.success(`Estado cambiado a ${newStatus} exitosamente`);
+                refetch(); // Recargar los datos
+            } else {
+                toast.error(result.error || 'Error al cambiar el estado');
+            }
+        } catch (error) {
+            console.error('Error al cambiar estado:', error);
+            toast.error('Error al cambiar el estado');
+        } finally {
+            setProcessingStatusId(null);
+        }
+    };
+
     // Función para obtener la fecha de transacción
     const getTransactionDate = (transaction: Transaction): string => {
         // Usar un tipo de índice para campos adicionales
@@ -267,13 +337,19 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         return 'No disponible';
     };
 
-    // Función para obtener la cuenta de la transacción (igual que en depósitos)
+    // Función para obtener la cuenta de la transacción
     const getTransactionAccount = (transaction: Transaction): string => {
         // Si es una transacción Bank Transfer, devolver cadena vacía
         if (transaction.description === 'Bank Transfer') {
             return ''; // Campo vacío para Bank Transfer
         }
 
+        // Si es un retiro, mostrar el wallet_address
+        if (transaction.type === 'withdraw') {
+            return transaction.wallet_address || 'No disponible';
+        }
+
+        // Para depósitos y otros tipos, mantener la lógica existente
         // Crear un tipo extendido para campos adicionales
         type ExtendedTransaction = Transaction & {
             account_number?: string;
@@ -282,10 +358,9 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
         const extendedTx = transaction as ExtendedTransaction;
 
-        // Intentar múltiples posibles campos donde puede estar la información de cuenta
-        return transaction.payer_email ||
-            transaction.walletAddress ||
-            transaction.cbu ||
+        // Para depósitos, priorizar CBU y email
+        return transaction.cbu ||
+            transaction.payer_email ||
             extendedTx.account_number ||
             extendedTx.account ||
             'No disponible';
@@ -329,6 +404,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             // Crear encabezados para el CSV
             const headers = [
                 'Tipo',
+                'Referencia',
                 'Monto',
                 'Estado',
                 'Fecha',
@@ -353,6 +429,9 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                 const batchRows = batch.map(transaction => {
                     return [
                         transaction.type === 'deposit' ? 'Depósito' : 'Retiro',
+                        transaction.type === 'withdraw'
+                            ? getPayerIdentificationNumber(transaction.payer_identification)
+                            : (transaction.external_reference || transaction.reference_transaction || 'N/A'),
                         transaction.amount,
                         transaction.status,
                         getTransactionDate(transaction),
@@ -475,6 +554,11 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                 </Button>
                             </TableHead>
                             <TableHead>
+                                <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => handleSort('external_reference')}>
+                                    Referencia <ArrowUpDown className="ml-1 h-4 w-4" />
+                                </Button>
+                            </TableHead>
+                            <TableHead>
                                 <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => handleSort('amount')}>
                                     Monto <ArrowUpDown className="ml-1 h-4 w-4" />
                                 </Button>
@@ -507,11 +591,46 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                                         {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
                                     </Badge>
                                 </TableCell>
+                                <TableCell>
+                                    {transaction.type === 'withdraw' ? (
+                                        (() => {
+                                            // LOG PARA DEPURAR
+                                            console.log(`[FRONTEND DEBUG] Transacción ID: ${transaction.id}, Tipo: ${transaction.type}`);
+                                            console.log('[FRONTEND DEBUG] transaction.payer_identification:', transaction.payer_identification);
+                                            console.log('[FRONTEND DEBUG] typeof transaction.payer_identification:', typeof transaction.payer_identification);
+                                            if (transaction.payer_identification && typeof transaction.payer_identification === 'object') {
+                                                console.log('[FRONTEND DEBUG] transaction.payer_identification.number:', transaction.payer_identification.number);
+                                            }
+                                            // FIN LOG PARA DEPURAR
+                                            return getPayerIdentificationNumber(transaction.payer_identification);
+                                        })()
+                                    ) : (
+                                        transaction.external_reference || transaction.reference_transaction || 'N/A'
+                                    )}
+                                </TableCell>
                                 <TableCell>{formatCurrency(transaction.amount)}</TableCell>
                                 <TableCell>
-                                    <Badge className={statusColors[transaction.status] || ''}>
-                                        {transaction.status}
-                                    </Badge>
+                                    {transaction.status === 'Pending' || transaction.status === 'Asignado' ? (
+                                        <div
+                                            onClick={() => handleStatusToggle(transaction)}
+                                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                                        >
+                                            {processingStatusId === transaction.id ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    <span className="text-sm">Cambiando...</span>
+                                                </div>
+                                            ) : (
+                                                <Badge className={statusColors[transaction.status] || ''}>
+                                                    {transaction.status === 'Pending' ? 'Pendiente' : 'Asignado'}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <Badge className={statusColors[transaction.status] || ''}>
+                                            {transaction.status}
+                                        </Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell>{getTransactionDate(transaction)}</TableCell>
                                 <TableCell>{transaction.office || 'N/A'}</TableCell>

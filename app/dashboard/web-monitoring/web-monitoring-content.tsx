@@ -18,21 +18,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface Transaction {
   id: string | number;
-  type?: 'deposit' | 'withdraw';
-  description: string;
+  type: 'deposit' | 'withdraw';
   amount: number;
-  status?: string;
+  status?: 'Pending' | 'Aceptado' | 'approved' | string;
   date_created?: string;
+  description?: string;
   payment_method_id?: string;
   payer_email?: string;
-  wallet_address?: string;
-  cbu?: string;
-  idCliente?: string | number;
   payer_identification?: {
-    type: string;
-    number: string;
-  };
-  external_reference?: string;
+    type?: string;
+    number?: string;
+  } | string;
+  cbu?: string;
+  wallet_address?: string;
+  idCliente?: string | number;
+  reference_transaction?: string | null;
+  external_reference?: string | null;
 }
 
 export function WebMonitoringContent() {
@@ -223,11 +224,19 @@ export function WebMonitoringContent() {
                     transaction.description?.toLowerCase().includes('deposit') ? 'Depósito' : 'Retiro'}
               </TableCell>
               <TableCell>
-                {transaction.type === 'withdraw' && transaction.payer_identification?.number
-                  ? transaction.payer_identification.number
-                  : transaction.type === 'deposit' && transaction.external_reference
-                    ? transaction.external_reference
-                    : 'No disponible'}
+                {transaction.type === 'withdraw' && transaction.payer_identification
+                  ? (() => {
+                    if (typeof transaction.payer_identification === 'string') {
+                      try {
+                        const parsed = JSON.parse(transaction.payer_identification);
+                        return parsed.number || 'N/A';
+                      } catch {
+                        return transaction.payer_identification;
+                      }
+                    }
+                    return transaction.payer_identification.number || 'N/A';
+                  })()
+                  : transaction.external_reference || transaction.reference_transaction || 'N/A'}
               </TableCell>
               <TableCell>{transaction.description}</TableCell>
               <TableCell>

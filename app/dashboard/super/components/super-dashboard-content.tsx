@@ -742,7 +742,12 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                             Depósitos - Retiros
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            {formatPercentage(stats.monthlyTrend?.amountChange)} respecto al mes anterior
+                            {formatPercentage(stats.monthlyTrend?.amountChange)} respecto {
+                                dateFilter.period === 'day' ? 'al día anterior' :
+                                    dateFilter.period === 'week' ? 'a la semana anterior' :
+                                        dateFilter.period === 'custom' ? 'al período anterior' :
+                                            'al mes anterior'
+                            }
                         </p>
                     </CardContent>
                 </Card>
@@ -751,7 +756,12 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 <Card className="md:col-span-3">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">
-                            {selectedOffice ? "Ingresos Mensuales" : "Ingresos por Oficina"}
+                            {selectedOffice ? (
+                                dateFilter.period === 'day' ? "Ingresos del Día" :
+                                    dateFilter.period === 'week' ? "Ingresos de la Semana" :
+                                        dateFilter.period === 'custom' ? "Ingresos del Período" :
+                                            "Ingresos Mensuales"
+                            ) : "Ingresos por Oficina"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -760,12 +770,20 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                             <div className="space-y-4 p-2">
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="p-3 bg-muted/20 rounded-md">
-                                        <h4 className="text-sm font-medium mb-1">Mes Actual</h4>
+                                        <h4 className="text-sm font-medium mb-1">
+                                            {dateFilter.period === 'day' ? 'Hoy' :
+                                                dateFilter.period === 'week' ? 'Semana Actual' :
+                                                    dateFilter.period === 'custom' ? 'Período Actual' : 'Mes Actual'}
+                                        </h4>
                                         <p className="text-lg font-semibold">{formatCurrency(stats.monthlyTrend?.currentMonth?.amount || 0)}</p>
                                         <p className="text-xs text-muted-foreground">{stats.monthlyTrend?.currentMonth?.count || 0} transacciones</p>
                                     </div>
                                     <div className="p-3 bg-muted/20 rounded-md">
-                                        <h4 className="text-sm font-medium mb-1">Mes Anterior</h4>
+                                        <h4 className="text-sm font-medium mb-1">
+                                            {dateFilter.period === 'day' ? 'Ayer' :
+                                                dateFilter.period === 'week' ? 'Semana Anterior' :
+                                                    dateFilter.period === 'custom' ? 'Período Anterior' : 'Mes Anterior'}
+                                        </h4>
                                         <p className="text-lg font-semibold">{formatCurrency(stats.monthlyTrend?.previousMonth?.amount || 0)}</p>
                                         <p className="text-xs text-muted-foreground">{stats.monthlyTrend?.previousMonth?.count || 0} transacciones</p>
                                     </div>
