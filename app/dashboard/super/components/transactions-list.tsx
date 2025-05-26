@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { transactionService } from "@/components/transaction-service";
 import { useAllAccounts } from '../hooks/use-all-accounts';
 import { useTransactionService } from '@/components/transaction-service';
+import { useTransactionExport } from '@/components/transaction-export';
 
 // Mapa de colores para los diferentes estados
 const statusColors: Record<string, string> = {
@@ -46,7 +47,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     const { updateTransactionStatus } = useTransactionService();
 
     // Función auxiliar para obtener el número de identificación
-    const getPayerIdentificationNumber = (payerIdentification: string | { type: string; number: string } | undefined): string => {
+    const getPayerIdentificationNumber = useCallback((payerIdentification: string | { type: string; number: string } | undefined): string => {
         console.log('Procesando payer_identification:', {
             value: payerIdentification,
             type: typeof payerIdentification,
@@ -82,7 +83,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             // Si hay error al parsear, devolver el string original si es string
             return typeof payerIdentification === 'string' ? payerIdentification : 'N/A';
         }
-    };
+    }, []);
 
     // Estado para el ID de la transacción en proceso de aprobación/rechazo
     const [processingId, setProcessingId] = useState<string | number | null>(null);
@@ -278,7 +279,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     };
 
     // Función para cambiar el estado entre Pendiente y Asignado
-    const handleStatusToggle = async (transaction: Transaction) => {
+    const handleStatusToggle = useCallback(async (transaction: Transaction) => {
         if (sessionStatus !== "authenticated" || !session?.accessToken) {
             toast.error("No estás autenticado o falta el token para cambiar el estado.");
             return;
@@ -301,10 +302,10 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         } finally {
             setProcessingStatusId(null);
         }
-    };
+    }, [sessionStatus, session?.accessToken, updateTransactionStatus, refetch]);
 
     // Función para obtener la fecha de transacción
-    const getTransactionDate = (transaction: Transaction): string => {
+    const getTransactionDate = useCallback((transaction: Transaction): string => {
         // Usar un tipo de índice para campos adicionales
         type TransactionWithDates = Transaction & {
             createdAt?: string;
@@ -335,10 +336,10 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }
 
         return 'No disponible';
-    };
+    }, []);
 
     // Función para obtener la cuenta de la transacción
-    const getTransactionAccount = (transaction: Transaction): string => {
+    const getTransactionAccount = useCallback((transaction: Transaction): string => {
         // Si es una transacción Bank Transfer, devolver cadena vacía
         if (transaction.description === 'Bank Transfer') {
             return ''; // Campo vacío para Bank Transfer
@@ -364,10 +365,10 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
             extendedTx.account_number ||
             extendedTx.account ||
             'No disponible';
-    };
+    }, []);
 
     // Función para obtener el nombre de cuenta
-    const getAccountNameDisplay = (transaction: Transaction): string => {
+    const getAccountNameDisplay = useCallback((transaction: Transaction): string => {
         // Si es un retiro, mostrar payer_identification
         if (transaction.type === 'withdraw') {
             return getPayerIdentificationNumber(transaction.payer_identification) || 'No disponible';
@@ -397,7 +398,7 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }
 
         return 'No disponible';
-    };
+    }, [allAccounts, getPayerIdentificationNumber]);
 
     // Función para exportar transacciones a CSV
     const handleExport = useCallback(async () => {
@@ -515,6 +516,19 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }, 30000);
         return () => clearInterval(interval);
     }, [refetch]);
+
+    // Hook para gestionar la exportación de transacciones
+    const { exportToExcel, isLoading: isExporting } = useTransactionExport(
+        sortedTransactions, // Usar sortedTransactions que ya están filtradas y ordenadas
+        session?.accessToken || "",
+        filters as ExtendedTransactionFilters,
+        {
+            getPayerIdentificationNumber,
+            getTransactionDate,
+            getTransactionAccount,
+            getAccountNameDisplay,
+        }
+    );
 
     // Si está cargando, mostrar skeleton
     if (isLoading) {

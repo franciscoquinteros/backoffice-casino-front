@@ -52,7 +52,6 @@ interface UsersListProps {
 export default function UsersList({ filters }: UsersListProps) {
     const { data: session } = useSession();
     const {
-        allUsers,
         filteredUsers,
         isLoading,
         error,
@@ -72,7 +71,7 @@ export default function UsersList({ filters }: UsersListProps) {
 
     // Función para ordenar usuarios based on filteredUsers from the hook
     const sortedAndPagedUsers = useMemo(() => {
-        let usersToProcess = [...filteredUsers];
+        const usersToProcess = [...filteredUsers];
 
         if (sortConfig) {
             usersToProcess.sort((a, b) => {
