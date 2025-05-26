@@ -425,11 +425,11 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         }
     }, [filters, refetch]);
 
-    // Auto-refresh cada 5 segundos
+    // Auto-refresh cada 30 segundos
     useEffect(() => {
         const interval = setInterval(() => {
             refetch();
-        }, 5000);
+        }, 30000);
         return () => clearInterval(interval);
     }, [refetch]);
 
