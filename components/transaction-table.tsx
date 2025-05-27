@@ -440,17 +440,9 @@ export function TransactionTable({
 
   // Funciones para obtener datos de manera flexible
   const getTransactionReference = (transaction: Transaction): string => {
-    // Para transacciones de tipo withdraw, mostrar el payer_identification.number
-    if (transaction.type === 'withdraw' && transaction.payer_identification) {
-      if (typeof transaction.payer_identification === 'string') {
-        try {
-          const parsed = JSON.parse(transaction.payer_identification);
-          return parsed.number || 'N/A';
-        } catch {
-          return transaction.payer_identification;
-        }
-      }
-      return transaction.payer_identification.number || 'N/A';
+    // Para transacciones de tipo withdraw, devolver cadena vacía
+    if (transaction.type === 'withdraw') {
+      return '';
     }
 
     // Para otros tipos de transacciones, mantener la lógica existente
@@ -477,7 +469,7 @@ export function TransactionTable({
       return ''; // Campo vacío para Bank Transfer
     }
 
-    // Intentar múltiples posibles campos donde puede estar la información de cuenta
+    // Para cualquier tipo de transacción, incluidos retiros, mostrar la información de cuenta
     return transaction.payer_email ||
       transaction.wallet_address ||
       transaction.cbu ||
@@ -773,13 +765,26 @@ export function TransactionTable({
   }, [normalizedTransactions, accountNameCache, loadingAccountNames, failedAccountNameFetches, fetchAccountNameFromBackend]);
 
   const getAccountNameDisplay = useCallback((transaction: Transaction) => {
+    // Para retiros, mostrar el número de identificación del pagador
+    if (transaction.type === 'withdraw' && transaction.payer_identification) {
+      if (typeof transaction.payer_identification === 'string') {
+        try {
+          const parsed = JSON.parse(transaction.payer_identification);
+          return parsed.number || '';
+        } catch {
+          return transaction.payer_identification;
+        }
+      }
+      return transaction.payer_identification.number || '';
+    }
+
     // Si ya tiene un account_name, usarlo directamente
     if (transaction.account_name &&
       transaction.account_name !== 'No disponible') {
       return transaction.account_name;
     }
 
-    // Continuar con la lógica existente para casos donde account_name no existe
+    // Para Bank Transfer, usar el caché o el account_holder
     if (transaction.description === 'Bank Transfer') {
       if (accountNameCache[transaction.id]) {
         return accountNameCache[transaction.id];
