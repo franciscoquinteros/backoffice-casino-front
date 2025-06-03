@@ -579,10 +579,12 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
             csvContent += `Depósitos Aceptados,${stats.deposits?.accepted || 0}\n`;
             csvContent += `Depósitos Pendientes,${stats.deposits?.pending || 0}\n`;
             csvContent += `Depósitos Rechazados,${stats.deposits?.rejected || 0}\n`;
+            csvContent += `Depósitos Match MP,${stats.deposits?.matchMP || 0}\n`;
             csvContent += `Número de Retiros,${stats.withdrawals?.total || 0}\n`;
             csvContent += `Retiros Aceptados,${stats.withdrawals?.accepted || 0}\n`;
             csvContent += `Retiros Pendientes,${stats.withdrawals?.pending || 0}\n`;
             csvContent += `Retiros Rechazados,${stats.withdrawals?.rejected || 0}\n`;
+            csvContent += `Retiros Match MP,${stats.withdrawals?.matchMP || 0}\n`;
             csvContent += `Variación Mensual (%),${stats.monthlyTrend?.amountChange || 0}\n\n`;
 
             // Si es un reporte global, añadir datos por oficina
@@ -722,7 +724,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                             <p className="text-xs">
                                 <span className="text-green-600 dark:text-green-400">{stats.deposits?.accepted || 0} aceptados</span> •
                                 <span className="text-yellow-600 dark:text-yellow-400 mx-1">{stats.deposits?.pending || 0} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{stats.deposits?.rejected || 0} rechazados</span>
+                                <span className="text-red-600 dark:text-red-400">{stats.deposits?.rejected || 0} rechazados</span> •
+                                <span className="text-blue-600 dark:text-blue-400 mx-1">{stats.deposits?.matchMP || 0} match MP</span>
                             </p>
                         </div>
                     </CardContent>
@@ -743,7 +746,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                             <p className="text-xs">
                                 <span className="text-green-600 dark:text-green-400">{stats.withdrawals?.accepted || 0} aceptados</span> •
                                 <span className="text-yellow-600 dark:text-yellow-400 mx-1">{stats.withdrawals?.pending || 0} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{stats.withdrawals?.rejected || 0} rechazados</span>
+                                <span className="text-red-600 dark:text-red-400">{stats.withdrawals?.rejected || 0} rechazados</span> •
+                                <span className="text-blue-600 dark:text-blue-400 mx-1">{stats.withdrawals?.matchMP || 0} match MP</span>
                             </p>
                         </div>
                     </CardContent>

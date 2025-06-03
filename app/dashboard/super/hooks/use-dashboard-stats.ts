@@ -20,6 +20,7 @@ export interface DashboardStats {
         pending: number;
         accepted: number;
         rejected: number;
+        matchMP: number;
     };
     withdrawals: {
         total: number;
@@ -27,6 +28,7 @@ export interface DashboardStats {
         pending: number;
         accepted: number;
         rejected: number;
+        matchMP: number;
     };
     // Nuevo campo para el total neto (depósitos - retiros)
     netTotal: number;
