@@ -36,7 +36,7 @@ import { CreateUserModal } from '@/app/dashboard/users/create-user-modal';
 import { CreateTransferAccountModal } from '@/components/transfer-accounts/create-transfer-account-modal';
 import { useOffices } from '@/components/hooks/use-offices';
 import useSWR from 'swr';
-import { addDays, subDays, subWeeks, subMonths, format as formatDate, startOfWeek, startOfMonth } from 'date-fns';
+import { subDays, subWeeks, subMonths, format as formatDate, startOfWeek, startOfMonth } from 'date-fns';
 import { TransactionByStatus } from '@/app/report/services/report.api';
 
 // --- Fetcher para SWR (igual que en report.tsx) ---
@@ -67,16 +67,7 @@ export type TransactionFilters = {
     date: TransactionDateFilter;
 };
 
-// Helper para sumar depósitos aceptados + match MP
-function getDepositsTotal(data: TransactionByStatus[] | undefined) {
-    if (!data) return 0;
-    const aceptado = data.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.value || 0;
-    const match = data.find(t => t.type === 'deposit' && t.name === 'Match MP')?.value || 0;
-    return aceptado + match;
-}
-
 export default function SuperDashboardContent() {
-    const { data: session } = useSession();
 
     // Estado para el filtro de oficinas que será compartido entre todas las pestañas
     const [selectedOffice, setSelectedOffice] = useState<string | null>(null);
@@ -688,24 +679,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
         if (prev === 0) return 100;
         return ((curr - prev) / prev) * 100;
     }
-
-    // Si no hay oficina seleccionada y hay stats por oficina, mostrar todas las oficinas registradas
-    const officeStatsToShow = useMemo(() => {
-        if (!selectedOffice) {
-            // Crear un objeto con todas las oficinas registradas
-            return offices.reduce((acc: Record<string, OfficeStats>, office) => {
-                const officeId = office.id.toString();
-                // Usar las estadísticas existentes o valores por defecto
-                acc[officeId] = stats?.byOffice?.[officeId] || {
-                    depositsAmount: 0,
-                    withdrawalsAmount: 0,
-                    totalAmount: 0
-                };
-                return acc;
-            }, {} as Record<string, OfficeStats>);
-        }
-        return stats?.byOffice;
-    }, [selectedOffice, stats?.byOffice, offices]);
 
     if (isLoading) {
         return (

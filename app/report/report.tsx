@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"; // Para etiqueta de oficina
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { addDays, subDays, subWeeks, subMonths, format as formatDate, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { subDays, subWeeks, subMonths, format as formatDate, startOfWeek, startOfMonth } from 'date-fns';
 
 // --- Interfaces para Props de Componentes Auxiliares ---
 interface SummaryCardProps {
@@ -109,8 +109,6 @@ const ReportsDashboard = () => {
     // Nuevos hooks SWR para transacciones
     const shouldFetchTransactionData = activeTab === 'transactions' && accessToken;
     const transactionStatusKey = shouldFetchTransactionData ? [`/reports/transactions-by-status${periodParams()}`, accessToken] : null;
-    const transactionTrendKey = shouldFetchTransactionData ? ['/reports/transaction-trend', accessToken] : null;
-    const transactionAgentKey = shouldFetchTransactionData ? ['/reports/transactions-by-agent', accessToken] : null;
 
     // SWR Hooks usando las claves condicionales
     const { data: summaryData, error: summaryError, isLoading: isLoadingSummary } = useSWR<DashboardSummary>(summaryKey, fetcher, { revalidateOnFocus: false, revalidateIfStale: false });
@@ -125,9 +123,7 @@ const ReportsDashboard = () => {
     const { data: newUsersData, error: newUsersError, isLoading: isLoadingNewUsers } = useSWR<NewUsersByMonth[]>(newUsersKey, fetcher, { revalidateOnFocus: false });
 
     // Nuevos SWR hooks para transacciones
-    const { data: transactionStatusData, error: transactionStatusError, isLoading: isLoadingTransactionStatus } = useSWR<TransactionByStatus[]>(transactionStatusKey, fetcher, { revalidateOnFocus: false });
-    const { data: transactionTrendData, error: transactionTrendError, isLoading: isLoadingTransactionTrend } = useSWR<TransactionTrend>(transactionTrendKey, fetcher, { revalidateOnFocus: false });
-    const { data: transactionAgentData, error: transactionAgentError, isLoading: isLoadingTransactionAgent } = useSWR<TransactionByAgent[]>(transactionAgentKey, fetcher, { revalidateOnFocus: false });
+    const { data: transactionStatusData } = useSWR<TransactionByStatus[]>(transactionStatusKey, fetcher, { revalidateOnFocus: false });
 
     // --- Tooltip Personalizado ---
     const customTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
