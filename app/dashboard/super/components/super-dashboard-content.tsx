@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -534,13 +534,6 @@ export default function SuperDashboardContent() {
 
 function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
     const { data: session } = useSession();
-
-    // Definir la interfaz para las estadísticas de oficina
-    interface OfficeStats {
-        depositsAmount: number;
-        withdrawalsAmount: number;
-        totalAmount: number;
-    }
 
     // Estados para los filtros de fecha
     const [dateFilter, setDateFilter] = useState<DateFilter>({
