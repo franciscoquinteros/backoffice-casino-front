@@ -168,7 +168,6 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     }
 
     function onConnectedUsers(userIds: string[]) {
-      console.log('Usuarios conectados recibidos:', userIds);
       setConnectedUsers(new Set(userIds));
     }
 

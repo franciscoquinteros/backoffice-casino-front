@@ -94,8 +94,10 @@ export interface TransactionSummary {
 }
 
 export interface TransactionByStatus {
+    type: 'deposit' | 'withdraw';
     name: string;
     value: number;
+    count: number;
 }
 
 export interface TransactionTrendData {
@@ -229,6 +231,16 @@ class ReportApi {
             return response.data;
         } catch (error) {
             console.error('Error fetching dashboard summary:', error);
+            throw error;
+        }
+    }
+
+    async getTransactionsByStatus(): Promise<TransactionByStatus[]> {
+        try {
+            const response = await this.axiosInstance.get('/reports/transactions-by-status');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching transactions by status:', error);
             throw error;
         }
     }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,6 @@ import {
 } from '@/components/ui/select';
 
 // Tipos de filtros
-import { TransactionFilters } from '../hooks/use-all-transactions';
 import { UserFilters } from '../hooks/use-all-users';
 import { AccountFilters } from '../hooks/use-all-accounts';
 
@@ -35,8 +35,49 @@ import { formatCurrency } from '@/lib/utils';
 import { CreateUserModal } from '@/app/dashboard/users/create-user-modal';
 import { CreateTransferAccountModal } from '@/components/transfer-accounts/create-transfer-account-modal';
 import { useOffices } from '@/components/hooks/use-offices';
+import useSWR from 'swr';
+import { addDays, subDays, subWeeks, subMonths, format as formatDate, startOfWeek, startOfMonth } from 'date-fns';
+import { TransactionByStatus } from '@/app/report/services/report.api';
+
+// --- Fetcher para SWR (igual que en report.tsx) ---
+const fetcher = async ([url, token]: [string, string | undefined]) => {
+    if (!token) throw new Error('Authentication token not available');
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    if (!baseUrl) throw new Error('API URL is not configured.');
+    const response = await fetch(`${baseUrl}${url}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+    });
+    if (!response.ok) {
+        let errorMsg = `Error fetching report data (${response.status})`;
+        try { const errorData = await response.json(); errorMsg = errorData.message || errorMsg; } catch { }
+        throw new Error(errorMsg);
+    }
+    const data = await response.json();
+    return data.data || data;
+};
+
+// --- Tipo seguro para el filtro de fechas de transacciones ---
+export type TransactionDateFilter = { period: 'day' | 'week' | 'month' | 'custom'; from?: string | null; to?: string | null };
+
+export type TransactionFilters = {
+    officeId: string | null;
+    type: 'deposit' | 'withdraw' | null;
+    status: string | null;
+    search: string | null;
+    date: TransactionDateFilter;
+};
+
+// Helper para sumar depósitos aceptados + match MP
+function getDepositsTotal(data: TransactionByStatus[] | undefined) {
+    if (!data) return 0;
+    const aceptado = data.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.value || 0;
+    const match = data.find(t => t.type === 'deposit' && t.name === 'Match MP')?.value || 0;
+    return aceptado + match;
+}
 
 export default function SuperDashboardContent() {
+    const { data: session } = useSession();
+
     // Estado para el filtro de oficinas que será compartido entre todas las pestañas
     const [selectedOffice, setSelectedOffice] = useState<string | null>(null);
 
@@ -47,13 +88,13 @@ export default function SuperDashboardContent() {
     // Estados para controlar refresh y loading
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-    // Estados para los demás filtros por sección
+    // Estado para los filtros por sección
     const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({
         officeId: null,
         type: null,
         status: null,
         search: null,
-        date: { from: null, to: null }
+        date: { period: 'month', from: null, to: null }
     });
 
     const [userFilters, setUserFilters] = useState<UserFilters>({
@@ -88,6 +129,7 @@ export default function SuperDashboardContent() {
                     ...prev,
                     search: searchTerm || null,
                     date: {
+                        period: prev.date?.period || 'month',
                         from: fromDate || null,
                         to: toDate || null
                     }
@@ -111,7 +153,7 @@ export default function SuperDashboardContent() {
                     type: null,
                     status: null,
                     search: null,
-                    date: { from: null, to: null }
+                    date: { period: 'month', from: null, to: null }
                 });
                 setFromDate('');
                 setToDate('');
@@ -500,6 +542,8 @@ export default function SuperDashboardContent() {
 }
 
 function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
+    const { data: session } = useSession();
+
     // Definir la interfaz para las estadísticas de oficina
     interface OfficeStats {
         depositsAmount: number;
@@ -516,6 +560,134 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
 
     const { stats, isLoading, error } = useDashboardStats(selectedOffice, dateFilter);
     const { offices } = useOffices();
+
+    // --- Helpers para breakdown de transacciones ---
+    const getDepositsTotal = useCallback((data: TransactionByStatus[] | undefined) => {
+        if (!data) return 0;
+        const aceptado = data.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.value || 0;
+        const match = data.find(t => t.type === 'deposit' && t.name === 'Match MP')?.value || 0;
+        return aceptado + match;
+    }, []);
+
+    const getWithdrawalsTotal = useCallback((data: TransactionByStatus[] | undefined) => {
+        if (!data) return 0;
+        // Para retiros solo sumamos 'Aceptado' según las reglas del usuario
+        const aceptado = data.find(t => t.type === 'withdraw' && t.name === 'Aceptado')?.value || 0;
+        return aceptado;
+    }, []);
+
+    const getDepositsCount = useCallback((data: TransactionByStatus[] | undefined) => {
+        if (!data) return 0;
+        const aceptado = data.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.count || 0;
+        const match = data.find(t => t.type === 'deposit' && t.name === 'Match MP')?.count || 0;
+        return aceptado + match;
+    }, []);
+
+    const getWithdrawalsCount = useCallback((data: TransactionByStatus[] | undefined) => {
+        if (!data) return 0;
+        // Para retiros solo contamos 'Aceptado' según las reglas del usuario
+        const aceptado = data.find(t => t.type === 'withdraw' && t.name === 'Aceptado')?.count || 0;
+        return aceptado;
+    }, []);
+
+    const getTransactionCount = useCallback((data: TransactionByStatus[] | undefined, type: 'deposit' | 'withdraw', status: string) => {
+        if (!data) return 0;
+        return data.find(t => t.type === type && t.name === status)?.count || 0;
+    }, []);
+
+    const getNetTotal = useCallback((data: TransactionByStatus[] | undefined) => {
+        if (!data) return 0;
+        return getDepositsTotal(data) - getWithdrawalsTotal(data);
+    }, [getDepositsTotal, getWithdrawalsTotal]);
+
+    // --- SWR para transacciones del período actual ---
+    const accessToken = session?.accessToken;
+    function periodParams() {
+        const date = dateFilter || { period: 'month', from: null, to: null };
+        if (date.period === 'custom' && date.from && date.to) {
+            return `?period=custom&from=${date.from}&to=${date.to}`;
+        }
+        return `?period=${date.period}`;
+    }
+
+    // Construir la URL con filtros de oficina si es necesario
+    const buildTransactionUrl = () => {
+        let url = `/reports/transactions-by-status${periodParams()}`;
+        if (selectedOffice) {
+            const separator = url.includes('?') ? '&' : '?';
+            url += `${separator}officeId=${selectedOffice}`;
+        }
+        return url;
+    };
+
+    const transactionStatusKey = accessToken ? [buildTransactionUrl(), accessToken] : null;
+    const { data: transactionStatusData } = useSWR<TransactionByStatus[]>(transactionStatusKey, fetcher, { revalidateOnFocus: false });
+
+    // --- Helpers para obtener el período anterior ---
+    function getPreviousPeriod() {
+        const date = dateFilter || { period: 'month', from: null, to: null };
+        if (date.period === 'day') {
+            const prev = subDays(new Date(), 1);
+            return { period: 'custom', from: formatDate(prev, 'yyyy-MM-dd'), to: formatDate(prev, 'yyyy-MM-dd') };
+        } else if (date.period === 'week') {
+            const now = new Date();
+            const start = startOfWeek(now, { weekStartsOn: 1 });
+            const prevStart = subWeeks(start, 1);
+            const prevEnd = subDays(start, 1);
+            return { period: 'custom', from: formatDate(prevStart, 'yyyy-MM-dd'), to: formatDate(prevEnd, 'yyyy-MM-dd') };
+        } else if (date.period === 'month') {
+            const now = new Date();
+            const start = startOfMonth(now);
+            const prevStart = subMonths(start, 1);
+            const prevEnd = subDays(start, 1);
+            return { period: 'custom', from: formatDate(prevStart, 'yyyy-MM-dd'), to: formatDate(prevEnd, 'yyyy-MM-dd') };
+        } else if (date.period === 'custom' && date.from && date.to) {
+            const fromDateObj = new Date(date.from);
+            const toDateObj = new Date(date.to);
+            const diff = (toDateObj.getTime() - fromDateObj.getTime()) / (1000 * 60 * 60 * 24) + 1;
+            const prevTo = subDays(new Date(date.from), 1);
+            const prevFrom = subDays(prevTo, diff - 1);
+            return { period: 'custom', from: formatDate(prevFrom, 'yyyy-MM-dd'), to: formatDate(prevTo, 'yyyy-MM-dd') };
+        }
+        return null;
+    }
+
+    const prevPeriod = getPreviousPeriod();
+
+    const buildPrevTransactionUrl = () => {
+        if (!prevPeriod) return null;
+        let url = `/reports/transactions-by-status?period=custom&from=${prevPeriod.from}&to=${prevPeriod.to}`;
+        if (selectedOffice) {
+            url += `&officeId=${selectedOffice}`;
+        }
+        return url;
+    };
+
+    const prevTransactionStatusKey = accessToken && prevPeriod ? [buildPrevTransactionUrl(), accessToken] : null;
+    const { data: prevTransactionStatusData } = useSWR<TransactionByStatus[]>(prevTransactionStatusKey, fetcher, { revalidateOnFocus: false });
+
+    // --- Helpers para el período anterior ---
+    function getPrevDepositsTotal() {
+        if (!prevTransactionStatusData) return 0;
+        const aceptado = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.value || 0;
+        const match = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Match MP')?.value || 0;
+        return aceptado + match;
+    }
+
+    function getPrevDepositsCount() {
+        if (!prevTransactionStatusData) return 0;
+        const aceptado = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.count || 0;
+        const match = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Match MP')?.count || 0;
+        return aceptado + match;
+    }
+
+    function getVariation() {
+        const prev = getPrevDepositsTotal();
+        const curr = getDepositsTotal(transactionStatusData);
+        if (prev === 0 && curr === 0) return 0;
+        if (prev === 0) return 100;
+        return ((curr - prev) / prev) * 100;
+    }
 
     // Si no hay oficina seleccionada y hay stats por oficina, mostrar todas las oficinas registradas
     const officeStatsToShow = useMemo(() => {
@@ -534,85 +706,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
         }
         return stats?.byOffice;
     }, [selectedOffice, stats?.byOffice, offices]);
-
-    // Función para manejar cambios en el período de tiempo
-    const handlePeriodChange = (period: 'day' | 'week' | 'month' | 'custom') => {
-        if (period === 'custom') {
-            setDateFilter({
-                period: 'custom',
-                from: customFromDate || null,
-                to: customToDate || null
-            });
-        } else {
-            setDateFilter({ period });
-        }
-    };
-
-    // Función para manejar cambios en las fechas personalizadas
-    const handleCustomDateChange = () => {
-        setDateFilter({
-            period: 'custom',
-            from: customFromDate || null,
-            to: customToDate || null
-        });
-    };
-
-    // Función para exportar los datos de reportes a CSV
-    const exportReportToCSV = () => {
-        if (!stats) return;
-
-        try {
-            // Determinar el nombre del archivo
-            const date = new Date().toISOString().split('T')[0];
-            const fileName = selectedOffice
-                ? `reporte_oficina_${selectedOffice}_${date}.csv`
-                : `reporte_global_${date}.csv`;
-
-            let csvContent = '';
-
-            // Datos globales
-            csvContent += 'Tipo,Valor\n';
-            csvContent += `Depósitos,${stats.deposits?.amount || 0}\n`;
-            csvContent += `Retiros,${stats.withdrawals?.amount || 0}\n`;
-            csvContent += `Total Neto,${stats.netTotal || 0}\n`;
-            csvContent += `Número de Depósitos,${stats.deposits?.total || 0}\n`;
-            csvContent += `Depósitos Aceptados,${stats.deposits?.accepted || 0}\n`;
-            csvContent += `Depósitos Pendientes,${stats.deposits?.pending || 0}\n`;
-            csvContent += `Depósitos Rechazados,${stats.deposits?.rejected || 0}\n`;
-            csvContent += `Depósitos Match MP,${stats.deposits?.matchMP || 0}\n`;
-            csvContent += `Número de Retiros,${stats.withdrawals?.total || 0}\n`;
-            csvContent += `Retiros Aceptados,${stats.withdrawals?.accepted || 0}\n`;
-            csvContent += `Retiros Pendientes,${stats.withdrawals?.pending || 0}\n`;
-            csvContent += `Retiros Rechazados,${stats.withdrawals?.rejected || 0}\n`;
-            csvContent += `Retiros Match MP,${stats.withdrawals?.matchMP || 0}\n`;
-            csvContent += `Variación Mensual (%),${stats.monthlyTrend?.amountChange || 0}\n\n`;
-
-            // Si es un reporte global, añadir datos por oficina
-            if (!selectedOffice && stats.byOffice) {
-                csvContent += '\nDatos por Oficina\n';
-                csvContent += 'Oficina,Depósitos,Retiros,Total\n';
-
-                Object.entries(stats.byOffice || {}).forEach(([officeId, officeStats]: [string, { depositsAmount?: number; withdrawalsAmount?: number; totalAmount?: number }]) => {
-                    csvContent += `${officeId},${officeStats.depositsAmount || 0},${officeStats.withdrawalsAmount || 0},${officeStats.totalAmount || 0}\n`;
-                });
-            }
-
-            // Crear blob y descargarlo
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', fileName);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            console.log('Reporte exportado con éxito');
-        } catch (error) {
-            console.error('Error al exportar el reporte:', error);
-        }
-    };
 
     if (isLoading) {
         return (
@@ -655,7 +748,9 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         <label className="text-sm font-medium">Período:</label>
                         <Select
                             value={dateFilter.period || 'month'}
-                            onValueChange={(value) => handlePeriodChange(value as 'day' | 'week' | 'month' | 'custom')}
+                            onValueChange={(value) => setDateFilter({
+                                period: value as 'day' | 'week' | 'month' | 'custom'
+                            })}
                         >
                             <SelectTrigger className="w-[130px]">
                                 <SelectValue placeholder="Período" />
@@ -687,13 +782,6 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                 className="w-[150px]"
                                 placeholder="Hasta"
                             />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCustomDateChange}
-                            >
-                                Aplicar
-                            </Button>
                         </div>
                     )}
                 </div>
@@ -701,7 +789,11 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={exportReportToCSV}
+                    onClick={() => setDateFilter({
+                        period: 'custom',
+                        from: customFromDate || null,
+                        to: customToDate || null
+                    })}
                 >
                     <DownloadCloud className="mr-2 h-4 w-4" />
                     Exportar datos
@@ -718,14 +810,14 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.deposits?.amount || 0)}</div>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(getDepositsTotal(transactionStatusData))}</div>
                         <div className="flex justify-between mt-1">
-                            <p className="text-xs">{stats.deposits?.total || 0} operaciones</p>
+                            <p className="text-xs">{getDepositsCount(transactionStatusData)} operaciones</p>
                             <p className="text-xs">
-                                <span className="text-green-600 dark:text-green-400">{stats.deposits?.accepted || 0} aceptados</span> •
-                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{stats.deposits?.pending || 0} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{stats.deposits?.rejected || 0} rechazados</span> •
-                                <span className="text-blue-600 dark:text-blue-400 mx-1">{stats.deposits?.matchMP || 0} match MP</span>
+                                <span className="text-green-600 dark:text-green-400">{getTransactionCount(transactionStatusData, 'deposit', 'Aceptado')} aceptados</span> •
+                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{getTransactionCount(transactionStatusData, 'deposit', 'Pendiente')} pendientes</span> •
+                                <span className="text-red-600 dark:text-red-400">{getTransactionCount(transactionStatusData, 'deposit', 'Rechazado')} rechazados</span> •
+                                <span className="text-blue-600 dark:text-blue-400 mx-1">{getTransactionCount(transactionStatusData, 'deposit', 'Match MP')} match MP</span>
                             </p>
                         </div>
                     </CardContent>
@@ -740,14 +832,14 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.withdrawals?.amount || 0)}</div>
+                        <div className="text-2xl font-bold text-red-600">{formatCurrency(getWithdrawalsTotal(transactionStatusData))}</div>
                         <div className="flex justify-between mt-1">
-                            <p className="text-xs">{stats.withdrawals?.total || 0} operaciones</p>
+                            <p className="text-xs">{getWithdrawalsCount(transactionStatusData)} operaciones</p>
                             <p className="text-xs">
-                                <span className="text-green-600 dark:text-green-400">{stats.withdrawals?.accepted || 0} aceptados</span> •
-                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{stats.withdrawals?.pending || 0} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{stats.withdrawals?.rejected || 0} rechazados</span> •
-                                <span className="text-blue-600 dark:text-blue-400 mx-1">{stats.withdrawals?.matchMP || 0} match MP</span>
+                                <span className="text-green-600 dark:text-green-400">{getTransactionCount(transactionStatusData, 'withdraw', 'Aceptado')} aceptados</span> •
+                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Pendiente')} pendientes</span> •
+                                <span className="text-red-600 dark:text-red-400">{getTransactionCount(transactionStatusData, 'withdraw', 'Rechazado')} rechazados</span> •
+                                <span className="text-blue-600 dark:text-blue-400 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Match MP')} match MP</span>
                             </p>
                         </div>
                     </CardContent>
@@ -762,8 +854,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${(stats.netTotal || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(stats.netTotal || 0)}
+                        <div className={`text-2xl font-bold ${getNetTotal(transactionStatusData) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(getNetTotal(transactionStatusData))}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Depósitos - Retiros
@@ -802,8 +894,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                                 dateFilter.period === 'week' ? 'Semana Actual' :
                                                     dateFilter.period === 'custom' ? 'Período Actual' : 'Mes Actual'}
                                         </h4>
-                                        <p className="text-lg font-semibold">{formatCurrency(stats.monthlyTrend?.currentMonth?.amount || 0)}</p>
-                                        <p className="text-xs text-muted-foreground">{stats.monthlyTrend?.currentMonth?.count || 0} transacciones</p>
+                                        <p className="text-lg font-semibold">{formatCurrency(getDepositsTotal(transactionStatusData))}</p>
+                                        <p className="text-xs text-muted-foreground">{getDepositsCount(transactionStatusData)} transacciones</p>
                                     </div>
                                     <div className="p-3 bg-muted/20 rounded-md">
                                         <h4 className="text-sm font-medium mb-1">
@@ -811,15 +903,15 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                                 dateFilter.period === 'week' ? 'Semana Anterior' :
                                                     dateFilter.period === 'custom' ? 'Período Anterior' : 'Mes Anterior'}
                                         </h4>
-                                        <p className="text-lg font-semibold">{formatCurrency(stats.monthlyTrend?.previousMonth?.amount || 0)}</p>
-                                        <p className="text-xs text-muted-foreground">{stats.monthlyTrend?.previousMonth?.count || 0} transacciones</p>
+                                        <p className="text-lg font-semibold">{formatCurrency(getPrevDepositsTotal())}</p>
+                                        <p className="text-xs text-muted-foreground">{getPrevDepositsCount()} transacciones</p>
                                     </div>
                                     <div className="p-3 bg-muted/20 rounded-md">
                                         <h4 className="text-sm font-medium mb-1">Variación</h4>
                                         <p className="text-lg font-semibold" style={{
-                                            color: (stats.monthlyTrend?.amountChange || 0) >= 0 ? 'rgb(22, 163, 74)' : 'rgb(220, 38, 38)'
+                                            color: getVariation() >= 0 ? 'rgb(22, 163, 74)' : 'rgb(220, 38, 38)'
                                         }}>
-                                            {formatPercentage(stats.monthlyTrend?.amountChange)}
+                                            {getVariation() > 0 ? '+' : ''}{getVariation().toFixed(1)}%
                                         </p>
                                         <p className="text-xs text-muted-foreground">en volumen</p>
                                     </div>
@@ -835,7 +927,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                             </div>
                                             <div className="text-right">
                                                 <span className="text-xs font-semibold inline-block text-green-600">
-                                                    {formatCurrency(stats.deposits?.amount || 0)}
+                                                    {formatCurrency(getDepositsTotal(transactionStatusData))}
                                                 </span>
                                             </div>
                                         </div>
@@ -847,7 +939,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                             </div>
                                             <div className="text-right">
                                                 <span className="text-xs font-semibold inline-block text-red-600">
-                                                    {formatCurrency(stats.withdrawals?.amount || 0)}
+                                                    {formatCurrency(getWithdrawalsTotal(transactionStatusData))}
                                                 </span>
                                             </div>
                                         </div>
@@ -861,7 +953,7 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                     <div className="space-y-2">
                                         {offices.map((office) => {
                                             const officeId = office.id.toString();
-                                            const officeStats = officeStatsToShow?.[officeId] || {
+                                            const officeStats = stats?.byOffice?.[officeId] || {
                                                 depositsAmount: 0,
                                                 withdrawalsAmount: 0,
                                                 totalAmount: 0

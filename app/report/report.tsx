@@ -11,6 +11,10 @@ import { useTheme } from 'next-themes';
 import useSWR from 'swr'; // Para data fetching
 import { Skeleton } from "@/components/ui/skeleton"; // Ajusta ruta
 import { Badge } from "@/components/ui/badge"; // Para etiqueta de oficina
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { addDays, subDays, subWeeks, subMonths, format as formatDate, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 // --- Interfaces para Props de Componentes Auxiliares ---
 interface SummaryCardProps {
@@ -51,6 +55,10 @@ const ReportsDashboard = () => {
     const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
 
     const [activeTab, setActiveTab] = useState('tickets');
+    // Estado para el filtro de período
+    const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'custom'>('month');
+    const [customFromDate, setCustomFromDate] = useState('');
+    const [customToDate, setCustomToDate] = useState('');
 
     // --- Fetcher para SWR (con Autenticación) ---
     const fetcher = async ([url, token]: [string, string | undefined]) => {
@@ -91,9 +99,16 @@ const ReportsDashboard = () => {
     const userRolesKey = shouldFetchUserData ? ['/reports/user-roles', accessToken] : null;
     const newUsersKey = shouldFetchUserData ? ['/reports/new-users-by-month', accessToken] : null;
 
+    // Construir key SWR para transacciones según período
+    const periodParams = () => {
+        if (period === 'custom') {
+            return `?period=custom&from=${customFromDate || ''}&to=${customToDate || ''}`;
+        }
+        return `?period=${period}`;
+    };
     // Nuevos hooks SWR para transacciones
     const shouldFetchTransactionData = activeTab === 'transactions' && accessToken;
-    const transactionStatusKey = shouldFetchTransactionData ? ['/reports/transactions-by-status', accessToken] : null;
+    const transactionStatusKey = shouldFetchTransactionData ? [`/reports/transactions-by-status${periodParams()}`, accessToken] : null;
     const transactionTrendKey = shouldFetchTransactionData ? ['/reports/transaction-trend', accessToken] : null;
     const transactionAgentKey = shouldFetchTransactionData ? ['/reports/transactions-by-agent', accessToken] : null;
 
@@ -181,6 +196,108 @@ const ReportsDashboard = () => {
             );
         }
     };
+
+    // --- Helpers para breakdown de transacciones ---
+    function formatAmount(amount: number) {
+        return amount.toLocaleString('es-AR', {
+            style: 'currency',
+            currency: 'ARS',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function getTransactionCount(type: 'deposit' | 'withdraw', status: string) {
+        if (!transactionStatusData) return 0;
+        const item = transactionStatusData.find(
+            (t) => t.type === type && t.name === status
+        );
+        return item?.count ?? 0;
+    }
+
+    function getTransactionAmount(type: 'deposit' | 'withdraw', status: string) {
+        if (!transactionStatusData) return 0;
+        const item = transactionStatusData.find(
+            (t) => t.type === type && t.name === status
+        );
+        return item?.value ?? 0;
+    }
+
+    function getDepositsTotal() {
+        if (!transactionStatusData) return 0;
+        return getTransactionAmount('deposit', 'Aceptado') + getTransactionAmount('deposit', 'Match MP');
+    }
+
+    function getWithdrawalsTotal() {
+        if (!transactionStatusData) return 0;
+        // Para retiros solo sumamos 'Aceptado' según las reglas del usuario
+        return getTransactionAmount('withdraw', 'Aceptado');
+    }
+
+    function getDepositsAcceptedAndMatch() {
+        if (!transactionStatusData) return 0;
+        return getTransactionAmount('deposit', 'Aceptado') + getTransactionAmount('deposit', 'Match MP');
+    }
+
+    function getWithdrawalsAcceptedAndMatch() {
+        if (!transactionStatusData) return 0;
+        // Para retiros solo retornamos 'Aceptado' según las reglas del usuario
+        return getTransactionAmount('withdraw', 'Aceptado');
+    }
+
+    // --- Helpers para obtener el período anterior ---
+    function getPreviousPeriod() {
+        if (period === 'day') {
+            const prev = subDays(new Date(), 1);
+            return { period: 'custom', from: formatDate(prev, 'yyyy-MM-dd'), to: formatDate(prev, 'yyyy-MM-dd') };
+        } else if (period === 'week') {
+            const now = new Date();
+            const start = startOfWeek(now, { weekStartsOn: 1 });
+            const prevStart = subWeeks(start, 1);
+            const prevEnd = subDays(start, 1);
+            return { period: 'custom', from: formatDate(prevStart, 'yyyy-MM-dd'), to: formatDate(prevEnd, 'yyyy-MM-dd') };
+        } else if (period === 'month') {
+            const now = new Date();
+            const start = startOfMonth(now);
+            const prevStart = subMonths(start, 1);
+            const prevEnd = subDays(start, 1);
+            return { period: 'custom', from: formatDate(prevStart, 'yyyy-MM-dd'), to: formatDate(prevEnd, 'yyyy-MM-dd') };
+        } else if (period === 'custom' && customFromDate && customToDate) {
+            const fromDateObj = new Date(customFromDate);
+            const toDateObj = new Date(customToDate);
+            const diff = (toDateObj.getTime() - fromDateObj.getTime()) / (1000 * 60 * 60 * 24) + 1;
+            const prevTo = subDays(new Date(customFromDate), 1);
+            const prevFrom = subDays(prevTo, diff - 1);
+            return { period: 'custom', from: formatDate(prevFrom, 'yyyy-MM-dd'), to: formatDate(prevTo, 'yyyy-MM-dd') };
+        }
+        return null;
+    }
+
+    // --- SWR para el período anterior ---
+    const prevPeriod = getPreviousPeriod();
+    const prevTransactionStatusKey = shouldFetchTransactionData && prevPeriod ? [`/reports/transactions-by-status?period=custom&from=${prevPeriod.from}&to=${prevPeriod.to}`, accessToken] : null;
+    const { data: prevTransactionStatusData } = useSWR<TransactionByStatus[]>(prevTransactionStatusKey, fetcher, { revalidateOnFocus: false });
+
+    // --- Helpers para el período anterior ---
+    function getPrevDepositsTotal() {
+        if (!prevTransactionStatusData) return 0;
+        const aceptado = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.value || 0;
+        const match = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Match MP')?.value || 0;
+        return aceptado + match;
+    }
+    function getPrevDepositsCount() {
+        if (!prevTransactionStatusData) return 0;
+        const aceptado = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Aceptado')?.count || 0;
+        const match = prevTransactionStatusData.find(t => t.type === 'deposit' && t.name === 'Match MP')?.count || 0;
+        return aceptado + match;
+    }
+    function getVariation() {
+        const prev = getPrevDepositsTotal();
+        const curr = getDepositsTotal();
+        if (prev === 0 && curr === 0) return 0;
+        if (prev === 0) return 100;
+        return ((curr - prev) / prev) * 100;
+    }
 
     // --- Renderizado Condicional por Sesión ---
     if (sessionStatus === "loading") {
@@ -405,188 +522,168 @@ const ReportsDashboard = () => {
                 {/* --- Tab Depósitos y Retiros --- */}
                 {activeTab === 'transactions' && (
                     <>
-                        <ChartCard title="Estado de Transacciones">
-                            {renderSafeChart(transactionStatusData, transactionStatusError, isLoadingTransactionStatus, (data) => (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={data} cx="50%" cy="50%" labelLine={false}
-                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            outerRadius="80%" fill="#8884d8" dataKey="value" nameKey="name">
-                                            {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                        </Pie>
-                                        <Tooltip content={customTooltip} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ))}
-                        </ChartCard>
+                        {/* Filtro de período */}
+                        <div className="md:col-span-2 mb-4 flex items-center gap-2">
+                            <label className="text-sm font-medium">Período:</label>
+                            <Select
+                                value={period}
+                                onValueChange={v => setPeriod(v as 'day' | 'week' | 'month' | 'custom')}
+                            >
+                                <SelectTrigger className="w-[130px]">
+                                    <SelectValue placeholder="Período" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="day">Hoy</SelectItem>
+                                    <SelectItem value="week">Esta semana</SelectItem>
+                                    <SelectItem value="month">Este mes</SelectItem>
+                                    <SelectItem value="custom">Personalizado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {period === 'custom' && (
+                                <>
+                                    <Input
+                                        type="date"
+                                        value={customFromDate}
+                                        onChange={e => setCustomFromDate(e.target.value)}
+                                        className="w-[150px]"
+                                        placeholder="Desde"
+                                    />
+                                    <span className="text-sm text-muted-foreground">hasta</span>
+                                    <Input
+                                        type="date"
+                                        value={customToDate}
+                                        onChange={e => setCustomToDate(e.target.value)}
+                                        className="w-[150px]"
+                                        placeholder="Hasta"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPeriod('custom')}
+                                    >
+                                        Aplicar
+                                    </Button>
+                                </>
+                            )}
+                        </div>
 
-                        <ChartCard title="Tendencia de Transacciones">
-                            {renderSafeChart(transactionTrendData, transactionTrendError, isLoadingTransactionTrend, (data) => {
-                                // Transformar los datos al formato esperado por el gráfico
-                                const transformedData = data.deposits.map(deposit => {
-                                    const withdraw = data.withdraws.find(w => w.mes === deposit.mes);
-                                    return {
-                                        mes: deposit.mes,
-                                        depositos: deposit.cantidad,
-                                        retiros: withdraw?.cantidad || 0
-                                    };
-                                });
+                        {/* Tarjetas de Depósitos, Retiros y Total Neto */}
+                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Depósitos */}
+                            <div className="bg-card border rounded-lg p-6 flex flex-col justify-between min-h-[170px]">
+                                <div>
+                                    <h3 className="text-muted-foreground text-sm font-medium mb-2">Depósitos</h3>
+                                    <div className="text-3xl font-bold text-green-600 mb-1">
+                                        {formatAmount(getDepositsTotal())}
+                                    </div>
+                                </div>
+                                <div className="text-xs flex flex-wrap gap-2 mt-2">
+                                    <span className="text-green-600">{getTransactionCount('deposit', 'Aceptado')} aceptados</span>
+                                    <span className="text-yellow-600">{getTransactionCount('deposit', 'Pendiente')} pendientes</span>
+                                    <span className="text-red-600">{getTransactionCount('deposit', 'Rechazado')} rechazados</span>
+                                    <span className="text-blue-600">{getTransactionCount('deposit', 'Match MP')} match MP</span>
+                                </div>
+                            </div>
 
-                                // Tooltip personalizado para el gráfico de transacciones
-                                const transactionTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
-                                    if (active && payload && payload.length && payload[0]?.value !== undefined) {
-                                        const total = transformedData.reduce((sum, item) => sum + item.depositos + item.retiros, 0);
-                                        const percentage = ((payload[0].value / total) * 100).toFixed(1);
+                            {/* Retiros */}
+                            <div className="bg-card border rounded-lg p-6 flex flex-col justify-between min-h-[170px]">
+                                <div>
+                                    <h3 className="text-muted-foreground text-sm font-medium mb-2">Retiros</h3>
+                                    <div className="text-3xl font-bold text-red-600 mb-1">
+                                        {formatAmount(getWithdrawalsTotal())}
+                                    </div>
+                                </div>
+                                <div className="text-xs flex flex-wrap gap-2 mt-2">
+                                    <span className="text-green-600">{getTransactionCount('withdraw', 'Aceptado')} aceptados</span>
+                                    <span className="text-yellow-600">{getTransactionCount('withdraw', 'Pendiente')} pendientes</span>
+                                    <span className="text-red-600">{getTransactionCount('withdraw', 'Rechazado')} rechazados</span>
+                                    <span className="text-blue-600">{getTransactionCount('withdraw', 'Match MP')} match MP</span>
+                                </div>
+                            </div>
 
-                                        return (
-                                            <div className="bg-background/90 dark:bg-popover/90 backdrop-blur-sm p-3 border border-border rounded shadow-lg text-sm">
-                                                <p className="font-semibold mb-2">{label}</p>
-                                                {payload.map((entry, index) => (
-                                                    <div key={`item-${index}`} className="flex items-center justify-between gap-4">
-                                                        <div className="flex items-center">
-                                                            <div className="w-2 h-2 mr-2 rounded-full"
-                                                                style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}
-                                                            />
-                                                            <span className="text-muted-foreground">{entry.name}:</span>
-                                                        </div>
-                                                        <span className="font-medium">{entry.value} transacciones ({percentage}%)</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                };
+                            {/* Total Neto */}
+                            <div className="bg-card border rounded-lg p-6 flex flex-col justify-between min-h-[170px]">
+                                <div>
+                                    <h3 className="text-muted-foreground text-sm font-medium mb-2">Total Neto</h3>
+                                    <div className={`text-3xl font-bold mb-1 ${(getDepositsAcceptedAndMatch() - getWithdrawalsAcceptedAndMatch() >= 0) ? 'text-green-600' : 'text-red-600'}`}>
+                                        {formatAmount(getDepositsAcceptedAndMatch() - getWithdrawalsAcceptedAndMatch())}
+                                    </div>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                    Depósitos (aceptados + match MP) - Retiros aceptados
+                                </div>
+                            </div>
+                        </div>
 
-                                return (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={transformedData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis
-                                                dataKey="mes"
-                                                tick={{ fontSize: 12 }}
-                                                tickMargin={10}
-                                            />
-                                            <YAxis
-                                                tick={{ fontSize: 12 }}
-                                                tickMargin={10}
-                                                label={{
-                                                    value: 'Cantidad de Transacciones',
-                                                    angle: -90,
-                                                    position: 'insideLeft',
-                                                    style: { fontSize: 12 }
-                                                }}
-                                            />
-                                            <Tooltip content={transactionTooltip} />
-                                            <Legend
-                                                verticalAlign="top"
-                                                height={36}
-                                                wrapperStyle={{ paddingBottom: '10px' }}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="depositos"
-                                                name="Depósitos"
-                                                stroke={COLORS[0]}
-                                                strokeWidth={2}
-                                                dot={{ r: 4 }}
-                                                activeDot={{ r: 6 }}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="retiros"
-                                                name="Retiros"
-                                                stroke={COLORS[1]}
-                                                strokeWidth={2}
-                                                dot={{ r: 4 }}
-                                                activeDot={{ r: 6 }}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                );
-                            })}
-                        </ChartCard>
+                        {/* Ingresos del período seleccionado (igual super-dashboard) */}
+                        <div className="md:col-span-2 mt-8">
+                            <div className="mb-2 text-sm font-medium">
+                                {period === 'day' ? 'Ingresos del Día' :
+                                    period === 'week' ? 'Ingresos de la Semana' :
+                                        period === 'custom' ? 'Ingresos del Período' :
+                                            'Ingresos Mensuales'}
+                            </div>
+                            <div className="space-y-4 p-2">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="p-3 bg-muted/20 rounded-md">
+                                        <h4 className="text-sm font-medium mb-1">
+                                            {period === 'day' ? 'Hoy' :
+                                                period === 'week' ? 'Semana Actual' :
+                                                    period === 'custom' ? 'Período Actual' : 'Mes Actual'}
+                                        </h4>
+                                        <p className="text-lg font-semibold">{formatAmount(getDepositsTotal())}</p>
+                                        <p className="text-xs text-muted-foreground">{getTransactionCount('deposit', 'Aceptado') + getTransactionCount('deposit', 'Match MP')} transacciones</p>
+                                    </div>
+                                    <div className="p-3 bg-muted/20 rounded-md">
+                                        <h4 className="text-sm font-medium mb-1">
+                                            {period === 'day' ? 'Ayer' :
+                                                period === 'week' ? 'Semana Anterior' :
+                                                    period === 'custom' ? 'Período Anterior' : 'Mes Anterior'}
+                                        </h4>
+                                        <p className="text-lg font-semibold">{formatAmount(getPrevDepositsTotal())}</p>
+                                        <p className="text-xs text-muted-foreground">{getPrevDepositsCount()} transacciones</p>
+                                    </div>
+                                    <div className="p-3 bg-muted/20 rounded-md">
+                                        <h4 className="text-sm font-medium mb-1">Variación</h4>
+                                        <p className="text-lg font-semibold" style={{ color: getVariation() >= 0 ? 'rgb(22, 163, 74)' : 'rgb(220, 38, 38)' }}>
+                                            {getVariation() > 0 ? '+' : ''}{getVariation().toFixed(1)}%
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">en volumen</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                        <ChartCard title="Transacciones por Agente">
-                            {renderSafeChart(transactionAgentData, transactionAgentError, isLoadingTransactionAgent, (data) => {
-                                // Ordenar datos por cantidad de transacciones
-                                const sortedData = [...data].sort((a, b) => b.value - a.value);
-
-                                // Tooltip personalizado para el gráfico de agentes
-                                const agentTooltip = ({ active, payload }: TooltipProps<number, string>) => {
-                                    if (active && payload && payload.length && payload[0]?.value !== undefined) {
-                                        const data = payload[0].payload;
-                                        const total = sortedData.reduce((sum: number, item: TransactionByAgent) => sum + item.value, 0);
-                                        const percentage = ((data.value / total) * 100).toFixed(1);
-
-                                        return (
-                                            <div className="bg-background/90 dark:bg-popover/90 backdrop-blur-sm p-3 border border-border rounded shadow-lg text-sm">
-                                                <p className="font-semibold mb-1">
-                                                    {data.name === 'Sin agente' ? 'Sin agente' : `Agente ${data.name}`}
-                                                </p>
-                                                <p className="text-muted-foreground">
-                                                    {data.value} transacciones ({percentage}%)
-                                                </p>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                };
-
-                                return (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={sortedData}
-                                            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                                            layout="vertical"
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                            <XAxis
-                                                type="number"
-                                                tick={{ fontSize: 12 }}
-                                                tickMargin={10}
-                                                label={{
-                                                    value: 'Cantidad de Transacciones',
-                                                    position: 'insideBottom',
-                                                    offset: -5,
-                                                    style: { fontSize: 12 }
-                                                }}
-                                            />
-                                            <YAxis
-                                                dataKey="name"
-                                                type="category"
-                                                tick={{ fontSize: 12 }}
-                                                tickMargin={10}
-                                                width={120}
-                                                tickFormatter={(value) => {
-                                                    if (value === 'Sin agente') return 'Sin agente';
-                                                    return `Agente ${value}`;
-                                                }}
-                                            />
-                                            <Tooltip content={agentTooltip} />
-                                            <Legend
-                                                verticalAlign="top"
-                                                height={36}
-                                                wrapperStyle={{ paddingBottom: '10px' }}
-                                            />
-                                            <Bar
-                                                dataKey="value"
-                                                name="Transacciones"
-                                                fill={COLORS[0]}
-                                                radius={[0, 4, 4, 0]}
-                                            >
-                                                {sortedData.map((entry, index) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={entry.name === 'Sin agente' ? COLORS[5] : COLORS[index % COLORS.length]}
-                                                    />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                );
-                            })}
-                        </ChartCard>
+                        {/* Distribución de transacciones (igual super-dashboard) */}
+                        <div className="md:col-span-2 mt-6">
+                            <h4 className="text-base font-semibold mb-3">Distribución de transacciones</h4>
+                            <div className="relative pt-1">
+                                <div className="flex mb-2 items-center justify-between">
+                                    <div>
+                                        <span className="text-xs inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
+                                            Depósitos
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xs font-semibold inline-block text-green-600">
+                                            {formatAmount(getDepositsTotal())}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex mb-2 items-center justify-between">
+                                    <div>
+                                        <span className="text-xs inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-200">
+                                            Retiros
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xs font-semibold inline-block text-red-600">
+                                            {formatAmount(getWithdrawalsTotal())}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </>
                 )}
             </div>
