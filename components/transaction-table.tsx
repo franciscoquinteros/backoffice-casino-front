@@ -916,7 +916,7 @@ export function TransactionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedTransactions.map((transaction, index) => {
+            {paginatedTransactions.map((transaction) => {
               // CRÍTICO: Buscar la transacción más actualizada de normalizedTransactions
               const updatedTransaction = normalizedTransactions.find(tx => tx.id === transaction.id) || transaction;
 

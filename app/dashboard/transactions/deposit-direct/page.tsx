@@ -19,7 +19,7 @@ export default function DepositsDirectPage() {
     const [filters, setFilters] = useState<TransactionFilterType>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [forceUpdateKey, setForceUpdateKey] = useState(0); // Para forzar re-render
+    const [forceUpdateKey] = useState(0); // Para forzar re-render
 
     const fetchTransactions = useCallback(async () => {
         if (!session?.user?.officeId || !session?.accessToken) return;
