@@ -315,11 +315,6 @@ export default function UsersList({ filters }: UsersListProps) {
                                             <DropdownMenuItem onClick={() => handleEditUser(user)}>
                                                 Editar
                                             </DropdownMenuItem>
-                                            {user.status === 'active' ? (
-                                                <DropdownMenuItem>Desactivar</DropdownMenuItem>
-                                            ) : (
-                                                <DropdownMenuItem>Activar</DropdownMenuItem>
-                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>
