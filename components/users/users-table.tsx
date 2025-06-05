@@ -266,7 +266,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
               errorMessage = errorData;
             }
           }
-        } catch (e) {
+        } catch {
           // Si no se puede leer el error, usar el mensaje genérico
         }
         throw new Error(errorMessage);
