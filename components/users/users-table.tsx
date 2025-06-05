@@ -26,6 +26,7 @@ import { DeleteUserModal } from "./delete-user-modal"
 import { toast } from "sonner"
 import { useOffices } from "@/components/hooks/use-offices"
 import { useSession, getSession } from "next-auth/react"
+import { useAuth } from "@/hooks/useAuth"
 
 enum UserStatus {
   ACTIVE = 'active',
@@ -86,9 +87,22 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { data: session } = useSession()
+  const { isAdmin, isSuperAdmin } = useAuth()
 
   // Usamos el hook de oficinas para obtener la función de mapeo de ID a nombre
   const { getOfficeName } = useOffices()
+
+  // Función para verificar si se puede eliminar un usuario
+  const canDeleteUser = (user: User): boolean => {
+    // Los superadmins pueden eliminar cualquier usuario
+    if (isSuperAdmin) return true
+
+    // Los admins NO pueden eliminar superadmins
+    if (isAdmin && user.role === 'superadmin') return false
+
+    // Otros roles pueden eliminar según sus permisos normales
+    return true
+  }
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
@@ -240,7 +254,22 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
       }
 
       if (!response.ok) {
-        throw new Error(`Error al eliminar usuario: ${response.statusText}`)
+        // Intentar obtener el mensaje de error del servidor
+        let errorMessage = `Error al eliminar usuario: ${response.statusText}`;
+        try {
+          const errorData = await response.text();
+          if (errorData) {
+            // Si es el error específico de admin vs superadmin, mostrar mensaje claro
+            if (errorData.includes('Admin users cannot delete superadmin users')) {
+              errorMessage = 'No tienes permisos para eliminar usuarios superadministradores';
+            } else {
+              errorMessage = errorData;
+            }
+          }
+        } catch (e) {
+          // Si no se puede leer el error, usar el mensaje genérico
+        }
+        throw new Error(errorMessage);
       }
 
       // Si tenemos una función para refrescar los usuarios, la llamamos
@@ -332,13 +361,24 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
                           <span>Cambiar contraseña</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteUser(user)}
-                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                        >
-                          <Trash2Icon className="mr-2 h-4 w-4" />
-                          <span>Eliminar usuario</span>
-                        </DropdownMenuItem>
+                        {canDeleteUser(user) ? (
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteUser(user)}
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Trash2Icon className="mr-2 h-4 w-4" />
+                            <span>Eliminar usuario</span>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            disabled
+                            className="text-gray-400 cursor-not-allowed"
+                            title={isAdmin && user.role === 'superadmin' ? 'Los administradores no pueden eliminar superadministradores' : 'No tienes permisos para eliminar este usuario'}
+                          >
+                            <Trash2Icon className="mr-2 h-4 w-4" />
+                            <span>Eliminar usuario</span>
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -376,6 +416,7 @@ export function UsersTable({ users, onUpdateUser, onRefreshUsers, userType = 'in
             onClose={() => setIsDeleteModalOpen(false)}
             onConfirm={handleConfirmDelete}
             isLoading={isLoading}
+            currentUserRole={session?.user?.role ?? undefined}
           />
         </>
       )}

@@ -20,6 +20,7 @@ interface DeleteUserModalProps {
   onClose: () => void
   onConfirm: () => Promise<void>
   isLoading: boolean
+  currentUserRole?: string // Agregamos el rol del usuario actual
 }
 
 export function DeleteUserModal({
@@ -27,16 +28,17 @@ export function DeleteUserModal({
   isOpen,
   onClose,
   onConfirm,
-  isLoading
+  isLoading,
+  currentUserRole
 }: DeleteUserModalProps) {
   const [error, setError] = useState<string | null>(null)
 
   const handleConfirm = async (e: React.MouseEvent) => {
     // Prevenir el comportamiento por defecto que cerraría el diálogo
     e.preventDefault()
-    
+
     setError(null)
-    
+
     try {
       await onConfirm()
       // No cerramos el modal aquí, se cerrará desde el componente padre
@@ -59,23 +61,31 @@ export function DeleteUserModal({
             ¿Estás seguro de que deseas eliminar al usuario <strong>{user.username}</strong>?
             <br />
             <br />
-            Esta acción no se puede deshacer y eliminará permanentemente toda la información 
-            asociada a este usuario.
+            {currentUserRole === 'admin' && user.role === 'superadmin' ? (
+              <span className="text-red-600 font-medium">
+                ⚠️ Los administradores no pueden eliminar usuarios superadministradores.
+              </span>
+            ) : (
+              <>
+                Esta acción no se puede deshacer y eliminará permanentemente toda la información
+                asociada a este usuario.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
           <div className="text-sm text-red-500 mt-1">{error}</div>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel 
+          <AlertDialogCancel
             disabled={isLoading}
           >
             Cancelar
           </AlertDialogCancel>
           <Button
             onClick={handleConfirm}
-            disabled={isLoading}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            disabled={isLoading || (currentUserRole === 'admin' && user.role === 'superadmin')}
+            className="bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isLoading ? "Eliminando..." : "Eliminar usuario"}
           </Button>
