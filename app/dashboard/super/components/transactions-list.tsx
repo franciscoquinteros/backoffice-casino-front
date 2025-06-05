@@ -40,7 +40,7 @@ interface TransactionsListProps {
 
 export default function TransactionsList({ filters }: TransactionsListProps) {
     // Usar el hook personalizado para obtener transacciones con filtros
-    const { filteredTransactions, isLoading, error, refetch } = useAllTransactions(filters);
+    const { filteredTransactions, isLoading, error, refetch, updateTransactionLocally } = useAllTransactions(filters);
     const { data: session, status: sessionStatus } = useSession();
     const { allAccounts } = useAllAccounts();
     const { updateTransactionStatus } = useTransactionService();
@@ -90,9 +90,21 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
     // Estado para el ID de la transacción en proceso de cambio de estado
     const [processingStatusId, setProcessingStatusId] = useState<string | number | null>(null);
 
-    // Estados para paginación
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    // Estados para paginación con persistencia en sessionStorage
+    const [currentPage, setCurrentPage] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('super-transactions-list-current-page');
+            return saved ? parseInt(saved, 10) : 1;
+        }
+        return 1;
+    });
+    const [itemsPerPage, setItemsPerPage] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('super-transactions-list-items-per-page');
+            return saved ? parseInt(saved, 10) : 50;
+        }
+        return 50;
+    });
 
     // Estado para ordenación
     const [sortConfig, setSortConfig] = useState<{
@@ -165,6 +177,27 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
 
     // Calcular el número total de páginas
     const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
+
+    // Persistir currentPage en sessionStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('super-transactions-list-current-page', currentPage.toString());
+        }
+    }, [currentPage]);
+
+    // Persistir itemsPerPage en sessionStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('super-transactions-list-items-per-page', itemsPerPage.toString());
+        }
+    }, [itemsPerPage]);
+
+    // Ajustar página actual si excede el número total de páginas después de cambios
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [sortedTransactions.length, itemsPerPage, currentPage, totalPages]);
 
     // Función para cambiar el criterio de ordenación
     const handleSort = (key: keyof Transaction) => {
@@ -288,20 +321,35 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
         setProcessingStatusId(transaction.id);
 
         try {
+            // Actualización optimista: actualizar inmediatamente en el UI
+            updateTransactionLocally(transaction.id, newStatus);
+
             const result = await updateTransactionStatus(transaction.id, newStatus);
             if (result.success) {
                 toast.success(`Estado cambiado a ${newStatus} exitosamente`);
-                refetch(); // Recargar los datos
+
+                // La actualización ya se hizo optimísticamente arriba
+                // No necesitamos refetch, solo confirmamos que el servidor lo aceptó
+
+                // Opcional: Re-sync con servidor después de un tiempo para asegurar consistencia
+                // setTimeout(() => refetch(), 5000); // Sync con servidor después de 5 segundos
             } else {
                 toast.error(result.error || 'Error al cambiar el estado');
+                // Revertir el cambio optimista y hacer refetch para obtener el estado real
+                updateTransactionLocally(transaction.id, transaction.status);
+                refetch();
             }
         } catch (error) {
             console.error('Error al cambiar estado:', error);
             toast.error('Error al cambiar el estado');
+            // Revertir el cambio optimista en caso de error de red
+            updateTransactionLocally(transaction.id, transaction.status);
+            // Solo hacer refetch si hay error para asegurar consistencia
+            refetch();
         } finally {
             setProcessingStatusId(null);
         }
-    }, [sessionStatus, session?.accessToken, updateTransactionStatus, refetch]);
+    }, [sessionStatus, session?.accessToken, updateTransactionStatus, refetch, updateTransactionLocally]);
 
     // Función para obtener la fecha de transacción
     const getTransactionDate = useCallback((transaction: Transaction): string => {

@@ -188,8 +188,6 @@ export default function DepositsDirectPage() {
                 toast.success(`Estado cambiado a ${newStatus} exitosamente`);
                 // 2. Fetch inmediato de las transacciones desde el backend
                 await fetchTransactions();
-                // 3. Forzar re-render
-                setForceUpdateKey(prev => prev + 1);
             } else {
                 console.error(`❌ [StatusToggle] Backend rechazó el cambio:`, result.error);
                 throw new Error(result.error || 'Error al cambiar el estado en el servidor');
@@ -201,7 +199,6 @@ export default function DepositsDirectPage() {
             toast.error(errorMessage);
             // Recarga para asegurar consistencia
             await fetchTransactions();
-            setForceUpdateKey(prev => prev + 1);
         }
     };
 
@@ -285,7 +282,6 @@ export default function DepositsDirectPage() {
                                 />
 
                                 <TransactionTable
-                                    key={`transactions-${forceUpdateKey}-${filteredTransactions.length}`}
                                     transactions={filteredTransactions}
                                     onTransactionApproved={handleTransactionApproved}
                                     onTransactionRejected={handleTransactionRejected}

@@ -63,8 +63,21 @@ export function TransactionTable({
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [processingId, setProcessingId] = useState<string | number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Estados para paginación con persistencia en sessionStorage
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('transaction-table-current-page');
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
+  });
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('transaction-table-items-per-page');
+      return saved ? parseInt(saved, 10) : 10;
+    }
+    return 10;
+  });
   const [normalizedTransactions, setNormalizedTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [accountNameCache, setAccountNameCache] = useState<Record<string, string>>({});
@@ -182,6 +195,22 @@ export function TransactionTable({
     }
   }, [normalizedTransactions, forceUpdate]);
 
+  // Persistir currentPage en sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('transaction-table-current-page', currentPage.toString());
+    }
+  }, [currentPage]);
+
+  // Persistir itemsPerPage en sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('transaction-table-items-per-page', itemsPerPage.toString());
+    }
+  }, [itemsPerPage]);
+
+
+
   // Función para cerrar el modal
   const closeErrorModal = () => {
     console.log("CERRANDO MODAL");
@@ -251,6 +280,13 @@ export function TransactionTable({
   }, [sortedTransactions, currentPage, itemsPerPage]);
 
   const { totalPages, startIndex, endIndex, paginatedTransactions } = paginationData;
+
+  // Ajustar página actual si excede el número total de páginas después de cambios
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [sortedTransactions.length, itemsPerPage, currentPage, totalPages]);
 
   // Cambia el campo de ordenamiento o la dirección
   const handleSort = (field: keyof Transaction) => {
@@ -890,8 +926,8 @@ export function TransactionTable({
               console.log(`    - Estado actualizado: "${updatedTransaction.status}"`);
               console.log(`    - ¿Son diferentes?: ${transaction.status !== updatedTransaction.status}`);
 
-              // Crear una key más específica que incluya status, timestamp Y forceUpdate para forzar re-render
-              const specificKey = `${updatedTransaction.id}-${updatedTransaction.status}-${updatedTransaction.updated_at || updatedTransaction.date_created}-${forceUpdate}-${index}`;
+              // Crear una key más específica pero estable que incluya status y timestamp
+              const specificKey = `${updatedTransaction.id}-${updatedTransaction.status}-${updatedTransaction.updated_at || updatedTransaction.date_created}`;
 
               return (
                 <TableRow key={specificKey} className="hover:bg-muted/50">

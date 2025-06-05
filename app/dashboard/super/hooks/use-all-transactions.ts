@@ -250,11 +250,21 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
         applyFilters();
     }, [filters, transactions, applyFilters]);
 
+    // Función para actualizar el estado de una transacción específica localmente
+    const updateTransactionLocally = useCallback((transactionId: string, newStatus: string) => {
+        setTransactions(prevTransactions =>
+            prevTransactions.map(tx =>
+                tx.id === transactionId ? { ...tx, status: newStatus } : tx
+            )
+        );
+    }, []);
+
     return {
         allTransactions: transactions,
         filteredTransactions,
         isLoading: isLoading || isLoadingOffices,
         error,
-        refetch: fetchAllTransactions
+        refetch: fetchAllTransactions,
+        updateTransactionLocally
     };
 } 
