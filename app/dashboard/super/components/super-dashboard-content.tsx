@@ -545,6 +545,8 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
     const { stats, isLoading, error } = useDashboardStats(selectedOffice, dateFilter);
     const { offices } = useOffices();
 
+
+
     // --- Helpers para breakdown de transacciones ---
     const getDepositsTotal = useCallback((data: TransactionByStatus[] | undefined) => {
         if (!data) return 0;
@@ -748,6 +750,18 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                                 className="w-[150px]"
                                 placeholder="Hasta"
                             />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDateFilter({
+                                    period: 'custom',
+                                    from: customFromDate || null,
+                                    to: customToDate || null
+                                })}
+                                disabled={!customFromDate || !customToDate}
+                            >
+                                Aplicar
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -755,11 +769,11 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setDateFilter({
-                        period: 'custom',
-                        from: customFromDate || null,
-                        to: customToDate || null
-                    })}
+                    onClick={() => {
+                        // TODO: Implementar exportación real de datos
+                        console.log('Exportando datos para el período:', dateFilter);
+                        alert('Función de exportación pendiente de implementar');
+                    }}
                 >
                     <DownloadCloud className="mr-2 h-4 w-4" />
                     Exportar datos
@@ -781,9 +795,13 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                             <p className="text-xs">{getDepositsCount(transactionStatusData)} operaciones</p>
                             <p className="text-xs">
                                 <span className="text-green-600 dark:text-green-400">{getTransactionCount(transactionStatusData, 'deposit', 'Aceptado')} aceptados</span> •
-                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{getTransactionCount(transactionStatusData, 'deposit', 'Pendiente')} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{getTransactionCount(transactionStatusData, 'deposit', 'Rechazado')} rechazados</span> •
                                 <span className="text-blue-600 dark:text-blue-400 mx-1">{getTransactionCount(transactionStatusData, 'deposit', 'Match MP')} match MP</span>
+                            </p>
+                        </div>
+                        <div className="mt-1">
+                            <p className="text-xs text-muted-foreground">
+                                Otras: <span className="text-yellow-600">{getTransactionCount(transactionStatusData, 'deposit', 'Pendiente')} pendientes</span> •
+                                <span className="text-red-600 mx-1">{getTransactionCount(transactionStatusData, 'deposit', 'Rechazado')} rechazados</span>
                             </p>
                         </div>
                     </CardContent>
@@ -802,10 +820,14 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
                         <div className="flex justify-between mt-1">
                             <p className="text-xs">{getWithdrawalsCount(transactionStatusData)} operaciones</p>
                             <p className="text-xs">
-                                <span className="text-green-600 dark:text-green-400">{getTransactionCount(transactionStatusData, 'withdraw', 'Aceptado')} aceptados</span> •
-                                <span className="text-yellow-600 dark:text-yellow-400 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Pendiente')} pendientes</span> •
-                                <span className="text-red-600 dark:text-red-400">{getTransactionCount(transactionStatusData, 'withdraw', 'Rechazado')} rechazados</span> •
-                                <span className="text-blue-600 dark:text-blue-400 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Match MP')} match MP</span>
+                                <span className="text-green-600 dark:text-green-400">{getTransactionCount(transactionStatusData, 'withdraw', 'Aceptado')} aceptados</span>
+                            </p>
+                        </div>
+                        <div className="mt-1">
+                            <p className="text-xs text-muted-foreground">
+                                Otras: <span className="text-yellow-600">{getTransactionCount(transactionStatusData, 'withdraw', 'Pendiente')} pendientes</span> •
+                                <span className="text-red-600 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Rechazado')} rechazados</span> •
+                                <span className="text-blue-600 mx-1">{getTransactionCount(transactionStatusData, 'withdraw', 'Match MP')} match MP</span>
                             </p>
                         </div>
                     </CardContent>
