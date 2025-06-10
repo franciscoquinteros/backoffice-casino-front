@@ -592,6 +592,19 @@ function ReportsContent({ selectedOffice }: { selectedOffice: string | null }) {
         const date = dateFilter || { period: 'month', from: null, to: null };
         if (date.period === 'custom' && date.from && date.to) {
             return `?period=custom&from=${date.from}&to=${date.to}`;
+        } else if (date.period === 'day') {
+            const today = formatDate(new Date(), 'yyyy-MM-dd');
+            return `?period=custom&from=${today}&to=${today}`;
+        } else if (date.period === 'week') {
+            const now = new Date();
+            const start = startOfWeek(now, { weekStartsOn: 1 });
+            const end = new Date();
+            return `?period=custom&from=${formatDate(start, 'yyyy-MM-dd')}&to=${formatDate(end, 'yyyy-MM-dd')}`;
+        } else if (date.period === 'month') {
+            const now = new Date();
+            const start = startOfMonth(now);
+            const end = new Date();
+            return `?period=custom&from=${formatDate(start, 'yyyy-MM-dd')}&to=${formatDate(end, 'yyyy-MM-dd')}`;
         }
         return `?period=${date.period}`;
     }

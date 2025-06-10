@@ -103,6 +103,19 @@ const ReportsDashboard = () => {
     const periodParams = () => {
         if (period === 'custom') {
             return `?period=custom&from=${customFromDate || ''}&to=${customToDate || ''}`;
+        } else if (period === 'day') {
+            const today = formatDate(new Date(), 'yyyy-MM-dd');
+            return `?period=custom&from=${today}&to=${today}`;
+        } else if (period === 'week') {
+            const now = new Date();
+            const start = startOfWeek(now, { weekStartsOn: 1 });
+            const end = new Date();
+            return `?period=custom&from=${formatDate(start, 'yyyy-MM-dd')}&to=${formatDate(end, 'yyyy-MM-dd')}`;
+        } else if (period === 'month') {
+            const now = new Date();
+            const start = startOfMonth(now);
+            const end = new Date();
+            return `?period=custom&from=${formatDate(start, 'yyyy-MM-dd')}&to=${formatDate(end, 'yyyy-MM-dd')}`;
         }
         return `?period=${period}`;
     };
