@@ -213,18 +213,29 @@ export function useAllTransactions(filters: TransactionFilters = {}) {
 
         // Filtrar por fechas
         if (filters.date?.from) {
-            const fromDate = new Date(filters.date.from);
+            // Crear fecha específicamente en GMT-3 (UTC-3)
+            const [year, month, day] = filters.date.from.split('-').map(Number);
+            const fromDate = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0)); // 03:00 UTC = 00:00 GMT-3
+            console.log(`🔍 [SuperDashboard DateFilter] Filtro desde: ${filters.date.from} -> ${fromDate.toISOString()} (GMT-3: ${fromDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })})`);
             result = result.filter(tx => {
-                const txDate = tx.dateCreated ? new Date(tx.dateCreated) : null;
+                // Usar updatedAt si está disponible, sino usar dateCreated o date_created
+                const txDate = tx.updatedAt ? new Date(tx.updatedAt) :
+                    tx.dateCreated ? new Date(tx.dateCreated) :
+                        new Date(tx.date_created);
                 return txDate && txDate >= fromDate;
             });
         }
 
         if (filters.date?.to) {
-            const toDate = new Date(filters.date.to);
-            toDate.setHours(23, 59, 59, 999); // Final del día
+            // Crear fecha específicamente en GMT-3 (UTC-3)
+            const [year, month, day] = filters.date.to.split('-').map(Number);
+            const toDate = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999)); // 02:59:59 UTC del día siguiente = 23:59:59 GMT-3
+            console.log(`🔍 [SuperDashboard DateFilter] Filtro hasta: ${filters.date.to} -> ${toDate.toISOString()} (GMT-3: ${toDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })})`);
             result = result.filter(tx => {
-                const txDate = tx.dateCreated ? new Date(tx.dateCreated) : null;
+                // Usar updatedAt si está disponible, sino usar dateCreated o date_created
+                const txDate = tx.updatedAt ? new Date(tx.updatedAt) :
+                    tx.dateCreated ? new Date(tx.dateCreated) :
+                        new Date(tx.date_created);
                 return txDate && txDate <= toDate;
             });
         }

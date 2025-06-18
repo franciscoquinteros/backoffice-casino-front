@@ -345,9 +345,9 @@ export function TransactionTable({
       // Usamos setTimeout y Promise para evitar bloquear el hilo principal
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // Crear encabezados para el CSV
+      // Crear encabezados para el CSV (evitar "ID" para prevenir error SYLK de Excel)
       const headers = [
-        'ID',
+        'Transaccion_ID',
         'Cliente',
         'Referencia',
         'Descripción',
@@ -391,8 +391,8 @@ export function TransactionTable({
         rows = [...rows, ...batchRows];
       }
 
-      // Combinar encabezados y filas
-      const csvContent = [
+      // Combinar encabezados y filas (agregar BOM para UTF-8 y evitar problemas SYLK)
+      const csvContent = '\uFEFF' + [
         headers.join(','),
         ...rows.map(row =>
           row.map((cell: string | number | undefined) =>

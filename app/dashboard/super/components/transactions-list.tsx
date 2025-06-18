@@ -496,8 +496,8 @@ export default function TransactionsList({ filters }: TransactionsListProps) {
                 rows = [...rows, ...batchRows];
             }
 
-            // Combinar encabezados y filas
-            const csvContent = [
+            // Combinar encabezados y filas (agregar BOM para UTF-8 y mejor compatibilidad)
+            const csvContent = '\uFEFF' + [
                 headers.join(','),
                 ...rows.map(row =>
                     row.map((cell: string | number | undefined) =>

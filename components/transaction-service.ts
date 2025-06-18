@@ -162,6 +162,9 @@ class TransactionService {
   applyFilters(transactions: Transaction[], filters?: TransactionFilter): Transaction[] {
     if (!filters) return transactions;
 
+    console.log(`🔍 [ApplyFilters] Iniciando filtrado. Total transacciones: ${transactions.length}`);
+    console.log(`🔍 [ApplyFilters] Filtros aplicados:`, filters);
+
     let filtered = [...transactions];
 
     if (filters.minAmount !== undefined) {
@@ -201,15 +204,42 @@ class TransactionService {
     }
 
     if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter(tx => new Date(tx.date_created) >= fromDate);
+      // Crear fecha específicamente en GMT-3 (UTC-3)
+      const [year, month, day] = filters.dateFrom.split('-').map(Number);
+      const fromDate = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0)); // 03:00 UTC = 00:00 GMT-3
+      console.log(`🔍 [DateFilter] Filtro desde: ${filters.dateFrom} -> ${fromDate.toISOString()} (GMT-3: ${fromDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })})`);
+      const beforeDateFilter = filtered.length;
+      filtered = filtered.filter(tx => {
+        // Usar updated_at si está disponible, sino usar date_created
+        const txDate = new Date(tx.updated_at || tx.date_created);
+        const matches = txDate >= fromDate;
+        if (!matches && filters.dateFrom) {
+          console.log(`🔍 [DateFilter] Excluida por fecha desde - TX: ${tx.id}, fecha: ${txDate.toISOString()}`);
+        }
+        return matches;
+      });
+      console.log(`🔍 [DateFilter] Después de filtro desde: ${beforeDateFilter} → ${filtered.length}`);
     }
 
     if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      filtered = filtered.filter(tx => new Date(tx.date_created) <= toDate);
+      // Crear fecha específicamente en GMT-3 (UTC-3)
+      const [year, month, day] = filters.dateTo.split('-').map(Number);
+      const toDate = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999)); // 02:59:59 UTC del día siguiente = 23:59:59 GMT-3
+      console.log(`🔍 [DateFilter] Filtro hasta: ${filters.dateTo} -> ${toDate.toISOString()} (GMT-3: ${toDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })})`);
+      const beforeDateFilter = filtered.length;
+      filtered = filtered.filter(tx => {
+        // Usar updated_at si está disponible, sino usar date_created
+        const txDate = new Date(tx.updated_at || tx.date_created);
+        const matches = txDate <= toDate;
+        if (!matches && filters.dateTo) {
+          console.log(`🔍 [DateFilter] Excluida por fecha hasta - TX: ${tx.id}, fecha: ${txDate.toISOString()}`);
+        }
+        return matches;
+      });
+      console.log(`🔍 [DateFilter] Después de filtro hasta: ${beforeDateFilter} → ${filtered.length}`);
     }
 
+    console.log(`🔍 [ApplyFilters] Filtrado completado. Total final: ${filtered.length}`);
     return filtered;
   }
 
