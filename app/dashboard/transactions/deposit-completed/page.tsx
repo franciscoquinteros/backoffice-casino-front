@@ -165,6 +165,7 @@ export default function DepositsCompletedPage() {
                                     isRefreshing={isRefreshing}
                                     isViewOnly={true}
                                     hideIdColumn={true}
+                                    showUsernameColumn={true}
                                 />
                             </>
                         )}

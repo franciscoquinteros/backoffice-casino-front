@@ -125,7 +125,6 @@ export default function WithdrawPendingPage() {
     <div className="container mx-auto p-4">
       <Card>
         <CardHeader className="pb-3">
-          {/* --- 4. Cambia Títulos/Descripciones --- */}
           <CardTitle className="text-2xl font-bold">Retiros Pendientes</CardTitle>
           <CardDescription>
             Gestione los retiros que requieren aprobación (Oficina: {session?.user?.officeId || 'N/A'})
@@ -147,6 +146,10 @@ export default function WithdrawPendingPage() {
               onTransactionRejected={handleTransactionRejected}
               isRefreshing={isLoading && allOfficeTransactions.length > 0}
               hideIdColumn={true}
+              showUsernameColumn={true}
+              showWhatsAppColumn={true}
+              smallButtons={true}
+              hideReferenceColumn={true}
             />
           )}
         </div>

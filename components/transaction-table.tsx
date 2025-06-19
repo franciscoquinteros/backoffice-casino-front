@@ -47,6 +47,10 @@ interface TransactionTableProps {
   hideIdColumn?: boolean;
   isViewOnly?: boolean;
   onStatusToggle?: (transaction: Transaction) => void;
+  showUsernameColumn?: boolean;
+  showWhatsAppColumn?: boolean;
+  smallButtons?: boolean;
+  hideReferenceColumn?: boolean;
 }
 
 export function TransactionTable({
@@ -58,6 +62,10 @@ export function TransactionTable({
   hideIdColumn = false,
   isViewOnly = false,
   onStatusToggle,
+  showUsernameColumn = false,
+  showWhatsAppColumn = false,
+  smallButtons = false,
+  hideReferenceColumn = false,
 }: TransactionTableProps) {
   const { data: session } = useSession();
   const [sortField, setSortField] = useState<keyof Transaction>('date_created');
@@ -348,15 +356,32 @@ export function TransactionTable({
       // Crear encabezados para el CSV (evitar "ID" para prevenir error SYLK de Excel)
       const headers = [
         'Transaccion_ID',
-        'Cliente',
-        'Referencia',
+        'Cliente'
+      ];
+
+      // Agregar columna Referencia solo si no está oculta
+      if (!hideReferenceColumn) {
+        headers.push('Referencia');
+      }
+
+      headers.push(
         'Descripción',
         'Monto',
         'Estado',
         'Fecha',
         'CBU/Cuenta',
         'Nombre Cuenta'
-      ];
+      );
+
+      // Agregar columna Username si está visible
+      if (showUsernameColumn) {
+        headers.push('Username');
+      }
+
+      // Agregar columna WhatsApp si está visible
+      if (showWhatsAppColumn) {
+        headers.push('WhatsApp');
+      }
 
       // Procesamiento por lotes para evitar bloqueos en grandes conjuntos de datos
       const batchSize = 100;
@@ -375,17 +400,36 @@ export function TransactionTable({
           const reference = getTransactionReference(transaction);
           const account = getTransactionAccount(transaction);
 
-          return [
+          const baseRow = [
             transaction.id,
-            transaction.idCliente || transaction.client_id || '',
-            reference,
+            transaction.idCliente || transaction.client_id || ''
+          ];
+
+          // Agregar referencia solo si la columna no está oculta
+          if (!hideReferenceColumn) {
+            baseRow.push(reference);
+          }
+
+          baseRow.push(
             transaction.description || '',
             transaction.amount,
             transaction.status,
             transaction.date_created ? formatDate(transaction.date_created) : 'No disponible',
             account,
             transaction.account_name || transaction.account_holder || ''
-          ];
+          );
+
+          // Agregar username solo si la columna está visible
+          if (showUsernameColumn) {
+            baseRow.push(transaction.username || 'No disponible');
+          }
+
+          // Agregar phoneNumber solo si la columna está visible
+          if (showWhatsAppColumn) {
+            baseRow.push(transaction.phoneNumber || 'No disponible');
+          }
+
+          return baseRow;
         });
 
         rows = [...rows, ...batchRows];
@@ -871,7 +915,7 @@ export function TransactionTable({
             <TableRow>
               {!hideIdColumn && (
                 <TableHead
-                  className="cursor-pointer w-[80px]"
+                  className={`cursor-pointer`}
                   onClick={() => handleSort('id')}
                 >
                   <div className="flex items-center">
@@ -881,7 +925,7 @@ export function TransactionTable({
                 </TableHead>
               )}
               <TableHead
-                className="cursor-pointer"
+                className={`cursor-pointer`}
                 onClick={() => handleSort('idCliente')}
               >
                 <div className="flex items-center">
@@ -889,7 +933,7 @@ export function TransactionTable({
                   <ArrowUpDown className="ml-1 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead>Referencia</TableHead>
+              {!hideReferenceColumn && <TableHead>Referencia</TableHead>}
               <TableHead>Descripción</TableHead>
               <TableHead
                 className="cursor-pointer"
@@ -912,6 +956,28 @@ export function TransactionTable({
               </TableHead>
               <TableHead>CBU/Cuenta</TableHead>
               <TableHead>Nombre Cuenta</TableHead>
+              {showUsernameColumn && (
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort('username')}
+                >
+                  <div className="flex items-center">
+                    Username
+                    <ArrowUpDown className="ml-1 h-4 w-4" />
+                  </div>
+                </TableHead>
+              )}
+              {showWhatsAppColumn && (
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort('phoneNumber')}
+                >
+                  <div className="flex items-center">
+                    WhatsApp
+                    <ArrowUpDown className="ml-1 h-4 w-4" />
+                  </div>
+                </TableHead>
+              )}
               {showApproveButton && !isViewOnly && <TableHead>Acciones</TableHead>}
             </TableRow>
           </TableHeader>
@@ -932,7 +998,7 @@ export function TransactionTable({
               return (
                 <TableRow key={specificKey} className="hover:bg-muted/50">
                   {!hideIdColumn && (
-                    <TableCell className="font-medium w-[80px] whitespace-pre-line">
+                    <TableCell className="font-medium whitespace-pre-line">
                       {formatId(updatedTransaction.id)}
                     </TableCell>
                   )}
@@ -940,9 +1006,11 @@ export function TransactionTable({
                     {updatedTransaction.idCliente || updatedTransaction.client_id ||
                       (updatedTransaction.office ? `Oficina: ${updatedTransaction.office}` : 'No disponible')}
                   </TableCell>
-                  <TableCell>
-                    {getTransactionReference(updatedTransaction)}
-                  </TableCell>
+                  {!hideReferenceColumn && (
+                    <TableCell>
+                      {getTransactionReference(updatedTransaction)}
+                    </TableCell>
+                  )}
                   <TableCell>{updatedTransaction.description || 'Sin descripción'}</TableCell>
                   <TableCell className="font-medium">
                     {formatAmount(updatedTransaction.amount)}
@@ -969,28 +1037,44 @@ export function TransactionTable({
                   <TableCell>
                     {getAccountNameDisplay(updatedTransaction)}
                   </TableCell>
+                  {showUsernameColumn && (
+                    <TableCell>
+                      {updatedTransaction.username || 'No disponible'}
+                    </TableCell>
+                  )}
+                  {showWhatsAppColumn && (
+                    <TableCell>
+                      {updatedTransaction.phoneNumber || 'No disponible'}
+                    </TableCell>
+                  )}
                   {showApproveButton && !isViewOnly && (
                     <TableCell>
                       {updatedTransaction.status === 'Pending' ? (
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-1">
                           <Button
                             onClick={(e) => { e.stopPropagation(); handleApprove(updatedTransaction); }}
                             disabled={processingId === updatedTransaction.id || isRefreshing}
                             size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
+                            className={smallButtons
+                              ? "bg-green-500 hover:bg-green-600 text-white px-1 py-1 text-xs h-6 w-6"
+                              : "bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
+                            }
                           >
-                            {processingId === updatedTransaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                            <span className={processingId === updatedTransaction.id ? "ml-1" : "ml-1"}>Aceptar</span>
+                            {processingId === updatedTransaction.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                            {!smallButtons && <span className="ml-1">Aceptar</span>}
                           </Button>
                           <Button
                             onClick={(e) => { e.stopPropagation(); handleReject(updatedTransaction); }}
                             disabled={processingId === updatedTransaction.id || isRefreshing}
                             size="sm"
                             variant="destructive"
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
+                            className={smallButtons
+                              ? "bg-red-500 hover:bg-red-600 text-white px-1 py-1 text-xs h-6 w-6"
+                              : "bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-xs"
+                            }
                           >
-                            {processingId === updatedTransaction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                            <span className={processingId === updatedTransaction.id ? "ml-1" : "ml-1"}>Rechazar</span>
+                            {processingId === updatedTransaction.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                            {!smallButtons && <span className="ml-1">Rechazar</span>}
                           </Button>
                         </div>
                       ) : (

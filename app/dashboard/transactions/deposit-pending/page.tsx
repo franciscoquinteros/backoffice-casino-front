@@ -251,6 +251,7 @@ export default function DepositsPendingPage() {
                             onTransactionRejected={handleTransactionRejected}
                             isRefreshing={isLoading && transactions.length > 0}
                             hideIdColumn={true}
+                            showUsernameColumn={true}
                         />
                     )}
                 </div>

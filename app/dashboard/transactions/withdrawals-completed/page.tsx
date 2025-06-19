@@ -149,6 +149,9 @@ export default function WithdrawalsCompletedPage() {
               onTransactionRejected={() => { }}
               isRefreshing={isRefreshing}
               hideIdColumn={true}
+              showUsernameColumn={true}
+              showWhatsAppColumn={true}
+              hideReferenceColumn={true}
             />
           )}
         </div>

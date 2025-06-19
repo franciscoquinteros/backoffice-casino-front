@@ -28,6 +28,8 @@ export interface Transaction {
   office?: string; // Campo opcional para la oficina
   account_name?: string; // Nombre de la cuenta asociada
   assignedTo?: string; // ID del usuario asignado a la transacción
+  username?: string; // Username del usuario (viene del campo username de la request)
+  phoneNumber?: string; // Número de WhatsApp (viene del campo NumeroDeWhatsapp de la request)
 
   // Nuevos campos que pueden venir del backend después de cambios
   client_id?: string | number; // Alternativa a idCliente
