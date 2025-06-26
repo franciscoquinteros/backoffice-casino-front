@@ -10,15 +10,6 @@ interface SocketContextType {
   isConnected: boolean;
 }
 
-// Interfaces para los tipos de mensajes y conversaciones
-interface ChatMessage {
-  sender: string;
-  userId: string;
-  message: string;
-  timestamp?: string;
-  conversationId?: string;
-}
-
 interface ChatData {
   userId: string;
   agentId: string | null;
