@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Archive, Clock, MessageSquare } from 'lucide-react';
 import { ChatItem } from './ChatItem';
 import { ChatData, ChatTab } from '../types';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { SkeletonLoader } from '@/components/skeleton-loader';
 import { ChatItemSkeleton } from './ChatItemSkeleton';
@@ -55,25 +54,25 @@ export function ChatList({
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 800);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
   // Filtrar chats activos para mostrar solo los asignados al agente actual
   // Si el usuario es admin, mostrar todos los chats activos
-  const myActiveChats = isAdmin 
-    ? activeChats 
+  const myActiveChats = isAdmin
+    ? activeChats
     : activeChats.filter(chat => chat.chat_agent_id === currentAgentId);
-  
+
   // Filtrar chats archivados para mostrar solo los asignados al agente actual
   // Si el usuario es admin, mostrar todos los chats archivados
   const myArchivedChats = isAdmin
     ? archivedChats
     : archivedChats.filter(chat => chat.chat_agent_id === currentAgentId);
-  
+
   const handleAssignToMe = (userId: string, conversationId: string) => {
     if (!isAuthenticated) {
-      toast.error('Debes iniciar sesión para asignarte un chat');
+      console.error('Debes iniciar sesión para asignarte un chat');
       return;
     }
 
@@ -149,10 +148,10 @@ export function ChatList({
 
   return (
     <Card className="w-full md:w-1/3 mb-2 sm:mb-4 md:mb-0 overflow-hidden">
-      <Tabs 
-        defaultValue="active" 
-        value={selectedTab} 
-        onValueChange={(value) => setSelectedTab(value as ChatTab)} 
+      <Tabs
+        defaultValue="active"
+        value={selectedTab}
+        onValueChange={(value) => setSelectedTab(value as ChatTab)}
         className="h-full flex flex-col overflow-hidden"
       >
         <div className="p-2 sm:p-4 sm:pb-0">
@@ -163,7 +162,7 @@ export function ChatList({
             >
               <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden md:inline ml-1 truncate">Activos</span>
-              <SkeletonLoader 
+              <SkeletonLoader
                 isLoading={isLoading}
                 skeleton={<Badge variant="secondary" className="ml-0.5 w-5 h-4 animate-pulse" />}
               >
@@ -180,7 +179,7 @@ export function ChatList({
             >
               <Clock className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden md:inline ml-1 truncate">Pendientes</span>
-              <SkeletonLoader 
+              <SkeletonLoader
                 isLoading={isLoading}
                 skeleton={<Badge variant="secondary" className="ml-0.5 w-5 h-4 animate-pulse" />}
               >
@@ -197,7 +196,7 @@ export function ChatList({
             >
               <Archive className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="hidden md:inline ml-1 truncate">Resueltos</span>
-              <SkeletonLoader 
+              <SkeletonLoader
                 isLoading={isLoading}
                 skeleton={<Badge variant="secondary" className="ml-0.5 w-5 h-4 animate-pulse" />}
               >
@@ -212,7 +211,7 @@ export function ChatList({
         </div>
 
         <ScrollArea className="flex-1 px-2 sm:px-4 pt-2">
-          <SkeletonLoader 
+          <SkeletonLoader
             isLoading={isLoading}
             skeleton={tabsContentSkeleton}
           >

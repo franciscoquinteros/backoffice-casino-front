@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,13 @@ interface ChatMessage {
   message: string;
   timestamp?: string;
   conversationId?: string;
+}
+
+interface ChatData {
+  userId: string;
+  agentId: string | null;
+  conversationId: string;
+  officeId?: string;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -66,6 +73,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [disableSocketForSuperadmin, setDisableSocketForSuperadmin] = useState(false);
+
+  // Tracking de chats pendientes para detectar nuevos
+  const pendingChatsRef = useRef<Set<string>>(new Set());
 
   // Verificar si el usuario tiene un rol autorizado para recibir notificaciones
   const hasAuthorizedRole = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'superadmin' || user?.role === 'encargado';
@@ -147,13 +157,52 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       console.log(`Desconexión del socket (${agentRole}): ${reason}`);
     }
 
-    // Handle new messages globally
-    function onNewMessage(message: ChatMessage) {
-      // Only show notifications for authorized roles
-      if (message.sender === 'client' && hasAuthorizedRole) {
-        toast.info(`Nuevo mensaje de ${message.userId}`, {
-          description: message.message.substring(0, 50) + (message.message.length > 50 ? '...' : '')
+    // Detectar nuevos chats en pendientes
+    function onActiveChats(chats: ChatData[]) {
+      if (Array.isArray(chats) && hasAuthorizedRole) {
+        const newPendingChats = chats.filter(chat => !chat.agentId); // Chats sin agente = pendientes
+        const currentPending = pendingChatsRef.current;
+
+        // Verificar si hay chats nuevos en pendientes
+        newPendingChats.forEach(chat => {
+          if (!currentPending.has(chat.userId)) {
+            // Este es un chat nuevo en pendientes - mostrar notificación
+            toast.info(`Nuevo chat pendiente de ${chat.userId}`, {
+              description: 'Un nuevo usuario solicita soporte',
+              action: {
+                label: 'Ver',
+                onClick: () => {
+                  // Aquí se podría agregar lógica para navegar al chat
+                  console.log('Navegando al chat pendiente:', chat.userId);
+                }
+              }
+            });
+            console.log('🔔 Nuevo chat pendiente detectado:', chat.userId);
+          }
         });
+
+        // Actualizar el tracking de chats pendientes
+        pendingChatsRef.current = new Set(newPendingChats.map(chat => chat.userId));
+      }
+    }
+
+    // Detectar chats que se mueven a pendientes por reapertura automática
+    function onChatUnarchived(data: { conversationId: string; chat?: { userId: string; agentId: string | null; conversationId: string } }) {
+      if (data.chat && !data.chat.agentId && hasAuthorizedRole) {
+        // Chat reabierto automáticamente y movido a pendientes
+        toast.info(`Chat reabierto: ${data.chat.userId}`, {
+          description: 'El usuario ha enviado un nuevo mensaje',
+          action: {
+            label: 'Ver',
+            onClick: () => {
+              console.log('Navegando al chat reabierto:', data.chat?.userId);
+            }
+          }
+        });
+        console.log('🔔 Chat reabierto y movido a pendientes:', data.chat.userId);
+
+        // Agregar al tracking
+        pendingChatsRef.current.add(data.chat.userId);
       }
     }
 
@@ -161,7 +210,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     socketInstance.on('connect', onConnect);
     socketInstance.on('connect_error', onConnectError);
     socketInstance.on('disconnect', onDisconnect);
-    socketInstance.on('newMessage', onNewMessage);
+    socketInstance.on('activeChats', onActiveChats);
+    socketInstance.on('chatUnarchived', onChatUnarchived);
 
     // Periodic ping to keep connection alive
     const pingInterval = setInterval(() => {
@@ -175,7 +225,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketInstance.off('connect', onConnect);
       socketInstance.off('connect_error', onConnectError);
       socketInstance.off('disconnect', onDisconnect);
-      socketInstance.off('newMessage', onNewMessage);
+      socketInstance.off('activeChats', onActiveChats);
+      socketInstance.off('chatUnarchived', onChatUnarchived);
       socketInstance.disconnect();
     };
   }, [user, agentId, agentName, agentRole, hasAuthorizedRole, isSuperadmin, connectionAttempts, disableSocketForSuperadmin, isConnected]);

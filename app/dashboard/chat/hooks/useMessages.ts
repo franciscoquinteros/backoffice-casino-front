@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Socket } from 'socket.io-client';
-import { toast } from 'sonner';
 import { nanoid } from 'nanoid';
 import { Message, MessageEndRef } from '../types';
 
@@ -18,11 +17,11 @@ interface UseMessagesReturn {
   scrollToBottom: () => void;
 }
 
-export function useMessages({ 
-  socket, 
-  selectedChat, 
-  currentConversationId, 
-  agentId 
+export function useMessages({
+  socket,
+  selectedChat,
+  currentConversationId,
+  agentId
 }: UseMessagesProps): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,34 +78,34 @@ export function useMessages({
 
     function onNewMessage(message: Message) {
       const isForCurrentChat = selectedChat === message.userId ||
-              (message.conversationId && message.conversationId === currentConversationId);
+        (message.conversationId && message.conversationId === currentConversationId);
 
       if (isForCurrentChat) {
         setMessages(prevMessages => {
           // Create a more robust message fingerprint
           const messageFingerprint = `${message.sender}-${message.message}-${message.userId}-${new Date(message.timestamp).getTime()}`;
-          
+
           // Check if this message was recently sent by this client
           if (sentMessagesRef.current.has(messageFingerprint)) {
             // Message was sent by this client, don't add it again
             return prevMessages;
           }
-          
+
           // Check for duplicate messages with more robust criteria
           const messageExists = prevMessages.some(msg => {
             // Check exact ID match
             if (msg.id === message.id && message.id) {
               return true;
             }
-            
+
             // Check content + metadata similarity with larger time window
-            if (msg.message === message.message && 
-                msg.sender === message.sender && 
-                msg.userId === message.userId &&
-                Math.abs(new Date(msg.timestamp).getTime() - new Date(message.timestamp).getTime()) < 5000) {
+            if (msg.message === message.message &&
+              msg.sender === message.sender &&
+              msg.userId === message.userId &&
+              Math.abs(new Date(msg.timestamp).getTime() - new Date(message.timestamp).getTime()) < 5000) {
               return true;
             }
-            
+
             return false;
           });
 
@@ -121,7 +120,7 @@ export function useMessages({
 
           return [...prevMessages, newMessage];
         });
-        
+
         scrollToBottom();
       }
     }
@@ -147,7 +146,7 @@ export function useMessages({
     }
 
     const trimmedMessage = message.trim();
-    
+
     // Create temporary message for optimistic UI update
     const tempMessage: Message = {
       id: nanoid(),
@@ -177,7 +176,7 @@ export function useMessages({
       conversationId: currentConversationId
     }, (response: { success: boolean; message?: string }) => {
       if (!response.success) {
-        toast.error(`Error al enviar mensaje: ${response.message || 'Error desconocido'}`);
+        console.error(`Error al enviar mensaje: ${response.message || 'Error desconocido'}`);
       }
     });
 

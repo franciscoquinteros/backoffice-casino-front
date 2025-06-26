@@ -5,7 +5,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
-import { toast } from 'sonner';
 
 interface ChatInputProps {
     chatId: string | null;
@@ -14,11 +13,11 @@ interface ChatInputProps {
     onSendMessage: (message: string) => void;
 }
 
-export default function ChatInput({ 
-    chatId, 
-    socket, 
+export default function ChatInput({
+    chatId,
+    socket,
     conversationId,
-    onSendMessage 
+    onSendMessage
 }: ChatInputProps) {
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -44,7 +43,7 @@ export default function ChatInput({
 
         const messageText = input.trim();
         setIsSending(true);
-        
+
         try {
             if (!socket || !socket.connected) {
                 throw new Error('No hay conexión con el servidor');
@@ -58,10 +57,6 @@ export default function ChatInput({
             }
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
-            
-            setTimeout(() => {
-                toast.error('Error al enviar el mensaje');
-            }, 100);
         } finally {
             setIsSending(false);
         }
