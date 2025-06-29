@@ -103,11 +103,8 @@ export function useMessages({
     }
 
     function onConversationMessages(data: { conversationId: string; messages: Message[] }) {
-      console.log(`📥 Recibiendo mensajes de conversación ${data.conversationId}:`, data.messages?.length || 0);
-
       // Verificar que estos mensajes corresponden a la conversación que estamos cargando
       if (loadingConversationRef.current && loadingConversationRef.current !== data.conversationId) {
-        console.log(`⚠️ Ignorando mensajes de conversación ${data.conversationId}, esperando ${loadingConversationRef.current}`);
         return;
       }
 

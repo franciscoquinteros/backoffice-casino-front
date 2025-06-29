@@ -150,37 +150,17 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     }
 
     function onConnectionStatus(data: { type: 'user' | 'agent', id: string, status: 'connected' | 'disconnected' }) {
-      const timestamp = new Date().toLocaleTimeString();
-      console.log(`🎯 [${timestamp}] Dashboard recibió connectionStatus:`, data);
       if (data.type === 'user') {
         setConnectedUsers(prev => {
           const wasConnected = prev.has(data.id);
           const newSet = new Set(prev);
           if (data.status === 'connected') {
-            console.log(`✅ [${timestamp}] Usuario ${data.id} marcado como conectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.add(data.id);
-
-            // Si es una reconexión (pasó de desconectado a conectado), loggear especialmente
-            if (!wasConnected) {
-              console.log(`🔄 [${timestamp}] RECONEXIÓN detectada para usuario ${data.id}!`);
-            }
           } else {
-            console.log(`❌ [${timestamp}] Usuario ${data.id} marcado como desconectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.delete(data.id);
           }
-          console.log(`📊 [${timestamp}] Usuarios conectados actuales:`, Array.from(newSet));
           return newSet;
         });
-
-        // Si es el usuario del chat seleccionado, forzar actualización de estado
-        if (selectedChat === data.id) {
-          console.log(`🔄 [${timestamp}] ⭐ IMPORTANTE: Actualizando estado para chat seleccionado: ${data.id} → ${data.status}`);
-
-          // Si es una reconexión del chat seleccionado, podrías disparar eventos adicionales aquí
-          if (data.status === 'connected') {
-            console.log(`🎉 [${timestamp}] Chat seleccionado ${data.id} se ha reconectado!`);
-          }
-        }
       }
     }
 
