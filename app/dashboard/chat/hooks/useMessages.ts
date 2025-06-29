@@ -27,6 +27,8 @@ export function useMessages({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Tracking recently sent messages to prevent duplicates
   const sentMessagesRef = useRef<Set<string>>(new Set());
+  // Track if user is near bottom to decide whether to auto-scroll
+  const isNearBottomRef = useRef(true);
 
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -34,9 +36,46 @@ export function useMessages({
     }
   }, []);
 
+  // Function to check if user is near the bottom of the chat
+  const checkIfNearBottom = useCallback(() => {
+    if (!messagesEndRef.current) return true;
+
+    // Find the scroll container (div with overflow-y-auto)
+    const container = messagesEndRef.current.closest('.overflow-y-auto');
+    if (!container) return true;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100; // 100px threshold
+    isNearBottomRef.current = isNearBottom;
+    return isNearBottom;
+  }, []);
+
+  // Only auto-scroll if user is near bottom
+  const conditionalScrollToBottom = useCallback(() => {
+    if (isNearBottomRef.current) {
+      scrollToBottom();
+    }
+  }, [scrollToBottom]);
+
+  // Set up scroll listener
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (!messagesEndRef.current) return;
+
+    const container = messagesEndRef.current.closest('.overflow-y-auto');
+    if (!container) return;
+
+    // Add scroll listener to track user's scroll position
+    const handleScroll = () => {
+      checkIfNearBottom();
+    };
+
+    container.addEventListener('scroll', handleScroll);
+
+    // Initial check
+    checkIfNearBottom();
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [checkIfNearBottom, selectedChat]);
 
   useEffect(() => {
     // Clear messages when changing chats
@@ -44,6 +83,8 @@ export function useMessages({
       setMessages([]);
       // Clear sent messages tracking when changing chats
       sentMessagesRef.current.clear();
+      // Reset scroll tracking for new chat
+      isNearBottomRef.current = true;
     }
   }, [selectedChat]);
 
@@ -57,7 +98,11 @@ export function useMessages({
           id: msg.id || nanoid()
         }));
         setMessages(messagesWithIds);
-        scrollToBottom();
+        // Always scroll to bottom when loading message history
+        setTimeout(() => {
+          scrollToBottom();
+          isNearBottomRef.current = true;
+        }, 100);
       } else {
         setMessages([]);
       }
@@ -70,7 +115,11 @@ export function useMessages({
           id: msg.id || nanoid()
         }));
         setMessages(messagesWithIds);
-        scrollToBottom();
+        // Always scroll to bottom when loading conversation messages
+        setTimeout(() => {
+          scrollToBottom();
+          isNearBottomRef.current = true;
+        }, 100);
       } else {
         setMessages([]);
       }
@@ -121,7 +170,13 @@ export function useMessages({
           return [...prevMessages, newMessage];
         });
 
-        scrollToBottom();
+        // Only auto-scroll if user is near bottom or if it's from current agent
+        setTimeout(() => {
+          checkIfNearBottom();
+          if (message.agentId === agentId || isNearBottomRef.current) {
+            conditionalScrollToBottom();
+          }
+        }, 50);
       }
     }
 
@@ -137,7 +192,7 @@ export function useMessages({
         socket.off('newMessage', onNewMessage);
       };
     }
-  }, [socket, selectedChat, currentConversationId, scrollToBottom]);
+  }, [socket, selectedChat, currentConversationId, scrollToBottom, conditionalScrollToBottom, agentId, checkIfNearBottom]);
 
 
   const sendMessage = useCallback((message: string) => {
@@ -180,7 +235,11 @@ export function useMessages({
       }
     });
 
-    scrollToBottom();
+    // Always scroll to bottom when sending a message
+    setTimeout(() => {
+      scrollToBottom();
+      isNearBottomRef.current = true;
+    }, 50);
   }, [selectedChat, currentConversationId, agentId, scrollToBottom, socket]);
 
   return {
