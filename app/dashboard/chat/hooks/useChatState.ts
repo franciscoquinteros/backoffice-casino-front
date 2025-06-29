@@ -171,7 +171,6 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     function onConnectedUsers(userIds: string[]) {
       const timestamp = new Date().toLocaleTimeString();
-      console.log(`📋 [${timestamp}] Dashboard recibió lista inicial de usuarios conectados:`, userIds);
       setConnectedUsers(new Set(userIds));
     }
 
@@ -301,7 +300,6 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
       officeId: userOffice,
       agentId
     });
-    console.log(`🔍 Dashboard solicitando usuarios conectados...`);
     socket.emit('getConnectedUsers');
 
     return () => {
