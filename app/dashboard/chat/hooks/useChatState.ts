@@ -150,25 +150,28 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     }
 
     function onConnectionStatus(data: { type: 'user' | 'agent', id: string, status: 'connected' | 'disconnected' }) {
-      console.log(`🎯 Dashboard recibió connectionStatus:`, data);
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`🎯 [${timestamp}] Dashboard recibió connectionStatus:`, data);
       if (data.type === 'user') {
         setConnectedUsers(prev => {
+          const wasConnected = prev.has(data.id);
           const newSet = new Set(prev);
           if (data.status === 'connected') {
-            console.log(`✅ Usuario ${data.id} marcado como conectado`);
+            console.log(`✅ [${timestamp}] Usuario ${data.id} marcado como conectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.add(data.id);
           } else {
-            console.log(`❌ Usuario ${data.id} marcado como desconectado`);
+            console.log(`❌ [${timestamp}] Usuario ${data.id} marcado como desconectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.delete(data.id);
           }
-          console.log(`📊 Usuarios conectados actuales:`, Array.from(newSet));
+          console.log(`📊 [${timestamp}] Usuarios conectados actuales:`, Array.from(newSet));
           return newSet;
         });
       }
     }
 
     function onConnectedUsers(userIds: string[]) {
-      console.log(`📋 Dashboard recibió lista de usuarios conectados:`, userIds);
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`📋 [${timestamp}] Dashboard recibió lista inicial de usuarios conectados:`, userIds);
       setConnectedUsers(new Set(userIds));
     }
 
