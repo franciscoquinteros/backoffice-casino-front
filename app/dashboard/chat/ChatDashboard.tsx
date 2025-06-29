@@ -49,6 +49,7 @@ export default function ChatDashboard() {
     messages,
     sendMessage,
     messagesEndRef,
+    isLoadingMessages
   } = useMessages({
     socket: socket as Socket,
     selectedChat,
@@ -92,6 +93,7 @@ export default function ChatDashboard() {
         onSendMessage={sendMessage}
         onArchive={archiveChat}
         isUserConnected={isUserConnected}
+        isLoadingMessages={isLoadingMessages}
       />
     </div>
   );

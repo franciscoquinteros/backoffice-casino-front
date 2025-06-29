@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card } from '@/components/ui/card';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
@@ -10,7 +10,6 @@ import { Socket } from 'socket.io-client';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertTriangle, Archive } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SkeletonLoader } from '@/components/skeleton-loader';
 
 interface ChatPanelProps {
   selectedChat: string | null;
@@ -23,6 +22,7 @@ interface ChatPanelProps {
   onSendMessage: (message: string) => void;
   onArchive: (userId: string) => void;
   isUserConnected: (userId: string) => boolean;
+  isLoadingMessages: boolean;
 }
 
 export function ChatPanel({
@@ -35,23 +35,11 @@ export function ChatPanel({
   socket,
   onSendMessage,
   onArchive,
-  isUserConnected
+  isUserConnected,
+  isLoadingMessages
 }: ChatPanelProps) {
   const { user } = useAuth();
   const currentAgentId = user?.id;
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Simulamos un tiempo de carga para mostrar los skeletons
-  useEffect(() => {
-    if (selectedChat) {
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-      }, 800);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [selectedChat]);
 
   // Verificar si el chat está asignado a otro agente
   const isAssignedToOtherAgent = () => {
@@ -109,6 +97,16 @@ export function ChatPanel({
     </div>
   );
 
+  // Loading indicator para mensajes
+  const messagesLoadingIndicator = (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground text-sm">Cargando mensajes...</p>
+      </div>
+    </div>
+  );
+
   // Contenido principal cuando hay un chat seleccionado
   const chatContent = selectedChat ? (
     <>
@@ -118,12 +116,11 @@ export function ChatPanel({
         onArchive={onArchive}
         isUserConnected={isUserConnected}
       />
-      <SkeletonLoader
-        isLoading={isLoading}
-        skeleton={messagesListSkeleton}
-      >
+      {isLoadingMessages ? (
+        messagesLoadingIndicator
+      ) : (
         <MessageList messages={messages} messagesEndRef={messagesEndRef} />
-      </SkeletonLoader>
+      )}
       {isAssignedToOtherAgent() ? (
         <div className="p-4 bg-amber-50 dark:bg-amber-950 border-t text-amber-800 dark:text-amber-200 text-sm rounded-b-xl">
           <AlertTriangle className="h-4 w-4 inline-block mr-2" />

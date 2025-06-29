@@ -15,6 +15,7 @@ interface UseMessagesReturn {
   sendMessage: (message: string) => void;
   messagesEndRef: MessageEndRef;
   scrollToBottom: () => void;
+  isLoadingMessages: boolean;
 }
 
 export function useMessages({
@@ -24,9 +25,14 @@ export function useMessages({
   agentId
 }: UseMessagesProps): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Tracking recently sent messages to prevent duplicates
   const sentMessagesRef = useRef<Set<string>>(new Set());
+  // Track the currently loading conversation to prevent race conditions
+  const loadingConversationRef = useRef<string | null>(null);
+  // Timeout for loading messages
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = useCallback(() => {
     // ONLY use this for manual scroll requests
@@ -36,38 +42,95 @@ export function useMessages({
   }, []);
 
   useEffect(() => {
-    // Clear messages when changing chats
-    if (selectedChat) {
+    // Clear messages and start loading when changing chats
+    if (selectedChat && currentConversationId) {
+      console.log(`🔄 Cambiando a chat ${selectedChat}, conversación ${currentConversationId}`);
       setMessages([]);
+      setIsLoadingMessages(true);
+      loadingConversationRef.current = currentConversationId;
       // Clear sent messages tracking when changing chats
       sentMessagesRef.current.clear();
+
+      // Clear any existing timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+
+      // Set a timeout to stop loading if no response in 10 seconds
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn(`⏰ Timeout al cargar mensajes para conversación ${currentConversationId}`);
+        setIsLoadingMessages(false);
+        loadingConversationRef.current = null;
+      }, 10000);
+    } else if (!selectedChat) {
+      // If no chat is selected, clear everything
+      setMessages([]);
+      setIsLoadingMessages(false);
+      loadingConversationRef.current = null;
+      sentMessagesRef.current.clear();
+    } else if (selectedChat && !currentConversationId) {
+      // If chat is selected but no conversation ID yet, show loading
+      setMessages([]);
+      setIsLoadingMessages(true);
+      loadingConversationRef.current = null;
+      sentMessagesRef.current.clear();
     }
-  }, [selectedChat]);
+  }, [selectedChat, currentConversationId]);
 
   useEffect(() => {
     function onMessageHistory(chatMessages: Message[]) {
+      console.log(`📥 Recibiendo historial de mensajes:`, chatMessages?.length || 0);
+
       if (Array.isArray(chatMessages)) {
         const messagesWithIds = chatMessages.map(msg => ({
           ...msg,
           id: msg.id || nanoid()
         }));
         setMessages(messagesWithIds);
-        // NO AUTO-SCROLL when loading history
       } else {
         setMessages([]);
+      }
+
+      // Finalizar loading
+      setIsLoadingMessages(false);
+      loadingConversationRef.current = null;
+
+      // Clear timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
       }
     }
 
     function onConversationMessages(data: { conversationId: string; messages: Message[] }) {
+      console.log(`📥 Recibiendo mensajes de conversación ${data.conversationId}:`, data.messages?.length || 0);
+
+      // Verificar que estos mensajes corresponden a la conversación que estamos cargando
+      if (loadingConversationRef.current && loadingConversationRef.current !== data.conversationId) {
+        console.log(`⚠️ Ignorando mensajes de conversación ${data.conversationId}, esperando ${loadingConversationRef.current}`);
+        return;
+      }
+
       if (Array.isArray(data.messages)) {
         const messagesWithIds = data.messages.map(msg => ({
           ...msg,
           id: msg.id || nanoid()
         }));
         setMessages(messagesWithIds);
-        // NO AUTO-SCROLL when loading conversation
       } else {
         setMessages([]);
+      }
+
+      // Finalizar loading solo si es la conversación correcta
+      if (data.conversationId === loadingConversationRef.current) {
+        setIsLoadingMessages(false);
+        loadingConversationRef.current = null;
+
+        // Clear timeout
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
       }
     }
 
@@ -131,10 +194,25 @@ export function useMessages({
         socket.off('messageHistory', onMessageHistory);
         socket.off('conversationMessages', onConversationMessages);
         socket.off('newMessage', onNewMessage);
+
+        // Clear timeout on cleanup
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
       };
     }
   }, [socket, selectedChat, currentConversationId, agentId]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const sendMessage = useCallback((message: string) => {
     if (!selectedChat || !currentConversationId || !message.trim()) {
@@ -184,6 +262,7 @@ export function useMessages({
     messages,
     sendMessage,
     messagesEndRef,
-    scrollToBottom
+    scrollToBottom,
+    isLoadingMessages
   };
 } 
