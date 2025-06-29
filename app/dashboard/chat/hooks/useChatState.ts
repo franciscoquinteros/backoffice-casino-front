@@ -152,7 +152,6 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     function onConnectionStatus(data: { type: 'user' | 'agent', id: string, status: 'connected' | 'disconnected' }) {
       if (data.type === 'user') {
         setConnectedUsers(prev => {
-          const wasConnected = prev.has(data.id);
           const newSet = new Set(prev);
           if (data.status === 'connected') {
             newSet.add(data.id);
