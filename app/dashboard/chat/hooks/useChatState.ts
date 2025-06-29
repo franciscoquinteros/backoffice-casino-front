@@ -166,6 +166,11 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
           console.log(`📊 [${timestamp}] Usuarios conectados actuales:`, Array.from(newSet));
           return newSet;
         });
+
+        // Si es el usuario del chat seleccionado, forzar actualización de estado
+        if (selectedChat === data.id) {
+          console.log(`🔄 [${timestamp}] Actualizando estado para chat seleccionado: ${data.id} → ${data.status}`);
+        }
       }
     }
 
@@ -322,6 +327,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
         conversationId: currentConversationId,
         agentId
       });
+
+      // Solicitar estado actualizado de usuarios conectados
+      // cuando se establece una nueva conversación
+      setTimeout(() => {
+        socket.emit('getConnectedUsers');
+      }, 150);
     }
   }, [currentConversationId, agentId, socket, activeChats, archivedChats]);
 
@@ -342,6 +353,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
         conversationId,
         agentId
       });
+
+      // Solicitar estado actualizado de usuarios conectados al cambiar de chat
+      // para asegurar que tenemos la información más reciente
+      setTimeout(() => {
+        socket.emit('getConnectedUsers');
+      }, 100);
     } else {
       const isArchived = selectedTab === 'archived';
 
