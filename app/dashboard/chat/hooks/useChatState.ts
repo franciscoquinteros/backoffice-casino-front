@@ -150,20 +150,25 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     }
 
     function onConnectionStatus(data: { type: 'user' | 'agent', id: string, status: 'connected' | 'disconnected' }) {
+      console.log(`🎯 Dashboard recibió connectionStatus:`, data);
       if (data.type === 'user') {
         setConnectedUsers(prev => {
           const newSet = new Set(prev);
           if (data.status === 'connected') {
+            console.log(`✅ Usuario ${data.id} marcado como conectado`);
             newSet.add(data.id);
           } else {
+            console.log(`❌ Usuario ${data.id} marcado como desconectado`);
             newSet.delete(data.id);
           }
+          console.log(`📊 Usuarios conectados actuales:`, Array.from(newSet));
           return newSet;
         });
       }
     }
 
     function onConnectedUsers(userIds: string[]) {
+      console.log(`📋 Dashboard recibió lista de usuarios conectados:`, userIds);
       setConnectedUsers(new Set(userIds));
     }
 
@@ -293,6 +298,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
       officeId: userOffice,
       agentId
     });
+    console.log(`🔍 Dashboard solicitando usuarios conectados...`);
     socket.emit('getConnectedUsers');
 
     return () => {
