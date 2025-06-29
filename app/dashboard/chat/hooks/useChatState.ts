@@ -129,12 +129,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     function onAgentAssigned(data: { userId: string; agentId: string; success: boolean; conversationId: string }) {
       if (data.success && data.agentId === agentId) {
-        if (assigningChat !== data.userId) {
-          socket.emit('getActiveChats', {
-            officeId: userOffice,
-            agentId
-          });
-        }
+        // Siempre refrescar los chats activos cuando se asigna un agente
+        // para asegurar sincronización correcta del estado
+        socket.emit('getActiveChats', {
+          officeId: userOffice,
+          agentId
+        });
 
         if (selectedChat === data.userId) {
           socket.emit('selectConversation', {
@@ -270,15 +270,17 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
     function onRefreshChats() {
       console.log('Solicitando actualización de chats con filtros');
-      // Solicitar actualización de chats con los filtros apropiados
-      socket.emit('getActiveChats', {
-        officeId: userOffice,
-        agentId
-      });
-      socket.emit('getArchivedChats', {
-        officeId: userOffice,
-        agentId
-      });
+      // Añadir un pequeño delay para asegurar que las actualizaciones de BD se hayan completado
+      setTimeout(() => {
+        socket.emit('getActiveChats', {
+          officeId: userOffice,
+          agentId
+        });
+        socket.emit('getArchivedChats', {
+          officeId: userOffice,
+          agentId
+        });
+      }, 50); // 50ms de delay para sincronización
     }
 
     socket.on('activeChats', onActiveChats);
@@ -429,34 +431,10 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
       if (response && response.success) {
         setCurrentConversationId(conversationId);
-        setPendingChats(prev => prev.filter(chat => chat.chat_user_id !== userId));
 
-        setActiveChats(prev => {
-          const existingChatIndex = prev.findIndex(chat => chat.chat_user_id === userId);
-
-          if (existingChatIndex >= 0) {
-            const updatedChats = [...prev];
-            updatedChats[existingChatIndex] = {
-              chat_user_id: userId,
-              chat_agent_id: agentId,
-              status: 'active',
-              conversationId,
-              officeId: userOffice
-            };
-            return updatedChats;
-          }
-
-          return [
-            ...prev,
-            {
-              chat_user_id: userId,
-              chat_agent_id: agentId,
-              status: 'active',
-              conversationId,
-              officeId: userOffice
-            }
-          ];
-        });
+        // No actualizamos el estado local inmediatamente
+        // Dejamos que el evento 'agentAssigned' y 'refreshChats' del servidor
+        // actualicen el estado para evitar conflictos de sincronización
 
         setSelectedTab('active');
         selectChat(userId);
