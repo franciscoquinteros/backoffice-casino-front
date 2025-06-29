@@ -240,14 +240,32 @@ export function useMessages({
 
     setMessages(prev => [...prev, tempMessage]);
 
+    // Create a timeout for the message sending
+    const messageTimeout = setTimeout(() => {
+      console.error('Error al enviar mensaje: timeout exceeded when trying to connect');
+      // Remove the temporary message if timeout occurs
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+    }, 8000); // 8 second timeout
+
     socket.emit('message', {
       userId: selectedChat,
       message: trimmedMessage,
       agentId,
       conversationId: currentConversationId
-    }, (response: { success: boolean; message?: string }) => {
+    }, (response?: { success: boolean; message?: string }) => {
+      clearTimeout(messageTimeout);
+
+      if (!response) {
+        console.error('Error al enviar mensaje: No response received');
+        // Remove the temporary message if no response
+        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+        return;
+      }
+
       if (!response.success) {
         console.error(`Error al enviar mensaje: ${response.message || 'Error desconocido'}`);
+        // Remove the temporary message if error
+        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
       }
     });
 

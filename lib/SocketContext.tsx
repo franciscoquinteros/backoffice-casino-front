@@ -42,11 +42,12 @@ const createSocket = (): Socket => {
   return io(socketUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 60000,
-    forceNew: true,
+    timeout: 10000, // Reduced timeout to 10 seconds
+    forceNew: false, // Don't force new connections
+    autoConnect: true,
   });
 };
 
@@ -79,6 +80,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     // Si es superadmin y hemos decidido desactivar el socket, no intentar conectar
     if (isSuperadmin && disableSocketForSuperadmin) {
       console.log('Superadmin: socket desactivado para mejorar experiencia de usuario');
+      return;
+    }
+
+    // If socket already exists and is connected, don't create a new one
+    if (socket && socket.connected) {
+      console.log('Socket ya está conectado, reutilizando conexión existente');
       return;
     }
 
@@ -155,8 +162,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketInstance.off('connect_error', onConnectError);
       socketInstance.off('disconnect', onDisconnect);
       socketInstance.disconnect();
+      setSocket(null);
+      setIsConnected(false);
     };
-  }, [user, agentId, agentName, agentRole, hasAuthorizedRole, isSuperadmin, connectionAttempts, disableSocketForSuperadmin, isConnected]);
+  }, [user?.id, user?.officeId]); // Simplified dependencies to prevent unnecessary re-connections
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>
