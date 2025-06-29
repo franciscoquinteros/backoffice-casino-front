@@ -159,6 +159,11 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
           if (data.status === 'connected') {
             console.log(`✅ [${timestamp}] Usuario ${data.id} marcado como conectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.add(data.id);
+
+            // Si es una reconexión (pasó de desconectado a conectado), loggear especialmente
+            if (!wasConnected) {
+              console.log(`🔄 [${timestamp}] RECONEXIÓN detectada para usuario ${data.id}!`);
+            }
           } else {
             console.log(`❌ [${timestamp}] Usuario ${data.id} marcado como desconectado (antes: ${wasConnected ? 'conectado' : 'desconectado'})`);
             newSet.delete(data.id);
@@ -169,7 +174,12 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
 
         // Si es el usuario del chat seleccionado, forzar actualización de estado
         if (selectedChat === data.id) {
-          console.log(`🔄 [${timestamp}] Actualizando estado para chat seleccionado: ${data.id} → ${data.status}`);
+          console.log(`🔄 [${timestamp}] ⭐ IMPORTANTE: Actualizando estado para chat seleccionado: ${data.id} → ${data.status}`);
+
+          // Si es una reconexión del chat seleccionado, podrías disparar eventos adicionales aquí
+          if (data.status === 'connected') {
+            console.log(`🎉 [${timestamp}] Chat seleccionado ${data.id} se ha reconectado!`);
+          }
         }
       }
     }
