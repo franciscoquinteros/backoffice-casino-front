@@ -462,7 +462,7 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
         console.error('Error al asignar chat:', errorMessage);
       }
     });
-  }, [agentId, selectChat, socket, agentName, userOffice]);
+  }, [agentId, selectChat, socket, agentName]);
 
   const archiveChat = useCallback((userId: string) => {
     const chatToArchive = activeChats.find(chat => chat.chat_user_id === userId);

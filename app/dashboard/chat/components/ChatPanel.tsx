@@ -9,7 +9,6 @@ import { Message, ChatData, MessageEndRef } from '../types';
 import { Socket } from 'socket.io-client';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertTriangle, Archive } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface ChatPanelProps {
   selectedChat: string | null;
@@ -80,22 +79,6 @@ export function ChatPanel({
     // Si no está en los chats activos, no está asignado al usuario actual
     return true;
   };
-
-  // Skeleton para los mensajes
-  const messagesListSkeleton = (
-    <div className="flex-1 p-4 overflow-auto">
-      <div className="space-y-4">
-        {Array(5).fill(0).map((_, i) => (
-          <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[80%] ${i % 2 === 0 ? 'mr-auto' : 'ml-auto'}`}>
-              <Skeleton className={`h-20 w-64 rounded-lg ${i % 2 === 0 ? 'rounded-tl-none' : 'rounded-tr-none'}`} />
-              <Skeleton className="h-3 w-24 mt-1" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   // Loading indicator para mensajes
   const messagesLoadingIndicator = (
