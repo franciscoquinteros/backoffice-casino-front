@@ -170,7 +170,6 @@ export function useChatState({ socket, agentId, isConnected, agentName, userOffi
     }
 
     function onConnectedUsers(userIds: string[]) {
-      const timestamp = new Date().toLocaleTimeString();
       setConnectedUsers(new Set(userIds));
     }
 
